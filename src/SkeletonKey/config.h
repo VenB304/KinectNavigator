@@ -1,9 +1,9 @@
 #pragma once
 #include "framework.h"
 
-// M3 config. Hardcoded defaults, overridable by a "kinectnav.ini" next to the
-// module (key = value, '#' or ';' comments). M4 replaces this with the full
-// JSON schema; the field names line up with kinectnav.default.json.
+// Config. Hardcoded defaults, overridable by a "kinectnav.ini" next to the
+// module (key = value, '#' or ';' comments -- see dist/kinectnav.example.ini).
+// The .ini key names are the snake_case of these fields (see config.cpp).
 
 struct Config
 {

@@ -1,73 +1,94 @@
 # KinectNavigator — "Skeleton Key"
 
 Hands-free menu navigation for the Just Dance **Legacy Offline PC** mod, driven by Kinect
-skeleton poses. A dancer picks a song, confirms, and backs out without touching a keyboard
-or phone.
+skeleton poses — so a dancer can browse songs and pick one without a keyboard or phone.
 
-Full design: [`docs/build-plan.html`](docs/build-plan.html)
-(published copy: <https://claude.ai/code/artifact/15168c7b-9208-4cd4-9af7-2a13db9c9bdc>)
+Design doc: [`docs/build-plan.html`](docs/build-plan.html) · published copy:
+<https://claude.ai/code/artifact/15168c7b-9208-4cd4-9af7-2a13db9c9bdc>
 
 ## How it works
 
-Skeleton Key ships as a single drop-in `Kinect10.dll` that sits **between** the game and
-whatever real Kinect back-end is in use (the genuine Microsoft runtime for real-sensor
-users, or a webcam emulator's fake DLL). It forwards the eight functions `Legacy.exe`
-imports to a renamed `Kinect10_backend.dll`, taps the skeleton frame on its way to the
-game, runs a gesture recognizer, and synthesises the mod's menu keys via `SendInput`.
+Skeleton Key is a single drop-in `Kinect10.dll` that sits **between** the game and whatever
+real Kinect back-end is present. It exports the eight `Nui*` ordinals `Legacy.exe` imports,
+forwards every call to a renamed `Kinect10_backend.dll` (the genuine Microsoft runtime — or,
+for webcam users, a Kinect-emulator's fake DLL), and taps the skeleton frame on its way to
+the game. A background recognizer turns hand motion into menu keystrokes via `SendInput`.
 
-Because only the game ever opens the sensor, the Kinect v1 "two apps can't share one
-sensor" problem never arises.
+Only the game ever opens the sensor, so the Kinect v1 "two apps can't share one sensor"
+problem never comes up.
 
-## Status — Milestone 1: passthrough proxy
+## Status (2026-08-28)
 
 | Milestone | State |
-|-----------|-------|
-| **M1** — passthrough proxy, every call logged, zero regressions | in progress |
-| M2 — skeleton visible (vtable wrap + navigator-body logging) | not started |
-| M3 — one gesture → one key | not started |
-| M4 — full vocabulary + config + audio | not started |
-| M5 — tuning pass on real hardware | not started |
+|---|---|
+| **M1** — passthrough proxy, every call logged, zero regressions | ✅ done, hardware-verified |
+| **M2** — skeleton tap + navigator-body recognizer | ✅ done, hardware-verified |
+| **Harness** — record real sessions, iterate the recognizer offline | ✅ done |
+| **M3** — swipe → `←` / `→` (with hold-to-repeat) | 🔄 in iteration, not signed off |
+| M4 — up/down, dwell → Confirm, pose → Back, either-hand, audio | not started |
+| M5 — threshold tuning in the real play space; ship to friends | not started |
+| later — Kinect v2 shim, on-screen overlay, packaging | not started |
 
-M1 builds a `Kinect10.dll` that forwards all 8 imported ordinals to the real runtime and
-writes a call log to `SkeletonKey.log`. No gestures, no input synthesis, no vtable patch yet.
+**M3 detail:** left/right swipe fires the arrow keys and scrolls the song carousel in-game.
+On its 4th build after live feedback — model went from one-swipe-per-item (too tiring) to
+"swipe once = one step; swipe and leave your hand out = auto-repeat", with wave-style re-arm
+(no returning to a neutral pose between gestures). Thresholds are provisional; feel not yet
+judged (see the crash note). Right hand only so far — either-hand is an M4 item.
+
+**Legacy.exe crashes on its own** — WER dumps exist from *before* this project, and it faults
+on nearly every quit (silent, during teardown). One mid-session crash during M3 live testing,
+undiagnosed. Not caused by the shim (a zero-keystroke session crashed too). Consequence:
+don't rely on long live sessions — capture short, tune offline, confirm live briefly.
+Details in the design doc.
 
 ## Build
 
-Requires Visual Studio 2022/2026 with the **Desktop C++** workload (x86 tools) and the
-**Kinect for Windows SDK 1.8** (only its headers are used; the DLL does not link
-`Kinect10.lib`).
+Visual Studio 2022 / 2026, **Desktop C++** workload (x86 tools), and **Kinect for Windows
+SDK 1.8** (headers only — the DLL does not link `Kinect10.lib`; the skeleton structs are
+vendored in `nui_types.h`).
 
 ```
 build.cmd
 ```
 
-or manually:
+or:
 
 ```
 msbuild src\SkeletonKey.sln /p:Configuration=Release /p:Platform=Win32
 ```
 
-Output: `build\Win32\Release\Kinect10.dll`, also copied to `dist\`.
+Builds two things into `build\Win32\Release\` (also copied to `dist\`):
 
-## Install (into a copy of the game folder)
+- `Kinect10.dll` — the shim
+- `SkeletonKeyReplay.exe` — the offline replay tool (see `tools/README.md`)
+
+## Install
+
+Into the game folder (**back it up first** — `Legacy.exe` is a large, unstable modded build):
 
 ```
-cd  path\to\LegacyPC - Game
-path\to\repo\dist\install.bat .
+dist\install.bat "E:\LegacyOfflinePC\LegacyPC - Game"
 ```
 
-`install.bat` backs up the folder marker, renames the genuine `Kinect10.dll` to
-`Kinect10_backend.dll`, drops Skeleton Key's `Kinect10.dll` in its place, and copies a
-default `kinectnav.json`. `uninstall.bat` reverses it.
+Renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (+ a `.orig-backup`), drops the
+shim in its place. Refuses to run if `Kinect10.dll` isn't the real ~15 MB runtime.
+`dist\uninstall.bat "<game folder>"` reverses it exactly.
 
-Always test against a **copy** of the game folder first.
+The shim runs on compiled-in defaults. To tune, copy `dist\kinectnav.example.ini` to
+`kinectnav.ini` in the game folder and edit it (no rebuild needed).
 
 ## Layout
 
 ```
-src\SkeletonKey\   the DLL project
-dist\              install/uninstall scripts + default config + built DLL
-docs\              design doc + field notes (M2 cadence logs, tuning sessions)
-tools\             later: skeleton record/replay harness
-build\             build output (git-ignored)
+src\SkeletonKey\        the shim DLL
+src\SkeletonKeyReplay\  the offline replay tool
+dist\                   install/uninstall scripts, record.bat, example config
+docs\                   design doc + field notes
+tools\                  replay-harness docs; tools\captures\ holds .skcap files (git-ignored)
+build\                  build output (git-ignored)
 ```
+
+## Repo hygiene
+
+Git-ignored: `build\`, built binaries in `dist\`, `*.skcap` / `tools\captures\`, `record.flag`,
+and the `Legacy Sensor by itsvexor*` reference folder + its zip (not redistributable).

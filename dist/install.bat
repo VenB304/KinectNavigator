@@ -44,13 +44,11 @@ echo Installing Skeleton Key into "%GAME%"
 copy /y "%GAME%\Kinect10.dll" "%GAME%\Kinect10.dll.orig-backup" >nul
 ren "%GAME%\Kinect10.dll" "Kinect10_backend.dll"
 copy /y "%~dp0Kinect10.dll" "%GAME%\Kinect10.dll" >nul
-if not exist "%GAME%\kinectnav.json" (
-    if exist "%~dp0kinectnav.default.json" copy /y "%~dp0kinectnav.default.json" "%GAME%\kinectnav.json" >nul
-)
 
 echo.
 echo Done.
 echo   genuine runtime renamed to Kinect10_backend.dll  ^(backup: Kinect10.dll.orig-backup^)
 echo   Skeleton Key installed as Kinect10.dll
 echo   runtime log will be written to SkeletonKey.log in the game folder
+echo   to tune: copy kinectnav.example.ini to "%GAME%\kinectnav.ini" and edit it
 endlocal

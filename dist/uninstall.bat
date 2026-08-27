@@ -18,5 +18,5 @@ ren "%GAME%\Kinect10_backend.dll" "Kinect10.dll"
 if exist "%GAME%\Kinect10.dll.orig-backup" del "%GAME%\Kinect10.dll.orig-backup"
 
 echo Done. Genuine Kinect10.dll restored.
-echo   ^(kinectnav.json and SkeletonKey.log were left in place^)
+echo   ^(kinectnav.ini, SkeletonKey.log and any skcap-*.skcap were left in place^)
 endlocal
