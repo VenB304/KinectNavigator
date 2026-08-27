@@ -456,7 +456,7 @@
 
   <header class="hero">
     <div>
-      <p class="eyebrow">Build plan &middot; v0.3 &middot; 2026-08-27</p>
+      <p class="eyebrow">Build plan &middot; v0.4 &middot; 2026-08-28</p>
       <h1>Skeleton Key</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
@@ -495,10 +495,10 @@
 
   <div class="status">
     <span><span class="dot">&#9679;</span> <b>BUILDING</b></span>
-    <span><b>v0.3</b> &mdash; M1 passed on real hardware</span>
-    <span><b>M1</b> &check; passthrough proxy</span>
+    <span><b>v0.4</b> &mdash; M2 passed on real hardware</span>
+    <span><b>M1</b> &check; <b>M2</b> &check;</span>
     <span><b>0</b> blockers</span>
-    <span>next: <b>M2 &mdash; skeleton tap</b></span>
+    <span>next: <b>M3 &mdash; one gesture, one key</b></span>
   </div>
 
   <ul class="toc">
@@ -829,8 +829,8 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
     <h2>Build milestones</h2>
     <div class="miles">
       <div class="mile done"><div><h3>Passthrough proxy</h3><p>Done &mdash; ran on real Kinect v1 hardware. Game boots, controller select still offers Kinect Sensor, a full song danced with zero passthrough errors, every call logged. See results below.</p></div></div>
-      <div class="mile"><div><h3>Skeleton tap</h3><p>Copy the <code>NUI_SKELETON_FRAME</code> from inside the flat <code>NuiSkeletonGetNextFrame</code> export into the ring buffer; recognizer thread logs the navigator body's joints. M1 already settled the cadence and tap-point questions, so this is just the copy + body pick.</p></div></div>
-      <div class="mile"><div><h3>One gesture, one key</h3><p>Right-swipe &rarr; <kbd>&rarr;</kbd> with full debounce. Scroll the song carousel hands-free.</p></div></div>
+      <div class="mile done"><div><h3>Skeleton tap</h3><p>Done &mdash; on real hardware. Frame copied out of the flat export into an SRWLOCK latest-slot buffer (de-duped by frame number + timestamp); recognizer thread picks the navigator body and logs its joints. Vendored structs verified byte-exact via size asserts.</p></div></div>
+      <div class="mile"><div><h3>One gesture, one key</h3><p>Right-swipe &rarr; <kbd>&rarr;</kbd> with full debounce. Scroll the song carousel hands-free. Built against generous configurable thresholds &mdash; real tuning waits for the actual play space.</p></div></div>
       <div class="mile"><div><h3>Full vocabulary + config + audio</h3><p>All six actions, <code>kinectnav.json</code>, distinct beeps per action class (navigate / confirm / back).</p></div></div>
       <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer in frame; hand the build to friends. Later: Kinect v2 shim, on-screen overlay, record/replay harness.</p></div></div>
     </div>
@@ -852,6 +852,24 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
       </table>
     </div>
     <p><b>New facts for M2:</b> polls pass <code>wait=0</code> (non-blocking) so the tap must de-dup frames by <code>liTimeStamp</code> / <code>dwFrameNumber</code>. The game <b>hard-exits</b> on quit &mdash; no <code>NuiShutdown</code>, no graceful DLL detach &mdash; so the recognizer thread must tolerate abrupt termination with no exit-flush. <code>NuiSkeletonSetTrackedSkeletons([0,0])</code> is called every frame; its log line needs the same sampling as the other hot paths.</p>
+
+    <h3>M2 results &mdash; run on real hardware, 28 Aug 2026</h3>
+    <p>Tested in a cluttered room, standing in a narrow clear path at marginal distance (~2.75&nbsp;m) &mdash; a pessimistic floor for tracking quality.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Tap &rarr; buffer &rarr; recognizer</td><td>Pass &mdash; correct metric skeleton data, 1:1 poll-to-accept (de-dup never misfired), no frame-rate impact</td></tr>
+          <tr><td>Struct layout</td><td>Pass &mdash; vendored <code>NUI_SKELETON_FRAME</code> size asserts hold; positions are sane metres</td></tr>
+          <tr><td>Navigator pick + sticky</td><td>Pass &mdash; held one body 40&nbsp;s straight; <code>ACQUIRED</code>/<code>LOST</code> fire on step-out/step-in; 500&nbsp;ms drop works</td></tr>
+          <tr><td><code>SHOULDER_CENTER</code>, <code>HIP_CENTER</code></td><td><b>Tracked 100% of the time</b> &mdash; torso length ~0.41&nbsp;m, very steady. The anchor pair.</td></tr>
+          <tr><td><code>HEAD</code></td><td>Tracked nearly always</td></tr>
+          <tr><td>Hands</td><td>Usually <b>Inferred</b>; flip to Tracked only on fast deliberate motion. X/Y usable through ~0.1&ndash;0.3&nbsp;m jitter; <b>Z unusable</b></td></tr>
+          <tr><td>Clean uninstall</td><td>Pass &mdash; genuine DLL restored byte-identical</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>Consequences for M3:</b> anchor everything on <code>SHOULDER_CENTER</code> + <code>HIP_CENTER</code>; <b>accept Inferred hands</b> (never require Tracked) and smooth hard; <b>drop &ldquo;push to confirm&rdquo; entirely</b> &mdash; hand Z is unreliable even on a real Kinect; swipes key on velocity + duration, not raw displacement, and <code>swipe.distance</code> moves above 0.22&nbsp;torso. Kinect v1 skeleton needs the dancer &ge;&nbsp;1.2&nbsp;m back &mdash; a walk-up to ~0.9&nbsp;m produced junk.</p>
   </section>
 
   <section id="risks">
@@ -868,13 +886,17 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
         <p><b>Game hard-exits on quit.</b> M1 saw no <code>NuiShutdown</code> call and no graceful DLL detach &mdash; the process just terminates.</p>
         <p>Mitigation: the recognizer thread must carry no exit-flush obligation. Persist nothing that matters only at shutdown; let the OS reclaim the thread.</p>
       </div></div>
-      <div class="block"><span class="sev sev--med">Design constraint</span><div>
-        <p><b>Webcam skeletons are monocular.</b> MediaPipe depth (Z) is noisy, so "push to confirm" misfires for webcam users.</p>
-        <p>Mitigation: <code>confirmMode</code> defaults to <b>dwell</b>, a pure 2-D test. Push is opt-in for real-Kinect setups.</p>
+      <div class="block"><span class="sev sev--med">Confirmed &middot; M2</span><div>
+        <p><b>Hand depth (Z) is unreliable</b> &mdash; not just for webcam users. M2 showed a real Kinect v1 reports hands as <code>Inferred</code> most of the time, with Z bouncing ~0.3&nbsp;m frame to frame.</p>
+        <p>Resolution: <b>&ldquo;push to confirm&rdquo; is dropped entirely.</b> Confirm is dwell-only (a pure X/Y test). All hand-based detectors accept <code>Inferred</code> joints and smooth hard.</p>
       </div></div>
       <div class="block"><span class="sev sev--med">Tuning risk</span><div>
         <p><b>Vertical swipes vs. arm raises.</b> Raising or lowering an arm reads like an up/down swipe.</p>
         <p>Mitigation: down-swipe must start from a raised position; if still unreliable, switch <code>verticalMode</code> to <code>handZone</code> (parked hand repeat-emits).</p>
+      </div></div>
+      <div class="block"><span class="sev sev--med">Open question</span><div>
+        <p><b>Where does this actually get played?</b> M2 was tested in a cramped room at marginal distance. If the real setting is a cleared space the M2 noise is pessimistic; if it is that same room, that noise level is the tuning target.</p>
+        <p>Leaning toward pulling the <b>record / replay harness</b> forward so the recognizer can be iterated offline against captured sessions, with only occasional live checks.</p>
       </div></div>
       <div class="block"><span class="sev sev--low">Note</span><div>
         <p><b>Two DLL variants ship in ItsVexor's zip.</b> <code>JDLEGACY</code> is x86 and matches this game build; <code>DREYN</code> is x64 for a different 64-bit Legacy build and will not load here. Test against the x86 one.</p>
@@ -893,11 +915,10 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
     <p class="eyebrow">From here</p>
     <h2>Next steps</h2>
     <ul class="next">
-      <li><strong>M2</strong> &mdash; inside the flat <code>NuiSkeletonGetNextFrame</code> thunk, de-dup by frame number and copy the <code>NUI_SKELETON_FRAME</code> into an <code>SRWLOCK</code> ring buffer. Pull in <code>NuiSkeleton.h</code> for the real struct, with <code>/NODEFAULTLIB:Kinect10.lib</code>.</li>
-      <li><strong>M2</strong> &mdash; recognizer thread: pick the navigator body (closest + centred, sticky) and log its joints. Confirm tracked-vs-inferred behaviour with a person in frame.</li>
-      <li>Sample-limit the <code>NuiSkeletonSetTrackedSkeletons</code> log line.</li>
+      <li>Decide the play environment and whether to build the <strong>record / replay harness</strong> before M3.</li>
+      <li><strong>M3</strong> &mdash; body-relative normalisation on the <code>SHOULDER_CENTER</code>/<code>HIP_CENTER</code> anchor; dual-alpha smoothing; one detector (right-swipe) + debounce state machine; <code>SendInput</code> of <kbd>&rarr;</kbd>.</li>
+      <li>Confirm the exact virtual-key codes the mod polls (WASD/arrows, Enter/Space, Esc/Backspace all work; need the specific VKs for <code>SendInput</code>).</li>
       <li>Vendor <code>json.hpp</code> ahead of M4's config loader.</li>
-      <li>Confirm the exact virtual-key codes the mod polls once M3 testing starts (WASD/arrows, Enter/Space, Esc/Backspace all work; need the specific VKs for <code>SendInput</code>).</li>
     </ul>
   </section>
 
