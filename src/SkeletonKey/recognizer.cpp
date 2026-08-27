@@ -105,11 +105,9 @@ namespace
 
             switch (Gestures::Update(nav, now))
             {
-            case GestureAction::Right:
-                Output::TapKey(Cfg::Get().keyRight);
-                break;
-            default:
-                break;
+            case GestureAction::Right: Output::TapKey(Cfg::Get().keyRight); break;
+            case GestureAction::Left:  Output::TapKey(Cfg::Get().keyLeft);  break;
+            default: break;
             }
 
             if (now - lastLog >= 1000)          // ~1 detail line per second

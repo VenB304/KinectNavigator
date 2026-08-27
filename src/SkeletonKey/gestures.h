@@ -9,6 +9,7 @@ enum class GestureAction
 {
     None = 0,
     Right,
+    Left,
 };
 
 namespace Gestures

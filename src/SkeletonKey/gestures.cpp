@@ -4,25 +4,30 @@
 #include "config.h"
 #include "log.h"
 
-// M3: right-hand horizontal swipe -> VK_RIGHT.
-//   quick swipe            = one press
-//   swipe, then keep the hand raised and out to the right = auto-repeat
-//                            (accelerating), until the hand drops or comes back
-// Re-arming only needs the hand to come back from the right, not a full
-// arms-at-sides neutral -- that was eating rapid repeated swipes.
+// M3: horizontal right-hand swipes -> VK_RIGHT / VK_LEFT.
+//   quick swipe                         = one press
+//   swipe, then leave the hand out to that side (any height) = auto-repeat,
+//                                         accelerating, until the hand comes back
+//   a wave (hand crossing back toward centre) re-arms -- no arms-at-sides
+//   "neutral" needed between gestures. Full neutral is only the FIRST arm and
+//   after the sensor loses the body.
+//
+// All positions are body-relative to the SHOULDER_CENTRE / HIP_CENTRE anchor,
+// in torso lengths. "efx" is the fast-smoothed signed distance the hand is to
+// the user's RIGHT (mirror flips it); "esx" is the slow-smoothed version.
 
 namespace
 {
-    enum class SM { NeutralWait, Armed, PostSwipe, Holding, ReArm };
+    enum class SM { InitialArm, Armed, PostSwipe, Holding, ReArm };
 
     const char* SmTag(SM s)
     {
         switch (s) {
-        case SM::NeutralWait: return "NEU";
-        case SM::Armed:       return "ARM";
-        case SM::PostSwipe:   return "PSW";
-        case SM::Holding:     return "HLD";
-        case SM::ReArm:       return "RARM";
+        case SM::InitialArm: return "INIT";
+        case SM::Armed:      return "ARM";
+        case SM::PostSwipe:  return "PSW";
+        case SM::Holding:    return "HLD";
+        case SM::ReArm:      return "RARM";
         }
         return "?";
     }
@@ -33,19 +38,25 @@ namespace
         LONGLONG prevMs = -1;
         int      frames = 0;
 
-        float    fx = 0, fy = 0;        // fast-smoothed body-relative right hand
-        float    sx = 0, sy = 0;        // slow-smoothed (neutral test)
+        float    fx = 0, fy = 0;
+        float    sx = 0, sy = 0;
         float    fxPrev = 0, fyPrev = 0;
 
-        SM       sm = SM::NeutralWait;
+        SM       sm = SM::InitialArm;
         LONGLONG neutralSinceMs = -1;
-        LONGLONG stateMs = 0;           // when the current sm was entered
+        LONGLONG stateMs = 0;
         LONGLONG nextRepeatMs = 0;
         int      repeats = 0;
+        int      holdMiss = 0;
 
         bool     swiping = false;
-        float    swipeStartFx = 0;
+        int      swipeDir = 0;          // +1 right, -1 left (effective space)
+        float    swipeStartEfx = 0;
         int      swipeFrames = 0;
+        int      cand = 0;              // candidate direction, pending confirmation
+        int      candFrames = 0;
+
+        int      holdDir = 0;           // direction being repeated
 
         LONGLONG lastTraceMs = -1;
     } g;
@@ -63,6 +74,7 @@ namespace
         return s == NUI_SKELETON_POSITION_TRACKED || s == NUI_SKELETON_POSITION_INFERRED;
     }
     inline void Enter(SM s, LONGLONG now) { g.sm = s; g.stateMs = now; }
+    inline GestureAction DirAction(int dir) { return dir > 0 ? GestureAction::Right : GestureAction::Left; }
 }
 
 void Gestures::Reset()
@@ -117,27 +129,29 @@ GestureAction Gestures::Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs)
     const float vy = (float)((g.fy - g.fyPrev) / dt);
     g.fxPrev = g.fx;  g.fyPrev = g.fy;
 
+    const float evx = c.mirror ? -vx  : vx;
+    const float efx = c.mirror ? -g.fx : g.fx;
+    const float esx = c.mirror ? -g.sx : g.sx;
+
     if (c.trace && (g.lastTraceMs < 0 || frameMs - g.lastTraceMs >= 66))
     {
         g.lastTraceMs = frameMs;
-        LogLine("trace[t=%.1f] %-4s fx=%+.2f fy=%+.2f vx=%+.2f vy=%+.2f sy=%+.2f%s rp=%d",
-                T(frameMs), SmTag(g.sm), g.fx, g.fy, vx, vy, g.sy,
+        LogLine("trace[t=%.1f] %-4s efx=%+.2f fy=%+.2f evx=%+.2f esx=%+.2f sy=%+.2f%s rp=%d",
+                T(frameMs), SmTag(g.sm), efx, g.fy, evx, esx, g.sy,
                 g.swiping ? " SWIPING" : "", g.repeats);
     }
 
     ++g.frames;
     if (g.frames < c.armAfterFrames) return GestureAction::None;
 
-    const float evx = c.mirror ? -vx : vx;
-    const float efx = c.mirror ? -g.fx : g.fx;      // signed "how far to the RIGHT" the hand is
-    const bool  handUp     = g.fy > -0.75f;
-    const bool  neutralPose = (g.sy < -0.55f) && (fabsf(g.sx) < 0.75f);
+    const bool handUp = g.fy > -0.75f;
 
     switch (g.sm)
     {
     // ---------------------------------------------------------------
-    case SM::NeutralWait:
-        if (neutralPose)
+    case SM::InitialArm:
+        // hand somewhere near the body and not swinging
+        if (fabsf(esx) < c.armCenterFx && fabsf(evx) < c.swipeVelocity)
         {
             if (g.neutralSinceMs < 0) g.neutralSinceMs = frameMs;
             if (frameMs - g.neutralSinceMs >= c.neutralHoldMs)
@@ -155,37 +169,54 @@ GestureAction Gestures::Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs)
     {
         if (!g.swiping)
         {
-            if (handUp && evx > c.swipeVelocity && evx < c.swipeVxCeiling)
+            const bool fast = fabsf(evx) > c.swipeVelocity && fabsf(evx) < c.swipeVxCeiling;
+            const int  dir  = evx > 0 ? 1 : -1;
+            if (handUp && fast)
             {
-                g.swiping = true;
-                g.swipeStartFx = g.fx;
-                g.swipeFrames = 1;
-                LogLine("Gesture[t=%.1f]: swipe start  evx=%.2f fx=%.2f fy=%.2f",
-                        T(frameMs), evx, g.fx, g.fy);
+                if (g.cand == dir) ++g.candFrames;
+                else { g.cand = dir; g.candFrames = 1; }
+
+                if (g.candFrames >= c.swipeConfirmFrames)
+                {
+                    g.swiping = true;
+                    g.swipeDir = dir;
+                    g.swipeStartEfx = efx;
+                    g.swipeFrames = g.candFrames;
+                    g.cand = 0; g.candFrames = 0;
+                    LogLine("Gesture[t=%.1f]: swipe start  dir=%s evx=%.2f efx=%.2f",
+                            T(frameMs), g.swipeDir > 0 ? "R" : "L", evx, efx);
+                }
+            }
+            else if (fabsf(evx) < 0.3f * c.swipeVelocity)
+            {
+                g.cand = 0; g.candFrames = 0;   // motion died, forget the candidate
             }
             return GestureAction::None;
         }
 
         ++g.swipeFrames;
-        const float disp = c.mirror ? -(g.fx - g.swipeStartFx) : (g.fx - g.swipeStartFx);
+        const float progress = g.swipeDir * (efx - g.swipeStartEfx);   // + = toward the swiped side
+        const float dirVel   = g.swipeDir * evx;
 
-        if (evx < -0.3f * c.swipeVelocity || g.swipeFrames > 45)
+        if (dirVel < -0.3f * c.swipeVelocity || g.swipeFrames > 45)
         {
-            LogLine("Gesture[t=%.1f]: swipe abort  disp=%.2f frames=%d", T(frameMs), disp, g.swipeFrames);
+            LogLine("Gesture[t=%.1f]: swipe abort  prog=%.2f frames=%d", T(frameMs), progress, g.swipeFrames);
             g.swiping = false;
             return GestureAction::None;
         }
-        if (g.swipeFrames >= c.swipeMinFrames && disp >= c.swipeDistance && evx > 0.0f)
+        if (g.swipeFrames >= c.swipeMinFrames && progress >= c.swipeDistance && dirVel > 0.0f)
         {
-            LogLine("Gesture[t=%.1f]: FIRE swipe-right  disp=%.2f frames=%d", T(frameMs), disp, g.swipeFrames);
+            LogLine("Gesture[t=%.1f]: FIRE swipe-%s  prog=%.2f frames=%d",
+                    T(frameMs), g.swipeDir > 0 ? "right" : "left", progress, g.swipeFrames);
             g.swiping = false;
             g.repeats = 1;
+            g.holdDir = g.swipeDir;
             Enter(SM::PostSwipe, frameMs);
-            return GestureAction::Right;
+            return DirAction(g.swipeDir);
         }
-        if (evx < 0.3f * c.swipeVelocity)
+        if (dirVel < 0.3f * c.swipeVelocity)
         {
-            LogLine("Gesture[t=%.1f]: swipe fizzled  disp=%.2f frames=%d", T(frameMs), disp, g.swipeFrames);
+            LogLine("Gesture[t=%.1f]: swipe fizzled  prog=%.2f frames=%d", T(frameMs), progress, g.swipeFrames);
             g.swiping = false;
         }
         return GestureAction::None;
@@ -194,18 +225,22 @@ GestureAction Gestures::Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs)
     // ---------------------------------------------------------------
     case SM::PostSwipe:
     {
-        const bool inHold = (g.fy > c.holdRaisedFy) && (efx > c.holdEnterFx);
-        if (inHold)
-        {
-            Enter(SM::Holding, frameMs);
-            g.nextRepeatMs = frameMs + c.firstRepeatMs;
-            LogLine("Gesture[t=%.1f]: HOLD begin", T(frameMs));
-            return GestureAction::None;
-        }
         if (frameMs - g.stateMs > c.postSwipeMs)
         {
-            Enter(SM::ReArm, frameMs);
-            LogLine("Gesture[t=%.1f]: single step", T(frameMs));
+            const float dirPos = g.holdDir * efx;      // how far out on the swiped side
+            if (dirPos > c.holdEnterFx)
+            {
+                Enter(SM::Holding, frameMs);
+                g.holdMiss = 0;
+                g.nextRepeatMs = frameMs + c.firstRepeatMs;
+                LogLine("Gesture[t=%.1f]: HOLD begin  dir=%s efx=%.2f",
+                        T(frameMs), g.holdDir > 0 ? "R" : "L", efx);
+            }
+            else
+            {
+                Enter(SM::ReArm, frameMs);
+                LogLine("Gesture[t=%.1f]: single step", T(frameMs));
+            }
         }
         return GestureAction::None;
     }
@@ -213,21 +248,28 @@ GestureAction Gestures::Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs)
     // ---------------------------------------------------------------
     case SM::Holding:
     {
-        const bool stillHold = (g.fy > c.holdExitFy) && (efx > c.holdExitFx);
-        if (!stillHold)
+        const float dirPosSlow = g.holdDir * esx;      // sustained distance out on the swiped side
+        const bool  out = (dirPosSlow > c.holdExitFx) && (g.sy > c.holdDropFy);
+        if (!out)
         {
-            Enter(SM::ReArm, frameMs);
-            LogLine("Gesture[t=%.1f]: HOLD end  (repeats=%d)", T(frameMs), g.repeats);
-            return GestureAction::None;
+            if (++g.holdMiss >= c.holdExitFrames)
+            {
+                Enter(SM::ReArm, frameMs);
+                LogLine("Gesture[t=%.1f]: HOLD end  (repeats=%d, esx=%.2f sy=%.2f)",
+                        T(frameMs), g.repeats, esx, g.sy);
+                return GestureAction::None;
+            }
         }
+        else g.holdMiss = 0;
+
         if (frameMs >= g.nextRepeatMs)
         {
             ++g.repeats;
             int interval = c.firstRepeatMs - (g.repeats - 1) * c.repeatAccelMs;
             if (interval < c.minRepeatMs) interval = c.minRepeatMs;
             g.nextRepeatMs = frameMs + interval;
-            LogLine("Gesture[t=%.1f]: repeat #%d", T(frameMs), g.repeats);
-            return GestureAction::Right;
+            LogLine("Gesture[t=%.1f]: repeat #%d %s", T(frameMs), g.repeats, g.holdDir > 0 ? "R" : "L");
+            return DirAction(g.holdDir);
         }
         return GestureAction::None;
     }
@@ -235,18 +277,17 @@ GestureAction Gestures::Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs)
     // ---------------------------------------------------------------
     case SM::ReArm:
     {
-        const bool recentered = (efx < c.recenterFx) || (g.fy < c.recenterFy);
-        if (frameMs - g.stateMs >= c.cooldownMs && recentered)
+        if (frameMs - g.stateMs >= c.cooldownMs && fabsf(efx) < c.recenterFx)
         {
             Enter(SM::Armed, frameMs);
             g.swiping = false;
             LogLine("Gesture[t=%.1f]: re-armed", T(frameMs));
         }
-        else if (frameMs - g.stateMs > 2500)
+        else if (frameMs - g.stateMs > c.reArmTimeoutMs)
         {
-            Enter(SM::NeutralWait, frameMs);
+            Enter(SM::InitialArm, frameMs);
             g.neutralSinceMs = -1;
-            LogLine("Gesture[t=%.1f]: re-arm timeout -> neutral", T(frameMs));
+            LogLine("Gesture[t=%.1f]: re-arm timeout -> initial arm", T(frameMs));
         }
         return GestureAction::None;
     }

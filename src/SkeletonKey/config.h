@@ -14,23 +14,28 @@ struct Config
     // swipe detector (units: torso-lengths, torso-lengths/sec, frames)
     float  swipeVelocity     = 1.6f;    // min hand speed to start a swipe
     float  swipeVxCeiling    = 8.0f;    // above this = inferred-joint jitter, ignore
-    float  swipeDistance     = 0.28f;
+    float  swipeDistance     = 0.33f;   // travel in the swipe direction to fire
     int    swipeMinFrames    = 3;
+    int    swipeConfirmFrames = 2;      // frames of same-direction speed before the direction latches (anti-windup)
 
-    // hold-to-repeat: after a swipe, if the hand stays raised + out to the side
-    float  holdEnterFx       = 0.75f;   // hand extended past here (raised) -> start repeating
-    float  holdRaisedFy      = -0.35f;  // "raised" = hand y above this (rel. shoulder-centre)
-    float  holdExitFx        = 0.40f;   // hand pulled in past here -> stop repeating
-    float  holdExitFy        = -0.50f;  // or hand dropped below here -> stop
-    int    firstRepeatMs     = 400;
-    int    minRepeatMs       = 180;
-    int    repeatAccelMs     = 25;      // each repeat shortens the interval by this
-    int    postSwipeMs       = 250;     // window after a swipe to decide single vs hold
+    // hold-to-repeat: after a swipe, if the hand stays out to the right (any
+    // height), auto-repeat until it is pulled back toward the body.
+    float  holdEnterFx       = 0.60f;   // fast: hand still out past here at end of post-swipe window -> hold
+    float  holdExitFx        = 0.45f;   // slow: sustained hand position pulled inside here -> stop
+    float  holdDropFy        = -1.10f;  // slow: OR arm fully hanging (below this) -> stop
+    int    holdExitFrames    = 4;       // consecutive out-of-zone frames before hold ends (jitter grace)
+    int    firstRepeatMs     = 430;
+    int    minRepeatMs       = 210;
+    int    repeatAccelMs     = 22;      // each repeat shortens the interval by this
+    int    postSwipeMs       = 300;     // window after a swipe to decide single vs hold
 
-    // debounce / re-arm
-    int    cooldownMs        = 200;     // min settle in ReArm before the next swipe
-    float  recenterFx        = 0.35f;   // hand back inside here -> re-armed
-    float  recenterFy        = -0.45f;  // or hand dropped below here -> re-armed
+    // debounce / re-arm  (a wave satisfies re-arm -- no neutral needed between swipes)
+    int    cooldownMs        = 160;     // min settle in ReArm before the next swipe
+    float  recenterFx        = 0.40f;   // |hand| back inside here -> re-armed
+    int    reArmTimeoutMs    = 2500;    // no recenter this long -> fall back to initial arm
+
+    // initial arm (first gesture, and after the sensor loses the body)
+    float  armCenterFx       = 0.85f;   // |hand| must be inside here (not parked out to a side)
     int    neutralHoldMs     = 200;
     int    armAfterFrames    = 15;
 
@@ -40,6 +45,7 @@ struct Config
 
     // output
     unsigned keyRight        = 0x27;    // VK_RIGHT
+    unsigned keyLeft         = 0x25;    // VK_LEFT
     int    keyPressMs        = 40;
 
     // debug: periodic hand-signal trace to the log (5 Hz of capture time)
