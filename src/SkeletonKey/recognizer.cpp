@@ -56,18 +56,20 @@ namespace
         NUI_SKELETON_FRAME f;
         unsigned long long seq = 0;
         DWORD      navId    = 0;
-        ULONGLONG  navSeen  = 0;
-        ULONGLONG  lastLog  = 0;
+        LONGLONG   navSeen  = 0;         // in frame-clock ms
+        LONGLONG   lastLog  = 0;
         bool       hadBody  = false;
         unsigned long long ticks = 0;
 
         while (!g_stop)
         {
             if (!FrameBuffer::WaitLatest(f, seq, 200))
-                continue;                       // 200 ms wake to re-check g_stop
+                continue;                       // 200 ms wall wake to re-check g_stop
             ++ticks;
 
-            const ULONGLONG now = GetTickCount64();
+            // All recognizer timing runs off the sensor's own clock so replay at
+            // any speed behaves like live. liTimeStamp is milliseconds.
+            const LONGLONG now = f.liTimeStamp.QuadPart;
             const int idx = PickNavigator(f, navId);
 
             if (idx < 0)
