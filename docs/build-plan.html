@@ -456,7 +456,7 @@
 
   <header class="hero">
     <div>
-      <p class="eyebrow">Build plan &middot; v0.5 &middot; 2026-08-28</p>
+      <p class="eyebrow">Build plan &middot; v0.6 &middot; 2026-08-28</p>
       <h1>Skeleton Key</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
@@ -495,10 +495,9 @@
 
   <div class="status">
     <span><span class="dot">&#9679;</span> <b>BUILDING</b></span>
-    <span><b>v0.5</b> &mdash; M2 + replay harness done</span>
-    <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check;</span>
-    <span><b>0</b> blockers</span>
-    <span>next: <b>M3 &mdash; one gesture, one key</b></span>
+    <span><b>v0.6</b> &mdash; M3 in iteration</span>
+    <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check; <b>M3</b> &rarr;</span>
+    <span>next: <b>capture &rarr; tune M3 offline</b></span>
   </div>
 
   <ul class="toc">
@@ -830,9 +829,9 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
     <div class="miles">
       <div class="mile done"><div><h3>Passthrough proxy</h3><p>Done &mdash; ran on real Kinect v1 hardware. Game boots, controller select still offers Kinect Sensor, a full song danced with zero passthrough errors, every call logged. See results below.</p></div></div>
       <div class="mile done"><div><h3>Skeleton tap</h3><p>Done &mdash; on real hardware. Frame copied out of the flat export into an SRWLOCK latest-slot buffer (de-duped by frame number + timestamp); recognizer thread picks the navigator body and logs its joints. Vendored structs verified byte-exact via size asserts.</p></div></div>
-      <div class="mile"><div><h3>One gesture, one key</h3><p>Right-swipe &rarr; <kbd>&rarr;</kbd> with full debounce. Scroll the song carousel hands-free. Built against generous configurable thresholds &mdash; real tuning waits for the actual play space.</p></div></div>
-      <div class="mile"><div><h3>Full vocabulary + config + audio</h3><p>All six actions, <code>kinectnav.json</code>, distinct beeps per action class (navigate / confirm / back).</p></div></div>
-      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer in frame; hand the build to friends. Later: Kinect v2 shim, on-screen overlay.</p></div></div>
+      <div class="mile"><div><h3>Swipe &rarr; arrow key &nbsp;<span style="color:var(--accent);font-size:0.8rem">&mdash; in iteration</span></h3><p>Left / right swipe &rarr; <kbd>&larr;</kbd> / <kbd>&rarr;</kbd>. Fires and scrolls the carousel in-game. Now on its 4th build after live feedback (see M3 progress below). Not signed off &mdash; feel not yet judged, thresholds provisional.</p></div></div>
+      <div class="mile"><div><h3>Full vocabulary + config + audio</h3><p>Up / down, dwell &rarr; Confirm, hands-on-hips pose &rarr; Back. <b>Either-hand</b> swiping (currently right only). Per-action audio beeps. Config file (INI now; JSON was planned but the INI is friendlier to hand-edit).</p></div></div>
+      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer, <b>in the actual play space</b> (still unknown). Captures from there, tune every detector, hand the build to friends. Settle the mid-session-crash question if it recurs.</p></div></div>
     </div>
 
     <h3>Tooling &mdash; record / replay harness (built 28 Aug)</h3>
@@ -873,6 +872,44 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
       </table>
     </div>
     <p><b>Consequences for M3:</b> anchor everything on <code>SHOULDER_CENTER</code> + <code>HIP_CENTER</code>; <b>accept Inferred hands</b> (never require Tracked) and smooth hard; <b>drop &ldquo;push to confirm&rdquo; entirely</b> &mdash; hand Z is unreliable even on a real Kinect; swipes key on velocity + duration, not raw displacement, and <code>swipe.distance</code> moves above 0.22&nbsp;torso. Kinect v1 skeleton needs the dancer &ge;&nbsp;1.2&nbsp;m back &mdash; a walk-up to ~0.9&nbsp;m produced junk.</p>
+
+    <h3>M3 progress &mdash; four builds, three live tests (28 Aug)</h3>
+    <p>Right hand only so far (<code>HAND_RIGHT</code>, fallback wrist; Inferred accepted). The gesture model changed twice in response to live feedback:</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Build</th><th>What changed</th><th>Live result</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>baseline</td>
+            <td>right-swipe &rarr; <kbd>&rarr;</kbd>, full debounce (neutral &rarr; armed &rarr; emit &rarr; cooldown &rarr; re-neutral)</td>
+            <td><b><code>SendInput</code> scrolls the carousel</b> in-game. Swipe detection reliable. Jitter spikes (<code>evx</code>~15&nbsp;torso/s) fired keys &rarr; added a velocity ceiling. <b>Feedback: one-swipe-per-item is exhausting</b>, and the strict re-neutral gate dropped rapid swipes.</td>
+          </tr>
+          <tr>
+            <td>+ hold</td>
+            <td>&ldquo;swipe for one, hold for many&rdquo;: swipe once = one press; swipe and leave the hand out = auto-repeat, accelerating. Re-arm relaxed.</td>
+            <td>Holding was <b>flaky</b> &mdash; entry needed an uncomfortable arm-straight-out-at-shoulder-height pose; a small arm relax ended it; low swipes never held.</td>
+          </tr>
+          <tr>
+            <td>+ L/R + wave</td>
+            <td>Left swipe &rarr; <kbd>&larr;</kbd> (symmetric). Re-arm now only needs the hand back across centre &mdash; <b>a wave works, no arms-at-sides between gestures</b>. Hold decoupled from hand height. Anti-windup: direction must persist 2 frames before it latches.</td>
+            <td><b>Game crashed ~37&nbsp;s in</b> before feel could be judged. Log tail showed right-swipes firing correctly, holds engaging, no wrong-direction fires. Inconclusive.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>All thresholds live in <code>config.h</code> defaults, overridable by a <code>kinectnav.ini</code> next to the DLL (or the replay exe) &mdash; no rebuild to retune. <b>Everything is provisional.</b> Ven's caution stands: do not overfit to the captures.</p>
+
+    <h3 id="crash">Legacy.exe crashes on its own</h3>
+    <p>Windows crash dumps (<code>%LOCALAPPDATA%\CrashDumps\Legacy.exe.*.dmp</code>) tell two stories:</p>
+    <div class="blocks">
+      <div class="block"><span class="sev sev--low">Not ours</span><div>
+        <p><b>Chronic crash-on-exit</b> &mdash; fault at offset <code>0x003ce1b0</code> in <code>Legacy.exe</code>'s own code, ~every session including <b>two dumps from 26&nbsp;Aug, before this project existed</b>. Ven quits via the menu and the window closes; the fault is silent during teardown. The M1/M2 &ldquo;hard-exit, no <code>NuiShutdown</code>, log stops mid-frame&rdquo; observations were <em>this</em>, not a clean exit. The capture session sent <b>zero</b> keystrokes and still did it. Harmless in practice.</p>
+      </div></div>
+      <div class="block"><span class="sev sev--watch">Watch</span><div>
+        <p><b>One mid-session crash</b> &mdash; live test 3, a <em>different</em> offset (<code>0x007500f0</code>), ~37&nbsp;s in, while attempting a <b>left</b> swipe (first build sending <kbd>&larr;</kbd>). The carousel wraps at both ends, so it is not a boundary underflow. Cause undiagnosed (our LEFT output? fast scrolling racing the song-preview loader? the game being the game?). One data point. If mid-session crashes cluster on LEFT across more sessions, investigate.</p>
+      </div></div>
+    </div>
+    <p><b>Testing implication:</b> the game dies randomly (~30&ndash;120&nbsp;s). Don't rely on long live sessions &mdash; capture short, tune the recognizer offline via <code>SkeletonKeyReplay --step</code>, go live only for brief confirmations. This is exactly what the harness is for.</p>
   </section>
 
   <section id="risks">
@@ -885,17 +922,22 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
       <div class="block resolved"><span class="sev sev--ok">Resolved &middot; M1</span><div>
         <p><b>Flat export vs. vtable method.</b> M1 confirmed the game calls the flat <code>NuiSkeletonGetNextFrame</code> export directly. No vtable patch, no <code>SKEL_GETNEXT_SLOT</code> to get right &mdash; M2 just copies the frame inside the export thunk.</p>
       </div></div>
-      <div class="block"><span class="sev sev--med">Handle in M2</span><div>
-        <p><b>Game hard-exits on quit.</b> M1 saw no <code>NuiShutdown</code> call and no graceful DLL detach &mdash; the process just terminates.</p>
-        <p>Mitigation: the recognizer thread must carry no exit-flush obligation. Persist nothing that matters only at shutdown; let the OS reclaim the thread.</p>
+      <div class="block"><span class="sev sev--med">Understood &middot; M3</span><div>
+        <p><b>The game &ldquo;hard-exits&rdquo; because it crashes.</b> What M1/M2 read as an abrupt clean exit is <code>Legacy.exe</code> faulting during teardown &mdash; see <a href="#crash">Legacy.exe crashes</a>. The recognizer thread already carries no exit-flush obligation, so nothing to fix; but live test sessions get cut short randomly.</p>
       </div></div>
       <div class="block"><span class="sev sev--med">Confirmed &middot; M2</span><div>
         <p><b>Hand depth (Z) is unreliable</b> &mdash; not just for webcam users. M2 showed a real Kinect v1 reports hands as <code>Inferred</code> most of the time, with Z bouncing ~0.3&nbsp;m frame to frame.</p>
         <p>Resolution: <b>&ldquo;push to confirm&rdquo; is dropped entirely.</b> Confirm is dwell-only (a pure X/Y test). All hand-based detectors accept <code>Inferred</code> joints and smooth hard.</p>
       </div></div>
+      <div class="block"><span class="sev sev--watch">Live-test constraint</span><div>
+        <p><b>The play environment is still unknown</b> and the only test room is cramped &mdash; a narrow clear path at marginal distance. Every capture's noise is a pessimistic floor. Provisional M3 thresholds can't be finalised until there's a capture from wherever the community actually plays.</p>
+      </div></div>
       <div class="block"><span class="sev sev--med">Tuning risk</span><div>
         <p><b>Vertical swipes vs. arm raises.</b> Raising or lowering an arm reads like an up/down swipe.</p>
         <p>Mitigation: down-swipe must start from a raised position; if still unreliable, switch <code>verticalMode</code> to <code>handZone</code> (parked hand repeat-emits).</p>
+      </div></div>
+      <div class="block"><span class="sev sev--med">Deferred</span><div>
+        <p><b>Either-hand swiping.</b> Currently right hand only. Ven wants left-handed / tired-arm / party use. Clean add &mdash; track both hands, drive off the more active one with stickiness. Slated for M4 or just before the next tuning round.</p>
       </div></div>
       <div class="block"><span class="sev sev--med">Open question</span><div>
         <p><b>Where does this actually get played?</b> M2 and the first capture were recorded in a cramped room at marginal distance. If the real setting is a cleared space that noise is pessimistic; if it is that same room, that noise level is the tuning target. Still unanswered.</p>
@@ -911,22 +953,23 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
     <p class="eyebrow">Prior art on the drive</p>
     <h2>What "Legacy Sensor by ItsVexor" taught us</h2>
     <p>It is a webcam-to-Kinect emulator for this exact mod: a PyInstaller bundle running OpenCV + MediaPipe Pose that infers a body skeleton from a normal camera, writes joint frames to shared memory, and serves them to the game through a small replacement <code>Kinect10.dll</code>. Replacing the real DLL is also what unlocks the "Kinect Sensor" choice on the controller screen.</p>
-    <p>It confirmed three things we were otherwise guessing: the DLL-replacement hook works on this build in the wild, the exact eight-ordinal export surface, and that the game uses the <code>INuiSensor</code> interface path. Its shared-memory + events + SRW-lock IPC is a reference if Skeleton Key ever needs its own sensor feed. Collaboration is not being pursued &mdash; this is an independent tool.</p>
+    <p>It confirmed two things we were otherwise guessing: the DLL-replacement hook works on this build in the wild, and the exact eight-ordinal export surface. (We assumed the game would use the <code>INuiSensor</code> vtable; M1 showed it calls the flat export instead &mdash; simpler for us.) Its shared-memory + events + SRW-lock IPC is a reference if Skeleton Key ever needs its own sensor feed. Collaboration is not being pursued &mdash; this is an independent tool.</p>
   </section>
 
   <section id="next">
     <p class="eyebrow">From here</p>
     <h2>Next steps</h2>
     <ul class="next">
-      <li>Decide the play environment and whether to build the <strong>record / replay harness</strong> before M3.</li>
-      <li><strong>M3</strong> &mdash; body-relative normalisation on the <code>SHOULDER_CENTER</code>/<code>HIP_CENTER</code> anchor; dual-alpha smoothing; one detector (right-swipe) + debounce state machine; <code>SendInput</code> of <kbd>&rarr;</kbd>.</li>
-      <li>Confirm the exact virtual-key codes the mod polls (WASD/arrows, Enter/Space, Esc/Backspace all work; need the specific VKs for <code>SendInput</code>).</li>
-      <li>Vendor <code>json.hpp</code> ahead of M4's config loader.</li>
+      <li><b>Capture session</b> &mdash; Ven waves left and right, alternates, does 2&ndash;3 holds each way. Take whatever comes before the game crashes (even 40&nbsp;s is useful). Save the <code>.skcap</code>.</li>
+      <li><b>Tune M3 offline</b> against that capture (+ the non-swipe blocks of capture&nbsp;1 as a false-positive check): left/right detection, wave re-arm, hold entry/exit. All via <code>SkeletonKeyReplay --step</code>.</li>
+      <li><b>One short live confirmation</b> &mdash; keys land, feel is right, direction never wrong.</li>
+      <li>Watch whether mid-session crashes keep correlating with <kbd>&larr;</kbd>; if so, dig in.</li>
+      <li>Then <b>M4</b>: either-hand swiping, up/down, dwell &rarr; Confirm, hands-on-hips &rarr; Back, audio beeps.</li>
     </ul>
   </section>
 
   <footer>
-    Skeleton Key &mdash; planning document v0.2, 27 Aug 2026. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
+    Skeleton Key &mdash; build plan v0.6, 28 Aug 2026. M1 &amp; M2 done, replay harness done, M3 (swipe &rarr; arrow keys) in iteration. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
   </footer>
 
 </div>
