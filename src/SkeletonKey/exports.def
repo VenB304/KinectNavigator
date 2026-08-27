@@ -1,0 +1,19 @@
+; Skeleton Key proxy exports.
+;
+; Legacy.exe imports these eight from Kinect10.dll BY ORDINAL, so the ordinal
+; numbers below are the contract and must not change. The left-hand name is
+; what we publish; the right-hand token is the decorated x86 __stdcall symbol
+; emitted for the matching function in exports.cpp (extern "C", so `_Name@bytes`).
+;
+; If the linker reports an unresolved token here, it will print the real
+; decoration it wants -- update the right-hand side to match.
+
+EXPORTS
+    NuiGetSensorCount=_NuiGetSensorCount@4                                                   @5
+    NuiCreateSensorByIndex=_NuiCreateSensorByIndex@8                                         @6
+    NuiImageGetColorPixelCoordinatesFromDepthPixel=_NuiImageGetColorPixelCoordinatesFromDepthPixel@28   @9
+    NuiShutdown=_NuiShutdown@0                                                               @16
+    NuiSkeletonGetNextFrame=_NuiSkeletonGetNextFrame@8                                       @17
+    NuiCreateSensorById=_NuiCreateSensorById@8                                               @21
+    NuiSetDeviceStatusCallback=_NuiSetDeviceStatusCallback@8                                 @22
+    NuiSkeletonSetTrackedSkeletons=_NuiSkeletonSetTrackedSkeletons@4                         @26

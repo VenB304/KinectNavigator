@@ -1,0 +1,908 @@
+<title>Skeleton Key</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #eceff3;
+    --surface: #ffffff;
+    --surface-2: #f3f6f9;
+    --border: #d7dee5;
+    --border-strong: #c3ccd5;
+    --text: #161b21;
+    --muted: #57626e;
+    --accent: #0c9c90;
+    --accent-ink: #06463f;
+    --accent-soft: rgba(12, 156, 144, 0.10);
+    --ok: #1a7f37;
+    --warn: #8a5a00;
+    --crit: #c0362c;
+    --shadow: 0 1px 2px rgba(20, 30, 40, 0.06), 0 8px 24px rgba(20, 30, 40, 0.06);
+
+    --measure: 43rem;
+    --step--1: 0.86rem;
+    --step-0: 1rem;
+    --step-1: 1.24rem;
+    --step-2: 1.6rem;
+    --step-3: 2.1rem;
+    --step-4: 2.9rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1015;
+      --surface: #141a21;
+      --surface-2: #1a222b;
+      --border: #29323d;
+      --border-strong: #3a4653;
+      --text: #e4ebf1;
+      --muted: #8d99a6;
+      --accent: #2dd4bf;
+      --accent-ink: #eafffb;
+      --accent-soft: rgba(45, 212, 191, 0.13);
+      --ok: #3fb950;
+      --warn: #d6a53a;
+      --crit: #f0655c;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0c1015;
+    --surface: #141a21;
+    --surface-2: #1a222b;
+    --border: #29323d;
+    --border-strong: #3a4653;
+    --text: #e4ebf1;
+    --muted: #8d99a6;
+    --accent: #2dd4bf;
+    --accent-ink: #eafffb;
+    --accent-soft: rgba(45, 212, 191, 0.13);
+    --ok: #3fb950;
+    --warn: #d6a53a;
+    --crit: #f0655c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: var(--step-0);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: calc(var(--measure) + 6rem);
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3.5rem) clamp(1.1rem, 4vw, 3rem) 5rem;
+  }
+
+  section { margin-top: clamp(2.75rem, 6vw, 4.25rem); scroll-margin-top: 1.5rem; }
+
+  h1, h2, h3, h4 {
+    font-family: "Chakra Petch", "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    line-height: 1.14;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  h2 {
+    font-size: var(--step-2);
+    letter-spacing: 0.005em;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  h3 {
+    font-size: var(--step-1);
+    margin-top: 2.1rem;
+  }
+
+  h4 {
+    font-size: var(--step-0);
+    margin-top: 1.5rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.82rem;
+  }
+
+  p { margin: 0.85rem 0; max-width: var(--measure); }
+  strong { font-weight: 600; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.4rem;
+  }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: clamp(1rem, 4vw, 2.5rem);
+    align-items: center;
+    padding-bottom: 1.75rem;
+    border-bottom: 2px solid var(--border-strong);
+  }
+  .hero h1 {
+    font-size: var(--step-4);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .hero .lede {
+    font-size: var(--step-1);
+    color: var(--muted);
+    max-width: 34ch;
+    margin: 0.7rem 0 0;
+  }
+  .hero-figure { flex-shrink: 0; }
+  .hero-figure svg { display: block; width: clamp(96px, 22vw, 150px); height: auto; }
+
+  .skeleton .bone { stroke: var(--border-strong); stroke-width: 3; stroke-linecap: round; }
+  .skeleton .joint { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; }
+  .skeleton .joint--live { fill: var(--accent); stroke: var(--accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton .joint--live { animation: ping 2.4s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+    @keyframes ping {
+      0%, 70%, 100% { opacity: 1; r: 4; }
+      35% { opacity: 0.45; r: 6.5; }
+    }
+  }
+
+  /* ---------- Status strip ---------- */
+  .status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+    margin-top: 1.5rem;
+    padding: 0.7rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+  .status b { color: var(--text); font-weight: 500; }
+  .status .dot { color: var(--ok); }
+
+  /* ---------- TOC ---------- */
+  .toc {
+    margin-top: 1.5rem;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+  }
+  .toc a {
+    display: inline-block;
+    padding: 0.28rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    text-decoration: none;
+    background: var(--surface);
+  }
+  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+  .lead {
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  /* ---------- Pipeline diagram ---------- */
+  .pipe {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+    margin: 1.5rem 0 0.5rem;
+  }
+  .pipe .col-head {
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 600;
+    font-size: var(--step--1);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 0.45rem;
+    border-radius: 6px 6px 0 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .pipe .node {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.7rem 0.85rem;
+    font-size: var(--step--1);
+    text-align: center;
+    line-height: 1.4;
+  }
+  .pipe .node small { display: block; color: var(--muted); font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; margin-top: 0.15rem; }
+  .pipe .node--span { grid-column: 1 / -1; }
+  .pipe .node--key {
+    border: 1.5px solid var(--accent);
+    background: var(--accent-soft);
+    font-weight: 600;
+  }
+  .pipe .node--key .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.15rem;
+  }
+  .pipe .arrow {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--border-strong);
+    font-size: 0.9rem;
+    line-height: 1;
+    margin: -0.15rem 0;
+  }
+  .pipe .node--game { border-radius: 0 0 6px 6px; }
+
+  /* ---------- Tables ---------- */
+  .table-scroll { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--border); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+  caption { text-align: left; color: var(--muted); font-size: var(--step--1); padding: 0 0 0.6rem; }
+  th, td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  thead th {
+    background: var(--surface-2);
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  code, kbd, .mono { font-family: "IBM Plex Mono", monospace; font-size: 0.88em; }
+  kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+    white-space: nowrap;
+  }
+  td .mono { color: var(--accent); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+  /* ---------- Decisions list ---------- */
+  .decisions { display: grid; gap: 0.55rem; margin: 1.3rem 0; padding: 0; list-style: none; }
+  .decisions li {
+    display: grid;
+    grid-template-columns: 10.5rem 1fr;
+    gap: 0.9rem;
+    padding: 0.7rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .decisions .k {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 0.15rem;
+  }
+  .decisions .v { font-weight: 500; }
+  .decisions .v span { display: block; font-weight: 400; font-size: var(--step--1); color: var(--muted); }
+
+  /* ---------- Step list (mechanics) ---------- */
+  .steps { margin: 1.3rem 0; padding-left: 0; list-style: none; counter-reset: s; display: grid; gap: 0.55rem; }
+  .steps > li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem;
+    padding: 0.75rem 0.95rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: var(--step--1);
+  }
+  .steps > li::before {
+    counter-increment: s;
+    content: counter(s);
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-soft);
+    width: 1.6rem; height: 1.6rem;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    font-size: 0.8rem;
+  }
+  .steps b { font-weight: 600; }
+
+  /* ---------- Milestones ---------- */
+  .miles { display: grid; gap: 0.6rem; margin: 1.4rem 0; counter-reset: m; }
+  .mile {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    padding: 0.95rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
+  .mile::before {
+    counter-increment: m;
+    content: "0" counter(m);
+    font-family: "Chakra Petch", sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
+  }
+  .mile.done::before { content: "0" counter(m) "  \2713"; }
+  .mile h3 { margin: 0 0 0.15rem; font-size: var(--step-0); }
+  .mile p { margin: 0; font-size: var(--step--1); color: var(--muted); max-width: none; }
+
+  /* ---------- Risk / note blocks ---------- */
+  .blocks { display: grid; gap: 0.7rem; margin: 1.3rem 0; }
+  .block {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: var(--step--1);
+  }
+  .block .sev {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    height: fit-content;
+    white-space: nowrap;
+  }
+  .sev--low { background: var(--accent-soft); color: var(--accent); }
+  .sev--med { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .sev--watch { background: color-mix(in srgb, var(--crit) 14%, transparent); color: var(--crit); }
+  .sev--ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .block.resolved p b { text-decoration: line-through; text-decoration-color: var(--muted); }
+  .block p { margin: 0; max-width: none; }
+  .block p + p { margin-top: 0.35rem; }
+  .block b { font-weight: 600; }
+
+  pre {
+    margin: 1.2rem 0;
+    padding: 1rem 1.15rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--step--1);
+    line-height: 1.6;
+  }
+  pre .c { color: var(--muted); }
+  pre .s { color: var(--accent); }
+  pre b { color: var(--text); font-weight: 600; }
+
+  .tree {
+    font-size: 0.82rem;
+    line-height: 1.75;
+  }
+  .tree .d { color: var(--accent); }
+  .tree .cm { color: var(--muted); }
+
+  .next {
+    margin: 1.3rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .next li {
+    display: grid;
+    grid-template-columns: 1.4rem 1fr;
+    gap: 0.5rem;
+    padding: 0.55rem 0.2rem;
+    border-bottom: 1px dashed var(--border);
+  }
+  .next li::before { content: "\2192"; color: var(--accent); }
+  .next li:last-child { border-bottom: none; }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  @media (max-width: 620px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-figure { order: -1; }
+    .decisions li { grid-template-columns: 1fr; gap: 0.2rem; }
+    .pipe { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Build plan &middot; v0.3 &middot; 2026-08-27</p>
+      <h1>Skeleton Key</h1>
+      <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
+    </div>
+    <div class="hero-figure" aria-hidden="true">
+      <svg class="skeleton" viewBox="0 0 100 162" role="img">
+        <g class="bone">
+          <line x1="50" y1="27" x2="50" y2="40"/>
+          <line x1="32" y1="42" x2="68" y2="42"/>
+          <line x1="50" y1="40" x2="50" y2="82"/>
+          <line x1="38" y1="84" x2="62" y2="84"/>
+          <line x1="32" y1="42" x2="21" y2="61"/>
+          <line x1="21" y1="61" x2="15" y2="82"/>
+          <line x1="68" y1="42" x2="79" y2="61"/>
+          <line x1="79" y1="61" x2="85" y2="82"/>
+          <line x1="38" y1="84" x2="34" y2="118"/>
+          <line x1="34" y1="118" x2="30" y2="152"/>
+          <line x1="62" y1="84" x2="66" y2="118"/>
+          <line x1="66" y1="118" x2="70" y2="152"/>
+        </g>
+        <circle class="joint" cx="50" cy="17" r="9"/>
+        <circle class="joint" cx="50" cy="41" r="3.5"/>
+        <circle class="joint" cx="32" cy="42" r="3.5"/>
+        <circle class="joint" cx="68" cy="42" r="3.5"/>
+        <circle class="joint" cx="50" cy="82" r="3.5"/>
+        <circle class="joint" cx="21" cy="61" r="3.5"/>
+        <circle class="joint" cx="15" cy="82" r="4"/>
+        <circle class="joint" cx="79" cy="61" r="3.5"/>
+        <circle class="joint joint--live" cx="85" cy="82" r="4"/>
+        <circle class="joint" cx="34" cy="118" r="3.5"/>
+        <circle class="joint" cx="30" cy="152" r="4"/>
+        <circle class="joint" cx="66" cy="118" r="3.5"/>
+        <circle class="joint" cx="70" cy="152" r="4"/>
+      </svg>
+    </div>
+  </header>
+
+  <div class="status">
+    <span><span class="dot">&#9679;</span> <b>BUILDING</b></span>
+    <span><b>v0.3</b> &mdash; M1 passed on real hardware</span>
+    <span><b>M1</b> &check; passthrough proxy</span>
+    <span><b>0</b> blockers</span>
+    <span>next: <b>M2 &mdash; skeleton tap</b></span>
+  </div>
+
+  <ul class="toc">
+    <li><a href="#what">Idea</a></li>
+    <li><a href="#pipeline">Architecture</a></li>
+    <li><a href="#hook">Hook evidence</a></li>
+    <li><a href="#mechanics">Shim mechanics</a></li>
+    <li><a href="#gestures">Gestures</a></li>
+    <li><a href="#recognizer">Recognizer</a></li>
+    <li><a href="#decisions">Decisions</a></li>
+    <li><a href="#repo">Repo &amp; M1</a></li>
+    <li><a href="#milestones">Milestones</a></li>
+    <li><a href="#risks">Risks</a></li>
+    <li><a href="#vexor">Prior art</a></li>
+    <li><a href="#next">Next steps</a></li>
+  </ul>
+
+  <section id="what">
+    <p class="eyebrow">The idea</p>
+    <h2>Pose in, keystroke out</h2>
+    <p class="lead">The mod's menus already take <kbd>WASD</kbd>/arrows, <kbd>Space</kbd>/<kbd>Enter</kbd>, and <kbd>Esc</kbd>/<kbd>Backspace</kbd>. Skeleton Key watches the Kinect skeleton the game is <em>already</em> receiving, recognises a small set of deliberate gestures, and synthesises those exact keys &mdash; so a dancer can pick a song, confirm, and back out without touching a keyboard or phone.</p>
+    <p>It ships as a single drop-in <code>Kinect10.dll</code> that sits <strong>between</strong> the game and whatever real Kinect back-end is in use. It adds a feature; it replaces nothing.</p>
+  </section>
+
+  <section id="pipeline">
+    <p class="eyebrow">Architecture</p>
+    <h2>One shim, two kinds of user</h2>
+    <p>The same middle layer works whether the skeleton comes from real Kinect hardware or from <a href="#vexor">ItsVexor's webcam emulator</a>. Skeleton Key forwards the eight functions the game imports to a renamed back-end DLL, and taps the one method that carries body data.</p>
+
+    <div class="pipe">
+      <div class="col-head">Real Kinect v1 user</div>
+      <div class="col-head">Webcam user</div>
+
+      <div class="node">Kinect v1 sensor<small>Xbox 360 + PC adapter</small></div>
+      <div class="node">Webcam<small>OpenCV capture</small></div>
+      <div class="arrow">&darr;</div>
+
+      <div class="node">SDK 1.8 runtime<small>NUI skeleton stream</small></div>
+      <div class="node"><span class="mono">Legacy Sensor.exe</span><small>MediaPipe Pose &rarr; shared memory</small></div>
+      <div class="arrow">&darr;</div>
+
+      <div class="node"><code>Kinect10_backend.dll</code><small>genuine Microsoft 15&nbsp;MB DLL</small></div>
+      <div class="node"><code>Kinect10_backend.dll</code><small>ItsVexor fake DLL (x86 build)</small></div>
+      <div class="arrow">&darr;</div>
+
+      <div class="node node--span node--key">
+        <span class="tag">Skeleton Key &mdash; our Kinect10.dll</span>
+        forwards 8 ordinals &nbsp;&bull;&nbsp; wraps <code>INuiSensor::NuiSkeletonGetNextFrame</code> &nbsp;&bull;&nbsp; recognizer thread &rarr; <code>SendInput</code>
+      </div>
+      <div class="arrow">&darr;</div>
+
+      <div class="node node--span node--game"><strong>Legacy.exe</strong><small>unaware &mdash; sees a normal Kinect</small></div>
+    </div>
+  </section>
+
+  <section id="hook">
+    <p class="eyebrow">Evidence from the binaries</p>
+    <h2>How the hook attaches</h2>
+    <p><code>Legacy.exe</code> is 32-bit and imports <code>Kinect10.dll</code> <strong>by ordinal only</strong> &mdash; eight functions. ItsVexor's fake DLL exports exactly the same eight, which confirms the surface we need. The game drives the sensor through the <code>INuiSensor</code> COM interface (the fake DLL logs interface-only methods like <code>NuiSkeletonTrackingEnable</code>), so our tap point is the vtable method, not the flat export.</p>
+
+    <div class="table-scroll">
+      <table>
+        <caption>The export surface &mdash; Skeleton Key must provide all eight; only #17 carries logic.</caption>
+        <thead>
+          <tr><th class="num">Ord.</th><th>Function</th><th>Skeleton Key's job</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">5</td><td><span class="mono">NuiGetSensorCount</span></td><td>forward</td></tr>
+          <tr><td class="num">6</td><td><span class="mono">NuiCreateSensorByIndex</span></td><td>forward, then wrap the returned <code>INuiSensor</code> vtable</td></tr>
+          <tr><td class="num">9</td><td><span class="mono">NuiImageGetColorPixelCoordinatesFromDepthPixel</span></td><td>forward</td></tr>
+          <tr><td class="num">16</td><td><span class="mono">NuiShutdown</span></td><td>forward, stop recognizer thread</td></tr>
+          <tr><td class="num">17</td><td><span class="mono">NuiSkeletonGetNextFrame</span></td><td><strong>tap</strong> &mdash; copy <code>NUI_SKELETON_FRAME</code> to ring buffer, then return unchanged</td></tr>
+          <tr><td class="num">21</td><td><span class="mono">NuiCreateSensorById</span></td><td>forward + wrap</td></tr>
+          <tr><td class="num">22</td><td><span class="mono">NuiSetDeviceStatusCallback</span></td><td>forward</td></tr>
+          <tr><td class="num">26</td><td><span class="mono">NuiSkeletonSetTrackedSkeletons</span></td><td>forward</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Because there is only ever one process talking to the sensor &mdash; the game &mdash; the v1 "two apps can't share one Kinect" problem never arises. The recognizer is a passenger on data the game already pulls.</p>
+  </section>
+
+  <section id="mechanics">
+    <p class="eyebrow">Implementation detail</p>
+    <h2>Shim mechanics</h2>
+    <p>Everything below lives in one x86 DLL built <code>Release&nbsp;|&nbsp;Win32</code>, <code>/MT</code> (static CRT, no redistributable needed). All eight exports are hand-written <code>__stdcall</code> thunks with the exact SDK&nbsp;1.8 <code>NuiApi.h</code> signatures; none link against <code>Kinect10.lib</code>, they call function pointers resolved from the back-end at runtime.</p>
+
+    <h3>Startup &mdash; lazy, never in DllMain</h3>
+    <p><code>DllMain</code> only calls <code>DisableThreadLibraryCalls</code> and stores the module handle. <code>LoadLibrary</code> under the loader lock is unsafe, so real init runs behind <code>InitOnceExecuteOnce</code>, triggered by whichever of our eight exports the game calls first:</p>
+    <ol class="steps">
+      <li><b>Resolve the back-end.</b> <code>LoadLibraryW("Kinect10_backend.dll")</code> from our own directory; <code>GetProcAddress</code> all 8 functions by name into a struct of pointers. Null &rarr; log fatal, show one message box, let thunks return <code>E_NUI_DEVICE_NOT_CONNECTED</code>.</li>
+      <li><b>Load config.</b> <code>kinectnav.json</code> beside the DLL; if absent, write the default and continue. Record its mtime for hot-reload.</li>
+      <li><b>Allocate the frame buffer</b> (below) and create the recognizer thread <em>suspended-idle</em> &mdash; it blocks until the first frame is published.</li>
+    </ol>
+
+    <h3>The vtable wrap &mdash; fallback only</h3>
+    <p><b>M1 showed this is not needed:</b> the game calls the flat <code>NuiSkeletonGetNextFrame</code> export directly, so M2 taps the frame inside that thunk (copy after forwarding, de-dup by frame number). The vtable wrap below stays documented as the fallback if a future Legacy build switches to the interface method.</p>
+    <p>The game would call <code>NuiCreateSensorByIndex(0, &amp;pSensor)</code>, then invoke methods on <code>pSensor</code> through its COM vtable. We patch one slot of that shared vtable, once:</p>
+<pre><span class="c">// our export, ordinal 6</span>
+HRESULT __stdcall NuiCreateSensorByIndex(int i, INuiSensor** ppSensor) {
+    EnsureInit();
+    HRESULT hr = g_be.NuiCreateSensorByIndex(i, ppSensor);
+    if (SUCCEEDED(hr) &amp;&amp; *ppSensor &amp;&amp; !g_origGetNextFrame) {
+        void** vtbl = *reinterpret_cast&lt;void***&gt;(*ppSensor);
+        void** slot = &amp;vtbl[SKEL_GETNEXT_SLOT];      <span class="c">// fixed for SDK 1.8</span>
+        g_origGetNextFrame = (GetNextFrameFn)*slot;
+        DWORD old;
+        VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &amp;old);
+        *slot = (void*)&amp;Hook_SkeletonGetNextFrame;
+        VirtualProtect(slot, sizeof(void*), old, &amp;old);
+    }
+    return hr;
+}
+
+<span class="c">// runs on the game's Kinect thread</span>
+HRESULT __stdcall Hook_SkeletonGetNextFrame(
+        INuiSensor* self, DWORD wait, NUI_SKELETON_FRAME* out) {
+    HRESULT hr = g_origGetNextFrame(self, wait, out);
+    if (SUCCEEDED(hr) &amp;&amp; out) g_frames.publish(*out);   <span class="c">// ~2 KB memcpy</span>
+    return hr;
+}</pre>
+    <p><b><code>SKEL_GETNEXT_SLOT</code></b> is the method's index in <code>INuiSensor</code>, counted from the header &mdash; stable for SDK&nbsp;1.8. M2 verifies it: a wrong slot yields garbage or a bad <code>HRESULT</code> immediately. Fallback if in-place patching proves fragile: return a full proxy object whose vtable forwards every <code>INuiSensor</code> method to the real one. More code, no <code>VirtualProtect</code>.</p>
+    <p>Our flat export <b>#17</b> also forwards-and-taps, for the case where the game uses the flat API too; frames are de-duplicated by timestamp so the recognizer never sees one twice.</p>
+
+    <h3>Frame buffer</h3>
+    <p>Single producer (game Kinect thread), single consumer (recognizer). A small array of 8 <code>NUI_SKELETON_FRAME</code> slots behind an <code>SRWLOCK</code> &mdash; 30&nbsp;Hz, ~2&nbsp;KB per copy, contention is nil so a lock is simpler than lock-free and safe. Consumer reads the newest slot each tick and drops anything it fell behind on. <code>publish()</code> also signals a condition variable the recognizer waits on, so it never polls.</p>
+
+    <h3>Teardown</h3>
+    <p><code>NuiShutdown</code> (#16) and <code>DLL_PROCESS_DETACH</code>: set the stop event, <code>WaitForSingleObject(thread, 500)</code>, then forward to the back-end's <code>NuiShutdown</code>. Leave the vtable patch in place (the DLL stays resident) but clear <code>g_origGetNextFrame</code> so a later re-create re-patches. <code>FreeLibrary(backend)</code> only on detach.</p>
+  </section>
+
+  <section id="gestures">
+    <p class="eyebrow">Interaction model &mdash; hybrid</p>
+    <h2>Gesture vocabulary</h2>
+    <p>Six actions cover menu navigation. Every trigger requires a return to a neutral pose (arms relaxed at sides) before it can fire again, plus a per-action cooldown of roughly 450&nbsp;ms. All thresholds live in config.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Action</th><th>Gesture</th><th>Detection sketch</th><th>Keys sent</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Left / Right</td>
+            <td>Horizontal hand <b>swipe</b>, hand above hip</td>
+            <td>hand X-velocity over threshold for &ge;3 frames, net X displacement past <code>swipeDist</code>, then must stop or reverse</td>
+            <td><kbd>&larr;</kbd> / <kbd>&rarr;</kbd> <span class="mono">(A / D)</span></td>
+          </tr>
+          <tr>
+            <td>Up / Down</td>
+            <td>Vertical hand <b>swipe</b></td>
+            <td>same rule on the Y axis; weakest detector &mdash; see <a href="#recognizer">recognizer notes</a></td>
+            <td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd> <span class="mono">(W / S)</span></td>
+          </tr>
+          <tr>
+            <td>Confirm</td>
+            <td><b>Dwell</b> &mdash; hold either hand still in a small zone ~1.2&nbsp;s <span class="mono">(default)</span></td>
+            <td>joint position variance under <code>dwellJitter</code> across the window; progress shown by beep cadence</td>
+            <td><kbd>Enter</kbd> <span class="mono">(or Space)</span></td>
+          </tr>
+          <tr>
+            <td>Confirm</td>
+            <td><b>Push</b> hand toward sensor <span class="mono">(opt-in, real Kinect only)</span></td>
+            <td>hand Z toward sensor past <code>pushVel</code>, elbow extending; off by default because webcam depth is unreliable</td>
+            <td><kbd>Enter</kbd></td>
+          </tr>
+          <tr>
+            <td>Back</td>
+            <td><b>Static pose</b> &mdash; both hands on hips, elbows flared, held ~600&nbsp;ms</td>
+            <td>both wrist-to-hip distances under threshold <em>and</em> elbows outside shoulders, held</td>
+            <td><kbd>Esc</kbd> <span class="mono">(or Backspace)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><code>mirror</code> flips Left/Right for dancers who read the sensor image as a mirror. There is no separate "start song" action &mdash; Confirm advances through coach select into the routine, matching the keyboard.</p>
+  </section>
+
+  <section id="recognizer">
+    <p class="eyebrow">Implementation detail</p>
+    <h2>Recognizer design</h2>
+
+    <h3>Skeleton space</h3>
+    <p>SDK&nbsp;1.8 gives <code>NUI_SKELETON_FRAME</code> with up to 6 <code>NUI_SKELETON_DATA</code>. Each has a tracking state (<code>NOT_TRACKED</code> / <code>POSITION_ONLY</code> / <code>TRACKED</code>), a tracking ID, and <b>20 joints</b> as <code>Vector4</code> in metres, right-handed: <b>+X to the sensor's left, +Y up, +Z out toward the room</b>. A person's raised right hand therefore moves in &minus;X &mdash; which is exactly why <code>mirror</code> exists. Per-joint state (<code>NOT_TRACKED</code> / <code>INFERRED</code> / <code>TRACKED</code>) is checked for every joint a detector reads.</p>
+    <p>Joints used: <code>HAND_L/R</code> (fall back to <code>WRIST_L/R</code>), <code>ELBOW_L/R</code>, <code>SHOULDER_L/R</code>, <code>SHOULDER_CENTER</code>, <code>HIP_CENTER</code>, <code>HIP_L/R</code>, <code>HEAD</code>. Webcam-sourced skeletons fill the same 20 slots but Z is approximate and some joints sit permanently <code>INFERRED</code> &mdash; allowed, but they cap a detector's confidence at 0.7.</p>
+
+    <h3>Choosing the navigator</h3>
+    <ol class="steps">
+      <li>Candidates = skeletons with state <code>TRACKED</code>. None &rarr; recognizer idles, emits nothing, notes "no body".</li>
+      <li>Score = smallest <code>Position.z</code> (closest); tie-break smallest <code>|Position.x|</code> (most centred).</li>
+      <li><b>Sticky:</b> keep the same tracking ID until it is lost for &gt;0.5&nbsp;s, even if someone else steps closer &mdash; stops the cursor ping-ponging between two dancers.</li>
+    </ol>
+
+    <h3>Normalisation &amp; smoothing</h3>
+    <p>Work body-relative so gestures are position- and size-independent. Let <code>SC</code>&nbsp;=&nbsp;shoulder-centre, <code>HC</code>&nbsp;=&nbsp;hip-centre, <code>torso&nbsp;=&nbsp;|SC&minus;HC|</code> (~0.5&nbsp;m adult). A hand's working coordinate is <code>p&nbsp;=&nbsp;(HAND&nbsp;&minus;&nbsp;SC)&nbsp;/&nbsp;torso</code> &mdash; dimensionless. Each used joint gets exponential smoothing <code>s&nbsp;=&nbsp;a&middot;raw&nbsp;+&nbsp;(1&minus;a)&middot;s_prev</code>, fast track <code>a&nbsp;=&nbsp;0.5</code> for motion, slow track <code>a&nbsp;=&nbsp;0.15</code> for the neutral test and velocity baselines. Per-frame <code>dt</code> comes from the frame timestamp, never assumed 33&nbsp;ms.</p>
+
+    <h3>Debounce state machine</h3>
+    <p><code>IDLE_NO_BODY</code> &rarr; <code>NEUTRAL</code> &rarr; <code>ARMED</code> &rarr; <code>EMIT</code> &rarr; <code>COOLDOWN</code> &rarr; back to <code>NEUTRAL</code>.</p>
+    <ul class="steps">
+      <li><b>NEUTRAL</b> &mdash; both hands hanging at sides (<code>p.y &lt; 0.15</code>, <code>|p.x| in [0.4, 1.0]</code>), held <code>neutralHoldMs</code> (200). This <em>is</em> the "return to neutral between triggers" rule.</li>
+      <li><b>ARMED</b> &mdash; all detectors live. First to clear its threshold at confidence &ge; <code>minConfidence</code> (0.6) wins; ties resolve <b>Back &gt; Confirm &gt; Swipe</b>.</li>
+      <li><b>EMIT</b> &rarr; send keys, enter <b>COOLDOWN</b> for <code>cooldownMs</code> (450), all detectors ignored.</li>
+      <li>After cooldown, NEUTRAL must be re-entered before the next emit. Optional <code>allowHoldRepeat</code>: while a hand stays past the swipe end-zone, re-emit the same direction every <code>repeatMs</code> (350) without a neutral return &mdash; for scrolling long song lists. Off by default.</li>
+      <li>Body lost &gt;0.5&nbsp;s &rarr; reset to <code>IDLE_NO_BODY</code>. First 15 frames after re-acquiring a body are ignored while smoothing settles.</li>
+    </ul>
+
+    <h3>Per-detector maths &mdash; starting values, all in config</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Detector</th><th>Fires when</th><th>Start values</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Swipe L/R</td>
+            <td>hand at/above hip (<code>p.y &gt; &minus;0.15</code>); horizontal speed <code>|vx|</code> &gt; <code>swipe.velocity</code> for &ge; <code>swipe.minFrames</code>; net <code>|&Delta;x|</code> &ge; <code>swipe.distance</code>; <code>|vx| &gt; 1.5&middot;|vy|</code>. Direction = sign of <code>&Delta;x</code>, then <code>mirror</code>.</td>
+            <td class="mono">velocity 1.4&nbsp;/s<br>distance 0.22<br>minFrames 3</td>
+          </tr>
+          <tr>
+            <td>Swipe U/D</td>
+            <td>same on Y; <code>|vy| &gt; 1.5&middot;|vx|</code>; down-swipe must <em>start</em> from <code>p.y &gt; 0.6</code> so a hand dropping to rest is not counted.</td>
+            <td class="mono">velocity 1.4&nbsp;/s<br>distance 0.22</td>
+          </tr>
+          <tr>
+            <td>Dwell (Confirm)</td>
+            <td>a hand in the action zone (<code>p.y in [0.15, 1.4]</code>, <code>|p.x| &lt; 1.1</code>); window jitter &lt; <code>dwell.jitter</code> held for <code>dwell.holdMs</code>. Any breakout resets. Hand must leave the zone before another dwell.</td>
+            <td class="mono">holdMs 1200<br>jitter 0.03</td>
+          </tr>
+          <tr>
+            <td>Push (Confirm, opt-in)</td>
+            <td><code>confirmMode == "push"</code>; hand Z travels toward sensor past <code>push.distance</code> at &gt; <code>push.velocity</code> while elbow angle opens past ~150&deg;. Re-arm on retract.</td>
+            <td class="mono">velocity 0.9&nbsp;/s<br>distance 0.18</td>
+          </tr>
+          <tr>
+            <td>Back pose</td>
+            <td><code>|HAND_L &minus; HIP_L| / torso</code> and <code>|HAND_R &minus; HIP_R| / torso</code> both &lt; <code>pose.handHipDist</code>, <b>and</b> both elbows flared (<code>|ELBOW.x &minus; SHOULDER.x| / torso &gt; 0.15</code>), held <code>pose.holdMs</code>.</td>
+            <td class="mono">handHipDist 0.35<br>holdMs 600</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>The one nasty overlap:</b> arms relaxed at the sides put the hands near the hips too &mdash; almost the Back pose. The elbow-flare requirement (akimbo shape) is what separates "I'm resting" from "I want to go back". Vertical swipes are the weakest detector because raising or lowering an arm looks like one; if tuning can't make them reliable, the fallback is a <code>verticalMode: "handZone"</code> where a hand parked in an upper zone repeat-emits UP.</p>
+
+    <h3>Output</h3>
+    <p>Action &rarr; virtual-key from <code>keys</code> config. <code>SendInput</code> with a key-down, <code>keyPressMs</code> (40) hold, key-up. The game polls with <code>GetAsyncKeyState</code>, so VK-based injection is the right call; a scancode variant and a <code>PostMessage(hwnd, WM_KEYDOWN/UP)</code> path (window found by our own PID) are the fallbacks. Keys are sent only while the game window is foreground unless <code>requireForeground:false</code>.</p>
+  </section>
+
+  <section id="decisions">
+    <p class="eyebrow">Locked</p>
+    <h2>Decisions</h2>
+    <ul class="decisions">
+      <li><span class="k">Hook</span><span class="v">Middle-layer <code>Kinect10.dll</code><span>Forwards to a renamed back-end DLL; adds nothing the game can detect.</span></span></li>
+      <li><span class="k">Sensor</span><span class="v">Kinect v1 first<span>Xbox 360 sensor + PC adapter, SDK 1.8 installed. v2 shim can follow the same pattern later.</span></span></li>
+      <li><span class="k">Interaction</span><span class="v">Hybrid<span>Swipes to navigate, dwell to confirm, static pose to go back.</span></span></li>
+      <li><span class="k">Output</span><span class="v">Synthetic keystrokes<span><code>SendInput</code> with the mod's real bindings; <code>PostMessage</code> to the game HWND as a fallback.</span></span></li>
+      <li><span class="k">Scope</span><span class="v">Menu navigation only<span>Up / Down / Left / Right / Confirm / Back. No in-song controls in v1.</span></span></li>
+      <li><span class="k">Audience</span><span class="v">You + a few friends<span>Hand-editable <code>kinectnav.json</code>; installer and on-screen overlay come later. ItsVexor collaboration paused.</span></span></li>
+    </ul>
+
+    <h3>Config sketch &mdash; <span class="mono">kinectnav.json</span></h3>
+<pre><span class="c">// sits next to the DLL, hot-reloaded on change</span>
+{
+  <span class="s">"enabled"</span>: true,
+  <span class="s">"backendDll"</span>: <span class="s">"Kinect10_backend.dll"</span>,
+  <span class="s">"mirror"</span>: false,
+  <span class="s">"confirmMode"</span>: <span class="s">"dwell"</span>,        <span class="c">// "dwell" | "push"</span>
+  <span class="s">"verticalMode"</span>: <span class="s">"swipe"</span>,       <span class="c">// "swipe" | "handZone"</span>
+  <span class="s">"requireForeground"</span>: true,
+  <span class="s">"cooldownMs"</span>: 450,
+  <span class="s">"neutralHoldMs"</span>: 200,
+  <span class="s">"allowHoldRepeat"</span>: false,
+  <span class="s">"smoothingAlpha"</span>: 0.5,
+  <span class="s">"swipe"</span>:  { <span class="s">"velocity"</span>: 1.4, <span class="s">"distance"</span>: 0.22, <span class="s">"minFrames"</span>: 3 },
+  <span class="s">"dwell"</span>:  { <span class="s">"holdMs"</span>: 1200, <span class="s">"jitter"</span>: 0.03 },
+  <span class="s">"push"</span>:   { <span class="s">"velocity"</span>: 0.9, <span class="s">"distance"</span>: 0.18 },
+  <span class="s">"pose"</span>:   { <span class="s">"handHipDist"</span>: 0.35, <span class="s">"holdMs"</span>: 600 },
+  <span class="s">"keys"</span>: {
+    <span class="s">"up"</span>: <span class="s">"VK_UP"</span>, <span class="s">"down"</span>: <span class="s">"VK_DOWN"</span>,
+    <span class="s">"left"</span>: <span class="s">"VK_LEFT"</span>, <span class="s">"right"</span>: <span class="s">"VK_RIGHT"</span>,
+    <span class="s">"confirm"</span>: <span class="s">"VK_RETURN"</span>, <span class="s">"back"</span>: <span class="s">"VK_ESCAPE"</span>
+  }
+}</pre>
+  </section>
+
+  <section id="repo">
+    <p class="eyebrow">Scaffold</p>
+    <h2>Repo structure &amp; milestone 1</h2>
+<pre class="tree"><span class="d">C:\Github\KinectNavigator\</span>
+├─ README.md
+├─ <span class="d">docs\</span>
+│   ├─ build-plan.html          <span class="cm"># this document, saved locally</span>
+│   └─ <span class="d">notes\</span>                  <span class="cm"># M2 cadence logs, tuning sessions</span>
+├─ <span class="d">src\</span>
+│   ├─ SkeletonKey.sln
+│   └─ <span class="d">SkeletonKey\</span>
+│       ├─ SkeletonKey.vcxproj
+│       ├─ dllmain.cpp          <span class="cm"># DllMain + InitOnce</span>
+│       ├─ exports.def          <span class="cm"># the 8 ordinals</span>
+│       ├─ exports.cpp          <span class="cm"># 8 __stdcall thunks (+ tap on #17)</span>
+│       ├─ backend.cpp          <span class="cm"># LoadLibrary + GetProcAddress table</span>
+│       ├─ sensor_hook.cpp      <span class="cm"># INuiSensor vtable patch</span>
+│       ├─ framebuffer.cpp      <span class="cm"># SRWLOCK ring of NUI_SKELETON_FRAME</span>
+│       ├─ recognizer.cpp       <span class="cm"># thread, navigator pick, state machine</span>
+│       ├─ gestures.cpp         <span class="cm"># per-detector maths</span>
+│       ├─ output.cpp           <span class="cm"># action -> VK, SendInput / PostMessage</span>
+│       ├─ config.cpp           <span class="cm"># kinectnav.json (vendored json.hpp)</span>
+│       └─ log.cpp              <span class="cm"># timestamped SkeletonKey.log</span>
+├─ <span class="d">dist\</span>
+│   ├─ install.bat  /  uninstall.bat
+│   └─ kinectnav.default.json
+└─ <span class="d">tools\</span>                       <span class="cm"># later: skeleton record/replay harness</span></pre>
+    <p><b>Build:</b> VS 2022, toolset v143, <code>Release | Win32</code> (must be x86 &mdash; the game is), <code>/MT</code>, C++17, output <code>Kinect10.dll</code>. No link against <code>Kinect10.lib</code>; include the NUI headers from <code>$(KINECTSDK10_DIR)inc</code> for the structs and enums only, or vendor the three headers if the SDK isn't assumed present.</p>
+
+    <h3>M1 &mdash; "Passthrough proxy" task list</h3>
+    <p>Goal: our <code>Kinect10.dll</code> in the game folder, game runs <em>identically</em>, Kinect scoring works, every call logged. No gestures, no input, no vtable patch yet.</p>
+    <ol class="steps">
+      <li>Solution + DLL project, <code>Release|Win32</code>, <code>/MT</code>, output name <code>Kinect10.dll</code>.</li>
+      <li><code>exports.def</code> with the 8 ordinals (bare names + <code>@N</code>). Confirm with <code>dumpbin /exports</code> that the build shows ordinals 5, 6, 9, 16, 17, 21, 22, 26.</li>
+      <li><code>backend.cpp</code>: on <code>InitOnce</code>, <code>LoadLibraryW("Kinect10_backend.dll")</code>, <code>GetProcAddress</code> all 8 by name, assert non-null, log module path + addresses.</li>
+      <li><code>exports.cpp</code>: all 8 as <code>__stdcall</code> thunks with exact SDK signatures. Each logs <code>"[call] NuiXxx(...)"</code> and its <code>HRESULT</code>, then tail-calls the back-end pointer. For the two <code>CreateSensor</code> functions, also log the returned <code>INuiSensor*</code> value.</li>
+      <li><code>log.cpp</code>: append to <code>SkeletonKey.log</code> beside the DLL, one line per call, <code>HH:MM:SS.mmm tid=... msg</code>, flush each line.</li>
+      <li><code>install.bat</code>: back up folder &rarr; verify <code>Kinect10.dll</code> is the genuine one (size / version marker) &rarr; <code>ren Kinect10.dll Kinect10_backend.dll</code> &rarr; copy ours in &rarr; copy <code>kinectnav.default.json</code> to <code>kinectnav.json</code>.</li>
+      <li><b>Test:</b> launch <code>Legacy.exe</code> &rarr; no crash, no missing-DLL error &rarr; controller select shows <b>Kinect Sensor</b>, selectable &rarr; start a song with the real sensor &rarr; scoring and feedback identical to stock &rarr; <code>uninstall.bat</code> restores stock.</li>
+      <li><b>Exit criteria:</b> 30-minute session, zero regressions vs. stock, log shows <code>NuiGetSensorCount</code> &rarr; <code>NuiCreateSensorByIndex</code> (non-null sensor) &rarr; a stream of frame calls during play.</li>
+    </ol>
+    <p><b>M1 answers an M2 question for free:</b> whether the flat <code>NuiSkeletonGetNextFrame</code> (#17) is ever called, or the game only uses the interface method &mdash; in which case #17's log stays silent and M2's vtable patch is mandatory, not optional. Either result is fine and tells M2 exactly what to do.</p>
+  </section>
+
+  <section id="milestones">
+    <p class="eyebrow">Sequence</p>
+    <h2>Build milestones</h2>
+    <div class="miles">
+      <div class="mile done"><div><h3>Passthrough proxy</h3><p>Done &mdash; ran on real Kinect v1 hardware. Game boots, controller select still offers Kinect Sensor, a full song danced with zero passthrough errors, every call logged. See results below.</p></div></div>
+      <div class="mile"><div><h3>Skeleton tap</h3><p>Copy the <code>NUI_SKELETON_FRAME</code> from inside the flat <code>NuiSkeletonGetNextFrame</code> export into the ring buffer; recognizer thread logs the navigator body's joints. M1 already settled the cadence and tap-point questions, so this is just the copy + body pick.</p></div></div>
+      <div class="mile"><div><h3>One gesture, one key</h3><p>Right-swipe &rarr; <kbd>&rarr;</kbd> with full debounce. Scroll the song carousel hands-free.</p></div></div>
+      <div class="mile"><div><h3>Full vocabulary + config + audio</h3><p>All six actions, <code>kinectnav.json</code>, distinct beeps per action class (navigate / confirm / back).</p></div></div>
+      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer in frame; hand the build to friends. Later: Kinect v2 shim, on-screen overlay, record/replay harness.</p></div></div>
+    </div>
+
+    <h3>M1 results &mdash; run on real hardware, 27 Aug 2026</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Shim loads, game runs</td><td>Pass &mdash; no crash, normal window</td></tr>
+          <tr><td>Kinect Sensor option on controller select</td><td>Pass &mdash; present and selectable with the shim in place</td></tr>
+          <tr><td>Dance a full song / scoring</td><td>Pass &mdash; danced start to finish, no visible regression</td></tr>
+          <tr><td>Passthrough correctness</td><td>Pass &mdash; <b>every one of ~12,000 logged calls returned <code>S_OK</code></b></td></tr>
+          <tr><td>Skeleton poll cadence</td><td><b>Constant ~30 Hz on every screen</b> &mdash; title, controller select, song list, coach, gameplay. Never stalls.</td></tr>
+          <tr><td>Tap point</td><td>Game calls the <b>flat <code>NuiSkeletonGetNextFrame</code> export</b> on a dedicated thread &mdash; <b>no vtable patch needed</b></td></tr>
+          <tr><td>Sensor lifecycle</td><td>One <code>NuiCreateSensorByIndex(0)</code>, held all session; never <code>ById</code></td></tr>
+          <tr><td>Clean uninstall</td><td>Pass &mdash; genuine <code>Kinect10.dll</code> restored byte-identical</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>New facts for M2:</b> polls pass <code>wait=0</code> (non-blocking) so the tap must de-dup frames by <code>liTimeStamp</code> / <code>dwFrameNumber</code>. The game <b>hard-exits</b> on quit &mdash; no <code>NuiShutdown</code>, no graceful DLL detach &mdash; so the recognizer thread must tolerate abrupt termination with no exit-flush. <code>NuiSkeletonSetTrackedSkeletons([0,0])</code> is called every frame; its log line needs the same sampling as the other hot paths.</p>
+  </section>
+
+  <section id="risks">
+    <p class="eyebrow">Known unknowns</p>
+    <h2>Risks &amp; mitigations</h2>
+    <div class="blocks">
+      <div class="block resolved"><span class="sev sev--ok">Resolved &middot; M1</span><div>
+        <p><b>Frame cadence on menu screens.</b> M1 on real hardware showed a constant ~30 Hz poll on every screen &mdash; title, controller select, song list, coach, gameplay &mdash; with no stalls. The recognizer will always have fresh frames.</p>
+      </div></div>
+      <div class="block resolved"><span class="sev sev--ok">Resolved &middot; M1</span><div>
+        <p><b>Flat export vs. vtable method.</b> M1 confirmed the game calls the flat <code>NuiSkeletonGetNextFrame</code> export directly. No vtable patch, no <code>SKEL_GETNEXT_SLOT</code> to get right &mdash; M2 just copies the frame inside the export thunk.</p>
+      </div></div>
+      <div class="block"><span class="sev sev--med">Handle in M2</span><div>
+        <p><b>Game hard-exits on quit.</b> M1 saw no <code>NuiShutdown</code> call and no graceful DLL detach &mdash; the process just terminates.</p>
+        <p>Mitigation: the recognizer thread must carry no exit-flush obligation. Persist nothing that matters only at shutdown; let the OS reclaim the thread.</p>
+      </div></div>
+      <div class="block"><span class="sev sev--med">Design constraint</span><div>
+        <p><b>Webcam skeletons are monocular.</b> MediaPipe depth (Z) is noisy, so "push to confirm" misfires for webcam users.</p>
+        <p>Mitigation: <code>confirmMode</code> defaults to <b>dwell</b>, a pure 2-D test. Push is opt-in for real-Kinect setups.</p>
+      </div></div>
+      <div class="block"><span class="sev sev--med">Tuning risk</span><div>
+        <p><b>Vertical swipes vs. arm raises.</b> Raising or lowering an arm reads like an up/down swipe.</p>
+        <p>Mitigation: down-swipe must start from a raised position; if still unreliable, switch <code>verticalMode</code> to <code>handZone</code> (parked hand repeat-emits).</p>
+      </div></div>
+      <div class="block"><span class="sev sev--low">Note</span><div>
+        <p><b>Two DLL variants ship in ItsVexor's zip.</b> <code>JDLEGACY</code> is x86 and matches this game build; <code>DREYN</code> is x64 for a different 64-bit Legacy build and will not load here. Test against the x86 one.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <section id="vexor">
+    <p class="eyebrow">Prior art on the drive</p>
+    <h2>What "Legacy Sensor by ItsVexor" taught us</h2>
+    <p>It is a webcam-to-Kinect emulator for this exact mod: a PyInstaller bundle running OpenCV + MediaPipe Pose that infers a body skeleton from a normal camera, writes joint frames to shared memory, and serves them to the game through a small replacement <code>Kinect10.dll</code>. Replacing the real DLL is also what unlocks the "Kinect Sensor" choice on the controller screen.</p>
+    <p>It confirmed three things we were otherwise guessing: the DLL-replacement hook works on this build in the wild, the exact eight-ordinal export surface, and that the game uses the <code>INuiSensor</code> interface path. Its shared-memory + events + SRW-lock IPC is a reference if Skeleton Key ever needs its own sensor feed. Collaboration is not being pursued &mdash; this is an independent tool.</p>
+  </section>
+
+  <section id="next">
+    <p class="eyebrow">From here</p>
+    <h2>Next steps</h2>
+    <ul class="next">
+      <li><strong>M2</strong> &mdash; inside the flat <code>NuiSkeletonGetNextFrame</code> thunk, de-dup by frame number and copy the <code>NUI_SKELETON_FRAME</code> into an <code>SRWLOCK</code> ring buffer. Pull in <code>NuiSkeleton.h</code> for the real struct, with <code>/NODEFAULTLIB:Kinect10.lib</code>.</li>
+      <li><strong>M2</strong> &mdash; recognizer thread: pick the navigator body (closest + centred, sticky) and log its joints. Confirm tracked-vs-inferred behaviour with a person in frame.</li>
+      <li>Sample-limit the <code>NuiSkeletonSetTrackedSkeletons</code> log line.</li>
+      <li>Vendor <code>json.hpp</code> ahead of M4's config loader.</li>
+      <li>Confirm the exact virtual-key codes the mod polls once M3 testing starts (WASD/arrows, Enter/Space, Esc/Backspace all work; need the specific VKs for <code>SendInput</code>).</li>
+    </ul>
+  </section>
+
+  <footer>
+    Skeleton Key &mdash; planning document v0.2, 27 Aug 2026. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
+  </footer>
+
+</div>

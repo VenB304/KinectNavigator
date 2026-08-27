@@ -1,0 +1,20 @@
+# build output
+build/
+dist/Kinect10.dll
+dist/Kinect10.pdb
+
+# VS / MSVC cruft
+.vs/
+*.user
+*.aps
+*.suo
+ipch/
+*.VC.db
+*.VC.opendb
+
+# the reference tool that lives beside the repo, never committed
+Legacy Sensor by itsvexor*/
+*.zip
+
+# runtime artifacts
+SkeletonKey.log
