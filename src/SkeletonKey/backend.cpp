@@ -2,6 +2,7 @@
 #include "backend.h"
 #include "globals.h"
 #include "log.h"
+#include "recognizer.h"
 
 namespace Backend
 {
@@ -49,6 +50,9 @@ namespace Backend
                                         "NuiSetDeviceStatusCallback");
         Bind(fn.NuiSkeletonSetTrackedSkeletons,
                                         "NuiSkeletonSetTrackedSkeletons");
+
+        // M2: start consuming frames now that the tap can forward them.
+        Recognizer::Start();
         return TRUE;
     }
 

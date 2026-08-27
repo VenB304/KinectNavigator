@@ -1,13 +1,13 @@
 #pragma once
 #include "framework.h"
+#include "nui_types.h"
 
 // Thin loader for the renamed genuine Kinect runtime (Kinect10_backend.dll).
 // Every function Legacy.exe imports from Kinect10.dll by ordinal is resolved here
 // by name and stored as a __stdcall function pointer.
 //
-// M1 only forwards. The signatures below are deliberately loose (void** for the
-// INuiSensor out-param, void* for NUI_SKELETON_FRAME) because M1 never inspects
-// those structures -- it just passes them straight through. M2 tightens them.
+// The INuiSensor out-param stays void** (we never call methods on it); the
+// skeleton frame is typed now that M2 taps it.
 
 namespace Backend
 {
@@ -21,7 +21,7 @@ namespace Backend
                     long lDepthX, long lDepthY, unsigned short usDepthValue,
                     long* plColorX, long* plColorY);
         void    (__stdcall *NuiShutdown)(void);
-        HRESULT (__stdcall *NuiSkeletonGetNextFrame)(DWORD dwMillisecondsToWait, void* pSkeletonFrame);
+        HRESULT (__stdcall *NuiSkeletonGetNextFrame)(DWORD dwMillisecondsToWait, NUI_SKELETON_FRAME* pSkeletonFrame);
         HRESULT (__stdcall *NuiSetDeviceStatusCallback)(void* callback, void* pUserData);
         HRESULT (__stdcall *NuiSkeletonSetTrackedSkeletons)(DWORD* pTrackingIds);
     };

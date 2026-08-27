@@ -10,6 +10,8 @@
 
 #include "framework.h"
 #include "backend.h"
+#include "framebuffer.h"
+#include "recognizer.h"
 #include "log.h"
 
 namespace
@@ -81,23 +83,27 @@ HRESULT __stdcall NuiImageGetColorPixelCoordinatesFromDepthPixel(
 void __stdcall NuiShutdown(void)
 {
     LogLine("[call] NuiShutdown");
+    Recognizer::Stop();
     if (Backend::fn.NuiShutdown)
         Backend::fn.NuiShutdown();
     Backend::Shutdown();
 }
 
-HRESULT __stdcall NuiSkeletonGetNextFrame(DWORD dwMillisecondsToWait, void* pSkeletonFrame)
+HRESULT __stdcall NuiSkeletonGetNextFrame(DWORD dwMillisecondsToWait, NUI_SKELETON_FRAME* pSkeletonFrame)
 {
     Backend::Ensure();
     HRESULT hr = Backend::fn.NuiSkeletonGetNextFrame
                ? Backend::fn.NuiSkeletonGetNextFrame(dwMillisecondsToWait, pSkeletonFrame)
                : E_FAIL;
 
-    // M2 taps the frame here. For M1 just prove it is (or is not) called.
+    // M2: hand the frame to the recognizer (de-dup happens inside Publish).
+    if (SUCCEEDED(hr) && pSkeletonFrame)
+        FrameBuffer::Publish(*pSkeletonFrame);
+
     static volatile long s_n = 0;
     if (Sample(s_n, 300))
-        LogLine("[call] NuiSkeletonGetNextFrame #%ld wait=%lu -> hr=0x%08lX frame=%p",
-                s_n, dwMillisecondsToWait, hr, pSkeletonFrame);
+        LogLine("[call] NuiSkeletonGetNextFrame #%ld wait=%lu -> hr=0x%08lX frame=%p accepted=%llu",
+                s_n, dwMillisecondsToWait, hr, (void*)pSkeletonFrame, FrameBuffer::Count());
     return hr;
 }
 
@@ -117,10 +123,15 @@ HRESULT __stdcall NuiSkeletonSetTrackedSkeletons(DWORD* pTrackingIds)
     HRESULT hr = Backend::fn.NuiSkeletonSetTrackedSkeletons
                ? Backend::fn.NuiSkeletonSetTrackedSkeletons(pTrackingIds)
                : E_FAIL;
-    LogLine("[call] NuiSkeletonSetTrackedSkeletons(ids=[%lu,%lu]) -> hr=0x%08lX",
-            pTrackingIds ? pTrackingIds[0] : 0u,
-            pTrackingIds ? pTrackingIds[1] : 0u,
-            hr);
+
+    // Called every frame by Legacy.exe -- sample it like the other hot paths.
+    static volatile long s_n = 0;
+    if (Sample(s_n, 600))
+        LogLine("[call] NuiSkeletonSetTrackedSkeletons #%ld (ids=[%lu,%lu]) -> hr=0x%08lX",
+                s_n,
+                pTrackingIds ? pTrackingIds[0] : 0u,
+                pTrackingIds ? pTrackingIds[1] : 0u,
+                hr);
     return hr;
 }
 

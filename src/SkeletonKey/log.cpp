@@ -19,7 +19,7 @@ void LogLine(const char* fmt, ...)
     SYSTEMTIME st;
     GetLocalTime(&st);
 
-    char line[1200];
+    char line[2048];
     int n = sprintf_s(line, sizeof(line), "%02d:%02d:%02d.%03d  tid=%-5lu  ",
                       st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
                       GetCurrentThreadId());

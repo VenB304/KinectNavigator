@@ -90,6 +90,8 @@
     <ClCompile Include="log.cpp" />
     <ClCompile Include="backend.cpp" />
     <ClCompile Include="exports.cpp" />
+    <ClCompile Include="framebuffer.cpp" />
+    <ClCompile Include="recognizer.cpp" />
   </ItemGroup>
 
   <ItemGroup>
@@ -97,6 +99,9 @@
     <ClInclude Include="globals.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="backend.h" />
+    <ClInclude Include="nui_types.h" />
+    <ClInclude Include="framebuffer.h" />
+    <ClInclude Include="recognizer.h" />
   </ItemGroup>
 
   <ItemGroup>
