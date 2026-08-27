@@ -2,6 +2,9 @@
 #include <math.h>
 #include "recognizer.h"
 #include "framebuffer.h"
+#include "gestures.h"
+#include "output.h"
+#include "config.h"
 #include "log.h"
 
 namespace
@@ -74,7 +77,12 @@ namespace
 
             if (idx < 0)
             {
-                if (hadBody) { LogLine("Recognizer: body LOST (frame=%lu)", f.dwFrameNumber); hadBody = false; }
+                if (hadBody)
+                {
+                    LogLine("Recognizer: body LOST (frame=%lu)", f.dwFrameNumber);
+                    hadBody = false;
+                    Gestures::Reset();
+                }
                 if (navId != 0 && now - navSeen > 500) { navId = 0; }
                 continue;
             }
@@ -92,6 +100,16 @@ namespace
             {
                 LogLine("Recognizer: navigator -> id=%lu", nav.dwTrackingID);
                 navId = nav.dwTrackingID;
+                Gestures::Reset();
+            }
+
+            switch (Gestures::Update(nav, now))
+            {
+            case GestureAction::Right:
+                Output::TapKey(Cfg::Get().keyRight);
+                break;
+            default:
+                break;
             }
 
             if (now - lastLog >= 1000)          // ~1 detail line per second

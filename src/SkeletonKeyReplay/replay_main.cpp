@@ -16,6 +16,8 @@
 #include "framebuffer.h"
 #include "recognizer.h"
 #include "recorder.h"      // for Recorder::Header
+#include "config.h"
+#include "output.h"
 #include "log.h"
 
 static unsigned long long g_published = 0;
@@ -98,6 +100,8 @@ int wmain(int argc, wchar_t** argv)
     }
 
     Log::SetEcho(true);
+    Output::SetDryRun(true);      // never inject keys from the replay tool
+    Cfg::Load();                  // kinectnav.ini next to the exe, if present
     wprintf(L"replay: %s  %s  loops=%d\n",
             path, step ? L"step" : L"timed", loops);
 

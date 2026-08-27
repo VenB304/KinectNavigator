@@ -77,6 +77,9 @@
     <ClCompile Include="..\SkeletonKey\log.cpp" />
     <ClCompile Include="..\SkeletonKey\framebuffer.cpp" />
     <ClCompile Include="..\SkeletonKey\recognizer.cpp" />
+    <ClCompile Include="..\SkeletonKey\config.cpp" />
+    <ClCompile Include="..\SkeletonKey\output.cpp" />
+    <ClCompile Include="..\SkeletonKey\gestures.cpp" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

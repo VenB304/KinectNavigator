@@ -4,6 +4,7 @@
 #include "log.h"
 #include "recognizer.h"
 #include "recorder.h"
+#include "config.h"
 
 namespace Backend
 {
@@ -53,6 +54,7 @@ namespace Backend
                                         "NuiSkeletonSetTrackedSkeletons");
 
         // M2: start consuming frames now that the tap can forward them.
+        Cfg::Load();
         Recognizer::Start();
         Recorder::Init();
         return TRUE;

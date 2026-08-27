@@ -93,6 +93,9 @@
     <ClCompile Include="framebuffer.cpp" />
     <ClCompile Include="recognizer.cpp" />
     <ClCompile Include="recorder.cpp" />
+    <ClCompile Include="config.cpp" />
+    <ClCompile Include="output.cpp" />
+    <ClCompile Include="gestures.cpp" />
   </ItemGroup>
 
   <ItemGroup>
@@ -104,6 +107,9 @@
     <ClInclude Include="framebuffer.h" />
     <ClInclude Include="recognizer.h" />
     <ClInclude Include="recorder.h" />
+    <ClInclude Include="config.h" />
+    <ClInclude Include="output.h" />
+    <ClInclude Include="gestures.h" />
   </ItemGroup>
 
   <ItemGroup>
