@@ -2,6 +2,12 @@
 build/
 dist/Kinect10.dll
 dist/Kinect10.pdb
+dist/SkeletonKeyReplay.exe
+
+# captured skeleton sessions
+*.skcap
+tools/captures/
+record.flag
 
 # VS / MSVC cruft
 .vs/

@@ -3,6 +3,7 @@
 #include "globals.h"
 #include "log.h"
 #include "recognizer.h"
+#include "recorder.h"
 
 namespace Backend
 {
@@ -53,6 +54,7 @@ namespace Backend
 
         // M2: start consuming frames now that the tap can forward them.
         Recognizer::Start();
+        Recorder::Init();
         return TRUE;
     }
 

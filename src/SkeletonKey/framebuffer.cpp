@@ -8,6 +8,7 @@ namespace
 
     NUI_SKELETON_FRAME  g_slot = {};
     unsigned long long  g_seq  = 0;          // bumped on every accepted (non-duplicate) frame
+    unsigned long long  g_consumed = 0;      // bumped each time WaitLatest hands a frame out
     bool                g_have = false;
     DWORD               g_lastNum = 0;
     LONGLONG            g_lastTs  = 0;
@@ -47,6 +48,7 @@ bool FrameBuffer::WaitLatest(NUI_SKELETON_FRAME& out, unsigned long long& inoutS
     }
     memcpy(&out, &g_slot, sizeof(out));
     inoutSeq = g_seq;
+    ++g_consumed;
     ReleaseSRWLockExclusive(&g_lock);
     return true;
 }
@@ -55,6 +57,14 @@ unsigned long long FrameBuffer::Count()
 {
     AcquireSRWLockShared(&g_lock);
     unsigned long long c = g_seq;
+    ReleaseSRWLockShared(&g_lock);
+    return c;
+}
+
+unsigned long long FrameBuffer::ConsumedCount()
+{
+    AcquireSRWLockShared(&g_lock);
+    unsigned long long c = g_consumed;
     ReleaseSRWLockShared(&g_lock);
     return c;
 }

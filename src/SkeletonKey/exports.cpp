@@ -12,6 +12,7 @@
 #include "backend.h"
 #include "framebuffer.h"
 #include "recognizer.h"
+#include "recorder.h"
 #include "log.h"
 
 namespace
@@ -84,6 +85,7 @@ void __stdcall NuiShutdown(void)
 {
     LogLine("[call] NuiShutdown");
     Recognizer::Stop();
+    Recorder::Close();
     if (Backend::fn.NuiShutdown)
         Backend::fn.NuiShutdown();
     Backend::Shutdown();
@@ -97,8 +99,12 @@ HRESULT __stdcall NuiSkeletonGetNextFrame(DWORD dwMillisecondsToWait, NUI_SKELET
                : E_FAIL;
 
     // M2: hand the frame to the recognizer (de-dup happens inside Publish).
+    // Harness: also append it to the capture file when record.flag is set.
     if (SUCCEEDED(hr) && pSkeletonFrame)
+    {
         FrameBuffer::Publish(*pSkeletonFrame);
+        Recorder::Write(*pSkeletonFrame);
+    }
 
     static volatile long s_n = 0;
     if (Sample(s_n, 300))

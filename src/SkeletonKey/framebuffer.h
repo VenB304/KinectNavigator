@@ -19,6 +19,11 @@ namespace FrameBuffer
     // false on timeout. Start with *inoutSeq = 0.
     bool WaitLatest(NUI_SKELETON_FRAME& out, unsigned long long& inoutSeq, DWORD timeoutMs);
 
-    // Total frames accepted since load (monotonic).
+    // Total frames accepted from producers since load (monotonic).
     unsigned long long Count();
+
+    // Total frames handed to a consumer by WaitLatest (monotonic). The replay
+    // tool's lockstep mode waits for this to catch up before publishing the
+    // next frame, so nothing is dropped however fast it runs.
+    unsigned long long ConsumedCount();
 }

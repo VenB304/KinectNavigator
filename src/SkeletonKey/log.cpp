@@ -2,6 +2,10 @@
 #include "log.h"
 #include "globals.h"
 
+namespace { bool g_echo = false; }
+
+void Log::SetEcho(bool on) { g_echo = on; }
+
 void LogLine(const char* fmt, ...)
 {
     wchar_t path[MAX_PATH];
@@ -40,4 +44,10 @@ void LogLine(const char* fmt, ...)
     SetFilePointer(h, 0, nullptr, FILE_END);
     WriteFile(h, line, (DWORD)n, &written, nullptr);
     CloseHandle(h);
+
+    if (g_echo)
+    {
+        fputs(line, stdout);
+        fflush(stdout);
+    }
 }

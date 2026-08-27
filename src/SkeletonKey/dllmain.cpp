@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "backend.h"
 #include "recognizer.h"
+#include "recorder.h"
 #include "log.h"
 
 BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
@@ -27,6 +28,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
         }
         LogLine("==== Skeleton Key detaching (FreeLibrary) ====");
         Recognizer::Stop();
+        Recorder::Close();
         Backend::Shutdown();
         break;
     }
