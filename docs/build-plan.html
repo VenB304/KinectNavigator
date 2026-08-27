@@ -456,7 +456,7 @@
 
   <header class="hero">
     <div>
-      <p class="eyebrow">Build plan &middot; v0.4 &middot; 2026-08-28</p>
+      <p class="eyebrow">Build plan &middot; v0.5 &middot; 2026-08-28</p>
       <h1>Skeleton Key</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
@@ -495,8 +495,8 @@
 
   <div class="status">
     <span><span class="dot">&#9679;</span> <b>BUILDING</b></span>
-    <span><b>v0.4</b> &mdash; M2 passed on real hardware</span>
-    <span><b>M1</b> &check; <b>M2</b> &check;</span>
+    <span><b>v0.5</b> &mdash; M2 + replay harness done</span>
+    <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check;</span>
     <span><b>0</b> blockers</span>
     <span>next: <b>M3 &mdash; one gesture, one key</b></span>
   </div>
@@ -832,8 +832,11 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
       <div class="mile done"><div><h3>Skeleton tap</h3><p>Done &mdash; on real hardware. Frame copied out of the flat export into an SRWLOCK latest-slot buffer (de-duped by frame number + timestamp); recognizer thread picks the navigator body and logs its joints. Vendored structs verified byte-exact via size asserts.</p></div></div>
       <div class="mile"><div><h3>One gesture, one key</h3><p>Right-swipe &rarr; <kbd>&rarr;</kbd> with full debounce. Scroll the song carousel hands-free. Built against generous configurable thresholds &mdash; real tuning waits for the actual play space.</p></div></div>
       <div class="mile"><div><h3>Full vocabulary + config + audio</h3><p>All six actions, <code>kinectnav.json</code>, distinct beeps per action class (navigate / confirm / back).</p></div></div>
-      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer in frame; hand the build to friends. Later: Kinect v2 shim, on-screen overlay, record/replay harness.</p></div></div>
+      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer in frame; hand the build to friends. Later: Kinect v2 shim, on-screen overlay.</p></div></div>
     </div>
+
+    <h3>Tooling &mdash; record / replay harness (built 28 Aug)</h3>
+    <p>A <code>record.flag</code> next to the shim makes it append every tapped frame to <code>skcap-*.skcap</code>. <code>SkeletonKeyReplay.exe</code> feeds a capture back through the <em>same</em> <code>framebuffer.cpp</code> + <code>recognizer.cpp</code> the DLL ships &mdash; <code>--step</code> runs it fast and lossless, <code>--speed N</code> paces from <code>liTimeStamp</code>. So the recognizer is now built and tuned offline against captured sessions, with only occasional live checks. The recognizer's clock was moved onto <code>frame.liTimeStamp</code> for this to be faithful. A first real capture (~230&nbsp;s, an 83&nbsp;s scripted gesture run) is banked.</p>
 
     <h3>M1 results &mdash; run on real hardware, 27 Aug 2026</h3>
     <div class="table-scroll">
@@ -895,8 +898,8 @@ HRESULT __stdcall Hook_SkeletonGetNextFrame(
         <p>Mitigation: down-swipe must start from a raised position; if still unreliable, switch <code>verticalMode</code> to <code>handZone</code> (parked hand repeat-emits).</p>
       </div></div>
       <div class="block"><span class="sev sev--med">Open question</span><div>
-        <p><b>Where does this actually get played?</b> M2 was tested in a cramped room at marginal distance. If the real setting is a cleared space the M2 noise is pessimistic; if it is that same room, that noise level is the tuning target.</p>
-        <p>Leaning toward pulling the <b>record / replay harness</b> forward so the recognizer can be iterated offline against captured sessions, with only occasional live checks.</p>
+        <p><b>Where does this actually get played?</b> M2 and the first capture were recorded in a cramped room at marginal distance. If the real setting is a cleared space that noise is pessimistic; if it is that same room, that noise level is the tuning target. Still unanswered.</p>
+        <p>The <b>record / replay harness</b> is now built, so this matters less for iteration &mdash; but the final tuning pass should use a capture from wherever it will really be played.</p>
       </div></div>
       <div class="block"><span class="sev sev--low">Note</span><div>
         <p><b>Two DLL variants ship in ItsVexor's zip.</b> <code>JDLEGACY</code> is x86 and matches this game build; <code>DREYN</code> is x64 for a different 64-bit Legacy build and will not load here. Test against the x86 one.</p>
