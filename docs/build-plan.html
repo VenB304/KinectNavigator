@@ -457,7 +457,7 @@
 
   <header class="hero">
     <div>
-      <p class="eyebrow">Build plan &middot; v0.7 &middot; 2026-08-31</p>
+      <p class="eyebrow">Build plan &middot; v0.9 &middot; 2026-09-01</p>
       <h1>Skeleton Key</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
@@ -495,552 +495,189 @@
   </header>
 
   <div class="status">
-    <span><span class="dot">&#9679;</span> <b>BUILDING</b></span>
-    <span><b>v0.7</b> &mdash; M3 redesigned after research</span>
-    <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check; <b>Lab</b> &check; <b>M3</b> &rarr;</span>
-    <span>next: <b>rewrite gestures.cpp for the positional model, tune in SkeletonKeyLab</b></span>
+    <span><span class="dot">&#9679;</span> <b>TESTING</b></span>
+    <span><b>v0.9</b> &mdash; air d-pad shipped</span>
+    <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check; <b>Lab</b> &check; <b>swipe model</b> &check; <b>air d-pad</b> &rarr; live</span>
+    <span>next: <b>player-facing overlay, fullscreen handling, tuning from real sessions</b></span>
   </div>
 
   <ul class="toc">
     <li><a href="#what">Idea</a></li>
-    <li><a href="#pipeline">Architecture</a></li>
-    <li><a href="#hook">Hook evidence</a></li>
-    <li><a href="#mechanics">Shim mechanics</a></li>
-    <li><a href="#research">Research &amp; redesign</a></li>
-    <li><a href="#gestures">Gestures</a></li>
-    <li><a href="#recognizer">Recognizer</a></li>
-    <li><a href="#decisions">Decisions</a></li>
-    <li><a href="#repo">Repo &amp; M1</a></li>
-    <li><a href="#milestones">Milestones</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#dpad">Air d-pad</a></li>
+    <li><a href="#swipe">Swipe fallback</a></li>
+    <li><a href="#signal">Signal</a></li>
+    <li><a href="#config">Config</a></li>
+    <li><a href="#harness">Harness</a></li>
+    <li><a href="#history">How we got here</a></li>
     <li><a href="#risks">Risks</a></li>
-    <li><a href="#vexor">Prior art</a></li>
-    <li><a href="#next">Next steps</a></li>
+    <li><a href="#next">Next</a></li>
   </ul>
 
   <section id="what">
     <p class="eyebrow">The idea</p>
     <h2>Pose in, keystroke out</h2>
-    <p class="lead">The mod's menus already take <kbd>WASD</kbd>/arrows, <kbd>Space</kbd>/<kbd>Enter</kbd>, and <kbd>Esc</kbd>/<kbd>Backspace</kbd>. Skeleton Key watches the Kinect skeleton the game is <em>already</em> receiving, recognises a small set of deliberate gestures, and synthesises those exact keys &mdash; so a dancer can pick a song, confirm, and back out without touching a keyboard or phone.</p>
-    <p>It ships as a single drop-in <code>Kinect10.dll</code> that sits <strong>between</strong> the game and whatever real Kinect back-end is in use. It adds a feature; it replaces nothing.</p>
+    <p class="lead">The <em>Just&nbsp;Dance Legacy Offline PC</em> menus already take <kbd>&larr;&uarr;&rarr;&darr;</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>. Skeleton Key watches the Kinect skeleton the game is <em>already</em> receiving, recognises a small set of deliberate arm poses, and synthesises those exact keys &mdash; so a dancer can pick a song, start it, and back out without a keyboard or phone.</p>
+    <p>It ships as one drop-in <code>Kinect10.dll</code> that sits <strong>between</strong> the game and the real Kinect runtime. It adds a feature; it replaces nothing.</p>
   </section>
 
-  <section id="pipeline">
-    <p class="eyebrow">Architecture</p>
-    <h2>One shim, two kinds of user</h2>
-    <p>The same middle layer works whether the skeleton comes from real Kinect hardware or from <a href="#vexor">ItsVexor's webcam emulator</a>. Skeleton Key forwards the eight functions the game imports to a renamed back-end DLL, and taps the one method that carries body data.</p>
+  <section id="architecture">
+    <p class="eyebrow">One shim</p>
+    <h2>How it attaches</h2>
+    <p><code>Legacy.exe</code> is x86 and imports <code>Kinect10.dll</code> <b>by ordinal only</b> &mdash; eight functions. Our DLL exports those eight, forwards every one to the renamed genuine runtime (<code>Kinect10_backend.dll</code>), and taps the one that carries body data.</p>
 
     <div class="pipe">
       <div class="col-head">Real Kinect v1 user</div>
-      <div class="col-head">Webcam user</div>
+      <div class="col-head">Webcam user (ItsVexor emulator)</div>
 
       <div class="node">Kinect v1 sensor<small>Xbox 360 + PC adapter</small></div>
-      <div class="node">Webcam<small>OpenCV capture</small></div>
+      <div class="node">Webcam<small>MediaPipe Pose</small></div>
       <div class="arrow">&darr;</div>
 
-      <div class="node">SDK 1.8 runtime<small>NUI skeleton stream</small></div>
-      <div class="node"><span class="mono">Legacy Sensor.exe</span><small>MediaPipe Pose &rarr; shared memory</small></div>
-      <div class="arrow">&darr;</div>
-
-      <div class="node"><code>Kinect10_backend.dll</code><small>genuine Microsoft 15&nbsp;MB DLL</small></div>
-      <div class="node"><code>Kinect10_backend.dll</code><small>ItsVexor fake DLL (x86 build)</small></div>
+      <div class="node"><code>Kinect10_backend.dll</code><small>genuine Microsoft 15&nbsp;MB runtime</small></div>
+      <div class="node"><code>Kinect10_backend.dll</code><small>ItsVexor fake DLL (x86)</small></div>
       <div class="arrow">&darr;</div>
 
       <div class="node node--span node--key">
         <span class="tag">Skeleton Key &mdash; our Kinect10.dll</span>
-        forwards 8 ordinals &nbsp;&bull;&nbsp; wraps <code>INuiSensor::NuiSkeletonGetNextFrame</code> &nbsp;&bull;&nbsp; recognizer thread &rarr; <code>SendInput</code>
+        forwards 8 ordinals &nbsp;&bull;&nbsp; taps flat export <code>#17 NuiSkeletonGetNextFrame</code> &nbsp;&bull;&nbsp; recogniser thread &rarr; <code>SendInput</code>
       </div>
       <div class="arrow">&darr;</div>
 
       <div class="node node--span node--game"><strong>Legacy.exe</strong><small>unaware &mdash; sees a normal Kinect</small></div>
     </div>
-  </section>
 
-  <section id="hook">
-    <p class="eyebrow">Evidence from the binaries</p>
-    <h2>How the hook attaches</h2>
-    <p><code>Legacy.exe</code> is 32-bit and imports <code>Kinect10.dll</code> <strong>by ordinal only</strong> &mdash; eight functions. ItsVexor's fake DLL exports exactly the same eight, which confirms the surface we need. The game drives the sensor through the <code>INuiSensor</code> COM interface (the fake DLL logs interface-only methods like <code>NuiSkeletonTrackingEnable</code>), so our tap point is the vtable method, not the flat export.</p>
-
-    <div class="table-scroll">
-      <table>
-        <caption>The export surface &mdash; Skeleton Key must provide all eight; only #17 carries logic.</caption>
-        <thead>
-          <tr><th class="num">Ord.</th><th>Function</th><th>Skeleton Key's job</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="num">5</td><td><span class="mono">NuiGetSensorCount</span></td><td>forward</td></tr>
-          <tr><td class="num">6</td><td><span class="mono">NuiCreateSensorByIndex</span></td><td>forward, then wrap the returned <code>INuiSensor</code> vtable</td></tr>
-          <tr><td class="num">9</td><td><span class="mono">NuiImageGetColorPixelCoordinatesFromDepthPixel</span></td><td>forward</td></tr>
-          <tr><td class="num">16</td><td><span class="mono">NuiShutdown</span></td><td>forward, stop recognizer thread</td></tr>
-          <tr><td class="num">17</td><td><span class="mono">NuiSkeletonGetNextFrame</span></td><td><strong>tap</strong> &mdash; copy <code>NUI_SKELETON_FRAME</code> to ring buffer, then return unchanged</td></tr>
-          <tr><td class="num">21</td><td><span class="mono">NuiCreateSensorById</span></td><td>forward + wrap</td></tr>
-          <tr><td class="num">22</td><td><span class="mono">NuiSetDeviceStatusCallback</span></td><td>forward</td></tr>
-          <tr><td class="num">26</td><td><span class="mono">NuiSkeletonSetTrackedSkeletons</span></td><td>forward</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p>Because there is only ever one process talking to the sensor &mdash; the game &mdash; the v1 "two apps can't share one Kinect" problem never arises. The recognizer is a passenger on data the game already pulls.</p>
-  </section>
-
-  <section id="mechanics">
-    <p class="eyebrow">Implementation detail</p>
-    <h2>Shim mechanics</h2>
-    <p>Everything below lives in one x86 DLL built <code>Release&nbsp;|&nbsp;Win32</code>, <code>/MT</code> (static CRT, no redistributable needed). All eight exports are hand-written <code>__stdcall</code> thunks with the exact SDK&nbsp;1.8 <code>NuiApi.h</code> signatures; none link against <code>Kinect10.lib</code>, they call function pointers resolved from the back-end at runtime.</p>
-
-    <h3>Startup &mdash; lazy, never in DllMain</h3>
-    <p><code>DllMain</code> only calls <code>DisableThreadLibraryCalls</code> and stores the module handle. <code>LoadLibrary</code> under the loader lock is unsafe, so real init runs behind <code>InitOnceExecuteOnce</code>, triggered by whichever of our eight exports the game calls first:</p>
-    <ol class="steps">
-      <li><b>Resolve the back-end.</b> <code>LoadLibraryW("Kinect10_backend.dll")</code> from our own directory; <code>GetProcAddress</code> all 8 functions by name into a struct of pointers. Null &rarr; log fatal, show one message box, let thunks return <code>E_NUI_DEVICE_NOT_CONNECTED</code>.</li>
-      <li><b>Load config.</b> <code>kinectnav.ini</code> beside the DLL over the <code>config.h</code> defaults, if present; otherwise run on defaults (nothing is written).</li>
-      <li><b>Allocate the frame buffer</b> (below) and create the recognizer thread <em>suspended-idle</em> &mdash; it blocks until the first frame is published.</li>
-    </ol>
-
-    <h3>The vtable wrap &mdash; fallback only</h3>
-    <p><b>M1 showed this is not needed:</b> the game calls the flat <code>NuiSkeletonGetNextFrame</code> export directly, so M2 taps the frame inside that thunk (copy after forwarding, de-dup by frame number). The vtable wrap below stays documented as the fallback if a future Legacy build switches to the interface method.</p>
-    <p>The game would call <code>NuiCreateSensorByIndex(0, &amp;pSensor)</code>, then invoke methods on <code>pSensor</code> through its COM vtable. We patch one slot of that shared vtable, once:</p>
-<pre><span class="c">// our export, ordinal 6</span>
-HRESULT __stdcall NuiCreateSensorByIndex(int i, INuiSensor** ppSensor) {
-    EnsureInit();
-    HRESULT hr = g_be.NuiCreateSensorByIndex(i, ppSensor);
-    if (SUCCEEDED(hr) &amp;&amp; *ppSensor &amp;&amp; !g_origGetNextFrame) {
-        void** vtbl = *reinterpret_cast&lt;void***&gt;(*ppSensor);
-        void** slot = &amp;vtbl[SKEL_GETNEXT_SLOT];      <span class="c">// fixed for SDK 1.8</span>
-        g_origGetNextFrame = (GetNextFrameFn)*slot;
-        DWORD old;
-        VirtualProtect(slot, sizeof(void*), PAGE_READWRITE, &amp;old);
-        *slot = (void*)&amp;Hook_SkeletonGetNextFrame;
-        VirtualProtect(slot, sizeof(void*), old, &amp;old);
-    }
-    return hr;
-}
-
-<span class="c">// runs on the game's Kinect thread</span>
-HRESULT __stdcall Hook_SkeletonGetNextFrame(
-        INuiSensor* self, DWORD wait, NUI_SKELETON_FRAME* out) {
-    HRESULT hr = g_origGetNextFrame(self, wait, out);
-    if (SUCCEEDED(hr) &amp;&amp; out) g_frames.publish(*out);   <span class="c">// ~2 KB memcpy</span>
-    return hr;
-}</pre>
-    <p><b><code>SKEL_GETNEXT_SLOT</code></b> is the method's index in <code>INuiSensor</code>, counted from the header &mdash; stable for SDK&nbsp;1.8. M2 verifies it: a wrong slot yields garbage or a bad <code>HRESULT</code> immediately. Fallback if in-place patching proves fragile: return a full proxy object whose vtable forwards every <code>INuiSensor</code> method to the real one. More code, no <code>VirtualProtect</code>.</p>
-    <p>Our flat export <b>#17</b> also forwards-and-taps, for the case where the game uses the flat API too; frames are de-duplicated by timestamp so the recognizer never sees one twice.</p>
-
-    <h3>Frame buffer</h3>
-    <p>Single producer (game Kinect thread), single consumer (recognizer). A small array of 8 <code>NUI_SKELETON_FRAME</code> slots behind an <code>SRWLOCK</code> &mdash; 30&nbsp;Hz, ~2&nbsp;KB per copy, contention is nil so a lock is simpler than lock-free and safe. Consumer reads the newest slot each tick and drops anything it fell behind on. <code>publish()</code> also signals a condition variable the recognizer waits on, so it never polls.</p>
-
-    <h3>Teardown</h3>
-    <p><code>NuiShutdown</code> (#16) and <code>DLL_PROCESS_DETACH</code>: set the stop event, <code>WaitForSingleObject(thread, 500)</code>, then forward to the back-end's <code>NuiShutdown</code>. Leave the vtable patch in place (the DLL stays resident) but clear <code>g_origGetNextFrame</code> so a later re-create re-patches. <code>FreeLibrary(backend)</code> only on detach.</p>
-  </section>
-
-  <section id="research">
-    <p class="eyebrow">Why v0.7 changes the gesture model</p>
-    <h2>Research &amp; redesign</h2>
-    <p>M3's first four builds treated navigation as a <b>motion</b> &mdash; a horizontal swipe. Two live findings pushed back: a swipe-per-item is exhausting (test&nbsp;1), and the hold-to-repeat pose (arm straight out at shoulder height) fatigues fast (test&nbsp;2). A literature + prior-art pass (Gemini Deep Research, report kept at <code>docs/Kinect&nbsp;Gesture&nbsp;Navigation&nbsp;UI&nbsp;Design.md</code>) converged on a different model, and it lines up with what the tests were already saying.</p>
-
-    <h3>What the research is good for &mdash; and not</h3>
-    <p><b>Trust:</b> the biomechanics (Consumed Endurance / &ldquo;gorilla arm&rdquo; &mdash; keep exertion under ~15% of max shoulder torque, elbow near the ribs, load on the torso), the Physical Interaction Zone anchored to skeleton joints (matches our existing <code>SC</code>/<code>HIP</code> torso-unit space), the Midas-touch / asymmetric-hysteresis framing, and swipe-over-dwell (Dance Central &mdash; same genre, same sensor &mdash; tried dwell-to-click and dropped it).</p>
-    <p><b>Verify:</b> the &ldquo;empirically validated&rdquo; threshold table is really uncited engineering defaults, several bibliography links are junk, and it never confronts Kinect&nbsp;v1's inferred-hand jitter (its own figure, &plusmn;0.1&ndash;0.3&nbsp;m) against its own tight bands (&plusmn;10&nbsp;cm dead zone, &plusmn;15&nbsp;cm activation). Every number is treated as provisional, same status as the current <code>config.h</code> values. Decoded numbers and caveats: <code>docs/notes/research-thresholds.md</code>; full redesign breakdown: <code>docs/notes/m3-m4-redesign.md</code>.</p>
-
-    <h3>The model shift</h3>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th></th><th>M3 builds 1&ndash;4 (swipe)</th><th>v0.7 redesign (positional)</th></tr></thead>
-        <tbody>
-          <tr><td>Navigate</td><td>horizontal <b>swipe</b> (velocity + distance)</td><td>hand <b>position</b> vs. a dead-zone / activation band around a body-anchored origin</td></tr>
-          <tr><td>Engage</td><td>none (wave re-arm is the nearest thing)</td><td>explicit: dominant hand raised to chest-centre, held ~600&nbsp;ms</td></tr>
-          <tr><td>Disengage</td><td>body lost / re-arm timeout</td><td>dominant hand drops below hip-centre &mdash; instant, forgiving (asymmetric hysteresis)</td></tr>
-          <tr><td>Up / Down</td><td>not built</td><td>same positional model on the Y axis</td></tr>
-          <tr><td>Long lists</td><td>&ldquo;swipe once / hold hand out&rdquo;</td><td>hand held past activation &rarr; rate-controlled auto-repeat (~3&nbsp;Hz) &mdash; a virtual joystick</td></tr>
-          <tr><td>Confirm</td><td>planned dwell</td><td>ballistic cross-body swipe, <b>dominant</b> hand &rarr; <kbd>Enter</kbd></td></tr>
-          <tr><td>Back</td><td>planned hands-on-hips pose</td><td>ballistic cross-body swipe, <b>non-dominant</b> hand &rarr; <kbd>Esc</kbd></td></tr>
-          <tr><td>Hands watched</td><td>right only</td><td>both (dominant = nav + confirm, non-dominant = back)</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p><b>Dropped for good:</b> push-to-confirm (bad&nbsp;Z, already gone) and now dwell-to-confirm (fatigue + Midas-touch &mdash; research and Dance Central both reject it). <b>Unchanged:</b> the proxy DLL, keystroke output, menu-nav-only scope, the tap&nbsp;&rarr;&nbsp;framebuffer&nbsp;&rarr;&nbsp;recognizer pipeline, navigator pick, torso-unit normalisation, dual-alpha smoothing, timing off <code>liTimeStamp</code>.</p>
-
-    <h3>SkeletonKeyLab &mdash; live tuning without the game</h3>
-    <p>The positional model has far more tunable surface than the swipe machine (dead zone, activation band, hysteresis, engage dwell, filter constants) and the game crashes every 30&ndash;120&nbsp;s. <code>SkeletonKeyLab.exe</code> (built 31&nbsp;Aug, third solution project) opens the Kinect directly and pumps frames into the <em>same</em> <code>framebuffer</code>&nbsp;/&nbsp;<code>recognizer</code>&nbsp;/&nbsp;<code>gestures</code>&nbsp;/&nbsp;<code>recorder</code> the DLL ships &mdash; no game, no drop-in DLL. Dry-run by default (logs gestures); <code>--live</code> injects keys while its own console is foreground; <code>--record</code> writes a <code>.skcap</code>. <code>kinectnav.ini</code> next to the exe overrides thresholds, <code>trace=1</code> for the hand-signal log. It loads the genuine runtime by absolute path so it isn't shadowed by our proxy in <code>dist\</code>. Go to <code>Legacy.exe</code> only for a final &ldquo;keys still scroll the carousel and the feel is right&rdquo; check.</p>
-  </section>
-
-  <section id="gestures">
-    <p class="eyebrow">Interaction model &mdash; positional nav + ballistic confirm</p>
-    <h2>Gesture vocabulary</h2>
-    <p>Six actions cover menu navigation, all on the coronal plane (X/Y only &mdash; hand Z is unusable on v1). Navigation is <b>position within a body-anchored zone</b>; Confirm and Back are the only <b>motions</b>. Nothing is watched until the user <b>engages</b>. All thresholds live in config; the values below are provisional starting points (see <a href="#research">research &amp; redesign</a>).</p>
-
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr><th>Action</th><th>Gesture</th><th>Detection sketch</th><th>Keys sent</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Engage</td>
-            <td>Raise the <b>dominant</b> hand to chest-centre, hold ~600&nbsp;ms</td>
-            <td>hand <code>y &gt; SPINE.y</code>, <code>|hand.x &minus; SC.x|</code> inside half shoulder-width, held <code>engageDwellMs</code>; on entry the smoothed hand position is latched as <code>origin</code></td>
-            <td>&mdash;</td>
-          </tr>
-          <tr>
-            <td>Disengage</td>
-            <td>Drop the dominant hand below the hips</td>
-            <td>hand <code>y &lt; HIP_CENTER.y</code> &mdash; fires instantly, no dwell (asymmetric hysteresis); also on body lost</td>
-            <td>&mdash;</td>
-          </tr>
-          <tr>
-            <td>Left / Right</td>
-            <td>While engaged, move the hand <b>sideways</b> out of the dead zone</td>
-            <td>signed offset <code>d = (hand &minus; origin) / torso</code> on X; <code>|d|</code> crosses <code>navActivate</code> (with hysteresis over <code>navDeadZone</code>) &rarr; one key; return inside the dead zone to re-fire</td>
-            <td><kbd>&larr;</kbd> / <kbd>&rarr;</kbd> <span class="mono">(A / D)</span></td>
-          </tr>
-          <tr>
-            <td>Up / Down</td>
-            <td>While engaged, move the hand <b>up / down</b> out of the dead zone</td>
-            <td>same test on the Y axis, evaluated independently; if both axes are past activation, the larger <code>|d|</code> wins &mdash; no diagonal emits</td>
-            <td><kbd>&uarr;</kbd> / <kbd>&darr;</kbd> <span class="mono">(W / S)</span></td>
-          </tr>
-          <tr>
-            <td>Hold to scroll</td>
-            <td>Keep the hand parked past activation</td>
-            <td>held past <code>navActivate</code> for <code>repeatDwellMs</code> (~500) &rarr; auto-repeat that direction every <code>repeatIntervalMs</code> (~333); stops on return to the dead zone</td>
-            <td>same arrow, repeating</td>
-          </tr>
-          <tr>
-            <td>Confirm</td>
-            <td><b>Ballistic swipe</b> &mdash; <b>dominant</b> hand fast across the sternum</td>
-            <td>only while engaged; inward X-velocity &gt; <code>swipeVelocity</code> (~3&nbsp;torso/s &asymp; 1.2&nbsp;m/s) and travel &gt; <code>swipeDistance</code> (~0.75&nbsp;torso &asymp; 0.3&nbsp;m); jitter ceiling rejects inferred-joint spikes; 500&nbsp;ms cooldown</td>
-            <td><kbd>Enter</kbd> <span class="mono">(or Space)</span></td>
-          </tr>
-          <tr>
-            <td>Back</td>
-            <td><b>Ballistic swipe</b> &mdash; <b>non-dominant</b> hand, same motion</td>
-            <td>same detector on the other hand (needs the non-dominant hand tracked + smoothed &mdash; the &ldquo;either-hand&rdquo; work, pulled forward)</td>
-            <td><kbd>Esc</kbd> <span class="mono">(or Backspace)</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p><code>mirror</code> flips Left/Right for dancers who read the sensor image as a mirror. <code>handedness</code> (config, default right) sets which hand navigates + confirms; the other is Back. There is no separate &ldquo;start song&rdquo; action &mdash; Confirm advances through coach select into the routine, matching the keyboard.</p>
-  </section>
-
-  <section id="recognizer">
-    <p class="eyebrow">Implementation detail</p>
-    <h2>Recognizer design</h2>
-
-    <h3>Skeleton space</h3>
-    <p>SDK&nbsp;1.8 gives <code>NUI_SKELETON_FRAME</code> with up to 6 <code>NUI_SKELETON_DATA</code>. Each has a tracking state (<code>NOT_TRACKED</code> / <code>POSITION_ONLY</code> / <code>TRACKED</code>), a tracking ID, and <b>20 joints</b> as <code>Vector4</code> in metres, right-handed: <b>+X to the sensor's left, +Y up, +Z out toward the room</b>. A person's raised right hand therefore moves in &minus;X &mdash; which is exactly why <code>mirror</code> exists. Per-joint state (<code>NOT_TRACKED</code> / <code>INFERRED</code> / <code>TRACKED</code>) is checked for every joint a detector reads.</p>
-    <p>Joints used: <code>HAND_L/R</code> (fall back to <code>WRIST_L/R</code>), <code>ELBOW_L/R</code>, <code>SHOULDER_L/R</code>, <code>SHOULDER_CENTER</code>, <code>HIP_CENTER</code>, <code>HIP_L/R</code>, <code>HEAD</code>. Webcam-sourced skeletons fill the same 20 slots but Z is approximate and some joints sit permanently <code>INFERRED</code> &mdash; allowed, but they cap a detector's confidence at 0.7.</p>
-
-    <h3>Choosing the navigator</h3>
-    <ol class="steps">
-      <li>Candidates = skeletons with state <code>TRACKED</code>. None &rarr; recognizer idles, emits nothing, notes "no body".</li>
-      <li>Score = smallest <code>Position.z</code> (closest); tie-break smallest <code>|Position.x|</code> (most centred).</li>
-      <li><b>Sticky:</b> keep the same tracking ID until it is lost for &gt;0.5&nbsp;s, even if someone else steps closer &mdash; stops the cursor ping-ponging between two dancers.</li>
-    </ol>
-
-    <h3>Normalisation &amp; smoothing</h3>
-    <p>Work body-relative so gestures are position- and size-independent. Let <code>SC</code>&nbsp;=&nbsp;shoulder-centre, <code>HC</code>&nbsp;=&nbsp;hip-centre, <code>torso&nbsp;=&nbsp;|SC&minus;HC|</code> (~0.41&nbsp;m measured on real hardware, M2). A hand's working coordinate is <code>p&nbsp;=&nbsp;(HAND&nbsp;&minus;&nbsp;SC)&nbsp;/&nbsp;torso</code> &mdash; dimensionless. Each used joint gets exponential smoothing <code>s&nbsp;=&nbsp;a&middot;raw&nbsp;+&nbsp;(1&minus;a)&middot;s_prev</code>, fast track <code>a&nbsp;=&nbsp;0.5</code> for swipe velocity, slow track <code>a&nbsp;=&nbsp;0.15</code> for the positional test and baselines. Per-frame <code>dt</code> comes from the frame timestamp, never assumed 33&nbsp;ms.</p>
-    <p><b>v0.7:</b> the positional dead-zone / activation test needs a hand that sits still when the arm is still. The slow EMA is the first cut; if its lag vs. jitter trade-off is bad against real inferred-hand noise (&plusmn;0.1&ndash;0.3&nbsp;m raw), swap in a 1&nbsp;Euro filter on that joint. This is the make-or-break for the &plusmn;10&nbsp;/&nbsp;&plusmn;15&nbsp;cm bands &mdash; tune it in SkeletonKeyLab first.</p>
-
-    <h3>Engage-state machine</h3>
-    <p><code>IDLE_NO_BODY</code> &rarr; <code>DISENGAGED</code> &rarr; <code>ENGAGED</code> &rarr; (nav emits / auto-repeat / confirm / back) &rarr; back to <code>DISENGAGED</code>.</p>
     <ul class="steps">
-      <li><b>DISENGAGED</b> &mdash; nothing is watched except the engage test: dominant hand <code>y &gt; SPINE.y</code>, <code>|hand.x &minus; SC.x|</code> inside half shoulder-width, held <code>engageDwellMs</code> (600). Exhausted users rest hands on hips or let them hang &mdash; they do not hold one hand floating at chest-centre, so this is a clean gate.</li>
-      <li><b>Engage</b> &rarr; latch the slow-smoothed dominant-hand position as <code>origin</code>. Enter <b>ENGAGED</b>.</li>
-      <li><b>ENGAGED</b> &mdash; per axis, <code>d = (hand &minus; origin) / torso</code>. <code>|d| &lt; navDeadZone</code> &rarr; nothing. Crossing <code>navActivate</code> &rarr; emit one arrow for that axis/direction, then <code>|d|</code> must return inside <code>navDeadZone</code> before the next discrete emit. Both axes past activation &rarr; larger <code>|d|</code> wins. Confirm / Back ballistic swipes are also live here, gated on the hand starting near <code>origin</code> and a 500&nbsp;ms global cooldown.</li>
-      <li><b>Auto-repeat</b> &mdash; hand held past <code>navActivate</code> for <code>repeatDwellMs</code> (500) &rarr; re-emit that direction every <code>repeatIntervalMs</code> (333), optional gentle accel to a floor. Ends on return to the dead zone.</li>
-      <li><b>Disengage</b> &mdash; dominant hand <code>y &lt; HIP_CENTER.y</code>, instantly (no dwell). Body lost &gt;0.5&nbsp;s &rarr; <code>IDLE_NO_BODY</code>. First 15 frames after re-acquiring a body are ignored while smoothing settles.</li>
+      <li><b>Startup is lazy.</b> <code>DllMain</code> only stores the module handle. Real init runs behind <code>InitOnceExecuteOnce</code> on the first of our eight exports the game calls: resolve the back-end, load <code>kinectnav.ini</code> over the compiled defaults, start the recogniser thread.</li>
+      <li><b>The tap.</b> M1 proved the game calls the <em>flat</em> <code>NuiSkeletonGetNextFrame</code> export directly, on a dedicated thread, at a constant ~30&nbsp;Hz on every screen. So the thunk forwards, copies the frame into a single-slot <code>SRWLOCK</code> buffer (de-duped by frame number + <code>liTimeStamp</code>), and signals the recogniser. No COM-vtable patch needed &mdash; that path stays documented as a fallback only.</li>
+      <li><b>The recogniser thread</b> picks the navigator body (closest + centred tracked skeleton, sticky by tracking ID for 500&nbsp;ms), normalises joints by torso length (<code>|SHOULDER_CENTER &minus; HIP_CENTER|</code>, ~0.41&nbsp;m), runs the recogniser, and taps keys via <code>SendInput</code> &mdash; only while <code>Legacy.exe</code> is foreground. All timing is off the sensor's <code>liTimeStamp</code>, never wall clock, so replay-at-speed is faithful.</li>
+      <li><b>Uninstall</b> renames the genuine runtime back, byte-identical. <code>dist/install.bat</code> / <code>uninstall.bat</code> do the rename dance with a 15&nbsp;MB size guard and an <code>.orig-backup</code>.</li>
+    </ul>
+    <p>Verified on every build: <code>dumpbin</code> shows exactly the 8 <code>Nui*</code> ordinals (base 5), machine x86, imports <code>KERNEL32 + USER32 + GDI32</code> only (GDI32 is the dev overlay), and no self-import of <code>Kinect10.dll</code>.</p>
+  </section>
+
+  <section id="dpad">
+    <p class="eyebrow">Primary recogniser &mdash; <code>nav_model = extend</code></p>
+    <h2>An air d-pad on your shoulder</h2>
+    <p class="lead">Navigation is <strong>postural</strong>, not motion-based: where your dominant hand sits relative to your dominant <em>shoulder</em> picks the command. No velocity, no swipe-segmentation, no jitter thresholds &mdash; the whole class of motion-detection failures (jitter-triggered fires, wave-back, up/down oscillation, countersteer) simply doesn't exist here.</p>
+    <p>The shoulder joint is the one anchor Kinect v1 tracks rock-solid and that never drifts &mdash; so unlike every earlier positional attempt there is no origin to latch or let creep.</p>
+
+    <ul class="steps">
+      <li><b>Park box &mdash; home / off.</b> Hand within <code>dpad_park_radius</code> (0.32&nbsp;torso) of the shoulder. Bend the elbow, the hand comes home. Nothing fires. Asymmetric hysteresis (<code>dpad_park_exit_k</code> 1.35) so the edge doesn't chatter.</li>
+      <li><b>Clutch.</b> Starts <b>disarmed</b>. Park the hand for <code>dpad_arm_dwell_ms</code> (200) to arm it. It auto-disarms after the hand sits out of park <em>and</em> out of every wedge (arm hanging, dancing, gesturing) for <code>dpad_disarm_ms</code> (1500). Re-arm = park again. It only ever sleeps from the idle state, never mid-gesture. <code>dpad_arm = 0</code> makes it always-live.</li>
+      <li><b>Wedges.</b> Once armed and out of park, direction is the <em>angle</em> of the arm, split into four wedges with dead gaps between them. <b>Right</b> = arm out to the reaching side; <b>Left</b> = across the body; <b>Up</b> = arm up; <b>Down</b> = below the shoulder <em>and</em> off to the side. Straight-down is a wide dead wedge &mdash; a hanging arm points there, so it is ignored. Distance past the park box doesn't matter: reach however far is comfortable.</li>
+      <li><b>Fire &amp; repeat.</b> Enter a wedge &rarr; the arrow key fires once after a ~100&nbsp;ms debounce. Keep holding past <code>dpad_repeat_dwell_ms</code> (600) &rarr; accelerating auto-repeat (<code>dpad_repeat_first_ms</code> 430 &rarr; <code>dpad_repeat_min_ms</code> 200). Return to park, or slide to another wedge, to stop.</li>
     </ul>
 
-    <h3>Per-detector maths &mdash; starting values, all in config</h3>
-    <p>Provisional &mdash; seeded from <code>docs/notes/research-thresholds.md</code>, converted to torso units at <code>torso&nbsp;=&nbsp;0.41&nbsp;m</code>. Tune in SkeletonKeyLab against captures.</p>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Detector</th><th>Fires when</th><th>Start values</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>Engage / disengage</td>
-            <td>engage: dominant hand above <code>SPINE.y</code>, within half shoulder-width of <code>SC.x</code>, held. disengage: dominant hand below <code>HIP_CENTER.y</code>.</td>
-            <td class="mono">engageDwellMs 600<br>(disengage: no dwell)</td>
-          </tr>
-          <tr>
-            <td>Positional nav L/R/U/D</td>
-            <td>per axis <code>d = (hand &minus; origin)/torso</code>; <code>|d|</code> leaves <code>navDeadZone</code> and crosses <code>navActivate</code>. Direction = sign of <code>d</code>, then <code>mirror</code>. Re-fire needs a return inside <code>navDeadZone</code>.</td>
-            <td class="mono">navDeadZone 0.25<br>navActivate 0.375</td>
-          </tr>
-          <tr>
-            <td>Auto-repeat</td>
-            <td>hand held past <code>navActivate</code> for <code>repeatDwellMs</code>, then every <code>repeatIntervalMs</code> until it returns inside <code>navDeadZone</code>.</td>
-            <td class="mono">repeatDwellMs 500<br>repeatIntervalMs 333</td>
-          </tr>
-          <tr>
-            <td>Confirm swipe (dominant hand)</td>
-            <td>engaged; hand starts near <code>origin</code>; inward <code>|vx|</code> &gt; <code>swipeVelocity</code> for &ge; <code>swipeMinFrames</code>; net <code>|&Delta;x|</code> &ge; <code>swipeDistance</code>; <code>|vx|</code> under <code>swipeVxCeiling</code> (reject inferred-joint spikes). 500&nbsp;ms cooldown.</td>
-            <td class="mono">velocity 3.0&nbsp;/s<br>distance 0.75<br>minFrames 3</td>
-          </tr>
-          <tr>
-            <td>Back swipe (non-dominant hand)</td>
-            <td>identical detector on the other hand. Requires the non-dominant hand tracked + smoothed.</td>
-            <td class="mono">(shares Confirm's values)</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p><b>The overlaps to watch:</b> (1) a fast nav correction must not read as a Confirm/Back swipe &mdash; hence the &ldquo;starts near <code>origin</code>, moves inward&rdquo; gate plus the cooldown. (2) Y-axis positional nav is the weaker one &mdash; spine curvature and weight shifts move <code>origin</code>'s reference; if the &plusmn;15&nbsp;cm band can't be made reliable after filtering, fall back to a coarser three-zone Y (low&nbsp;/&nbsp;centre&nbsp;/&nbsp;high) where a parked hand repeat-emits. (3) engage dwell vs. a casual hand-raise &mdash; 600&nbsp;ms and the tight X window are the guard; if it still false-engages, add a &ldquo;hand roughly still&rdquo; test.</p>
-
-    <h3>Output</h3>
-    <p>Action &rarr; virtual-key from <code>keys</code> config. <code>SendInput</code> with a key-down, <code>keyPressMs</code> (40) hold, key-up. The game polls with <code>GetAsyncKeyState</code>, so VK-based injection is the right call; a scancode variant and a <code>PostMessage(hwnd, WM_KEYDOWN/UP)</code> path (window found by our own PID) are the fallbacks. Keys are sent only while the game window is foreground unless <code>requireForeground:false</code>.</p>
-  </section>
-
-  <section id="decisions">
-    <p class="eyebrow">Locked</p>
-    <h2>Decisions</h2>
-    <ul class="decisions">
-      <li><span class="k">Hook</span><span class="v">Middle-layer <code>Kinect10.dll</code><span>Forwards to a renamed back-end DLL; adds nothing the game can detect.</span></span></li>
-      <li><span class="k">Sensor</span><span class="v">Kinect v1 first<span>Xbox 360 sensor + PC adapter, SDK 1.8 installed. v2 shim can follow the same pattern later.</span></span></li>
-      <li><span class="k">Interaction</span><span class="v">Positional nav + ballistic confirm<span>Engage, then hand position in a body-anchored zone navigates; fast cross-body swipe of the dominant hand confirms, the other hand goes back. Redesigned in v0.7 &mdash; was swipe-to-navigate + dwell + pose.</span></span></li>
-      <li><span class="k">Output</span><span class="v">Synthetic keystrokes<span><code>SendInput</code> with the mod's real bindings; <code>PostMessage</code> to the game HWND as a fallback.</span></span></li>
-      <li><span class="k">Scope</span><span class="v">Menu navigation only<span>Up / Down / Left / Right / Confirm / Back. No in-song controls in v1.</span></span></li>
-      <li><span class="k">Audience</span><span class="v">You + a few friends<span>Hand-editable <code>kinectnav.ini</code>; installer and on-screen overlay come later. ItsVexor collaboration paused.</span></span></li>
+    <h3>Command mode &mdash; Enter / Esc</h3>
+    <p>Put your <b>non-dominant hand on the non-dominant shoulder</b> (within <code>dpad_cmd_gate_radius</code>, 0.42&nbsp;torso &mdash; generous, with 1.5&times; exit hysteresis, because that hand is usually <em>inferred</em> there). While it's held, the dominant-arm wedges are repurposed:</p>
+    <ul class="steps">
+      <li>reach <b>up or right</b>, hold <code>dpad_cmd_dwell_ms</code> (600) &rarr; <kbd>Enter</kbd></li>
+      <li>reach <b>down or left</b>, hold <code>dpad_back_dwell_ms</code> (<b>3000</b> &mdash; Esc is consequential) &rarr; <kbd>Esc</kbd></li>
+      <li>both then slow-repeat (<code>dpad_cmd_repeat_ms</code> 700) while held; the overlay shows a <code>CONFIRM&nbsp;45%</code> / <code>BACK&nbsp;45%</code> bar filling</li>
     </ul>
+    <p>Nav is suppressed while gated. Dropping the non-dominant hand mid-hold just stops it &mdash; a mode flip while the same wedge is held emits nothing (no stray arrow key).</p>
 
-    <h3>Config sketch &mdash; <span class="mono">kinectnav.ini</span></h3>
-    <p>The DLL (and <code>SkeletonKeyLab</code> / <code>SkeletonKeyReplay</code>) run on <code>config.h</code> compiled defaults; an optional <code>kinectnav.ini</code> next to the binary overrides any key. <code>key = value</code>, <code>#</code>&nbsp;/&nbsp;<code>;</code> comments. v0.7 keys shown; values provisional.</p>
-<pre><span class="c"># sits next to the binary; every line is optional</span>
-<span class="s">enable</span>            = 1
-<span class="s">mirror</span>            = 0        <span class="c"># flip nav left/right</span>
-<span class="s">handedness</span>        = right    <span class="c"># right | left -- which hand navigates + confirms</span>
-<span class="s">require_foreground</span> = 1
+    <h3>Why a hanging arm is safe</h3>
+    <p>Three independent guards, and a relaxed arm fails all of them: it's outside the park box but points straight <em>down</em> (dead wedge, so no wedge is entered); the clutch disarms after 1.5&nbsp;s of that; and Esc additionally can't fire at all without the deliberate hand-on-shoulder pose.</p>
 
-<span class="c"># engage / disengage</span>
-<span class="s">engage_dwell_ms</span>    = 600
-<span class="s">disengage_below_hip</span> = 1
-
-<span class="c"># positional navigation (torso units, torso ~ 0.41 m)</span>
-<span class="s">nav_dead_zone</span>     = 0.25
-<span class="s">nav_activate</span>      = 0.375
-<span class="s">repeat_dwell_ms</span>   = 500
-<span class="s">repeat_interval_ms</span> = 333
-
-<span class="c"># confirm / back -- ballistic cross-body swipe</span>
-<span class="s">swipe_velocity</span>    = 3.0      <span class="c"># torso/s (~1.2 m/s)</span>
-<span class="s">swipe_distance</span>    = 0.75     <span class="c"># torso (~0.3 m)</span>
-<span class="s">swipe_min_frames</span>  = 3
-<span class="s">swipe_vx_ceiling</span>  = 8.0      <span class="c"># reject inferred-joint jitter spikes</span>
-<span class="s">cooldown_ms</span>       = 500
-
-<span class="c"># smoothing</span>
-<span class="s">smooth_fast</span>       = 0.5
-<span class="s">smooth_slow</span>       = 0.15
-
-<span class="c"># output VKs</span>
-<span class="s">key_left</span>  = 0x25   <span class="s">key_right</span> = 0x27
-<span class="s">key_up</span>    = 0x26   <span class="s">key_down</span>  = 0x28
-<span class="s">key_confirm</span> = 0x0D   <span class="s">key_back</span> = 0x1B
-<span class="s">key_press_ms</span>     = 40
-
-<span class="s">trace</span>             = 0        <span class="c"># 1 = ~15 Hz hand-signal log</span></pre>
+    <h3>Dev overlay</h3>
+    <p>A layered click-through GDI window draws the d-pad: field square + crosshair, the park box, R&nbsp;/&nbsp;L&nbsp;/&nbsp;U&nbsp;/&nbsp;D labels with the live wedge lit, a hand-position marker (grey&nbsp;parked&nbsp;/&nbsp;cyan&nbsp;nav&nbsp;/&nbsp;magenta&nbsp;command), an <code>ASLEEP</code>/<code>READY</code> banner, a <code>L&nbsp;hand&nbsp;&rarr;&nbsp;shoulder&nbsp;0.34&nbsp;/&nbsp;0.42</code> gate readout, and the action flash. <code>trace = 1</code> also logs a <code>dpad[]</code> line ~15&nbsp;Hz.</p>
   </section>
 
-  <section id="repo">
-    <p class="eyebrow">Scaffold</p>
-    <h2>Repo structure &amp; milestone 1</h2>
-<pre class="tree"><span class="d">C:\Github\KinectNavigator\</span>
-├─ README.md
-├─ <span class="d">docs\</span>
-│   ├─ build-plan.html          <span class="cm"># this document, saved locally</span>
-│   ├─ Kinect Gesture Navigation UI Design.md   <span class="cm"># Deep Research report</span>
-│   └─ <span class="d">notes\</span>
-│       ├─ research-thresholds.md   <span class="cm"># decoded numbers + caveats</span>
-│       └─ m3-m4-redesign.md        <span class="cm"># the v0.7 breakdown</span>
-├─ <span class="d">src\</span>
-│   ├─ SkeletonKey.sln          <span class="cm"># 3 projects</span>
-│   ├─ <span class="d">SkeletonKey\</span>            <span class="cm"># the drop-in Kinect10.dll</span>
-│   │   ├─ dllmain.cpp · exports.cpp/.def   <span class="cm"># 8 __stdcall thunks (+ tap on #17)</span>
-│   │   ├─ backend.cpp          <span class="cm"># LoadLibrary + GetProcAddress table</span>
-│   │   ├─ framebuffer.cpp      <span class="cm"># SRWLOCK latest-slot NUI_SKELETON_FRAME</span>
-│   │   ├─ recognizer.cpp       <span class="cm"># thread, navigator pick, engage-state machine</span>
-│   │   ├─ gestures.cpp         <span class="cm"># per-detector maths (v0.7 rewrite pending)</span>
-│   │   ├─ recorder.cpp         <span class="cm"># skcap-*.skcap when record.flag present</span>
-│   │   ├─ output.cpp           <span class="cm"># action -> VK, SendInput</span>
-│   │   ├─ config.cpp           <span class="cm"># kinectnav.ini over config.h defaults</span>
-│   │   └─ log.cpp · globals.cpp · nui_types.h
-│   ├─ <span class="d">SkeletonKeyReplay\</span>       <span class="cm"># feed a .skcap through the real recognizer, offline</span>
-│   └─ <span class="d">SkeletonKeyLab\</span>          <span class="cm"># run the recognizer off the live sensor, no game</span>
-├─ <span class="d">dist\</span>
-│   ├─ install.bat  /  uninstall.bat  /  record.bat
-│   ├─ kinectnav.example.ini
-│   └─ <span class="cm"># built: Kinect10.dll, SkeletonKeyReplay.exe, SkeletonKeyLab.exe (gitignored)</span>
-└─ <span class="d">tools\</span>
-    └─ <span class="d">captures\</span>              <span class="cm"># .skcap sessions (gitignored)</span></pre>
-    <p><b>Build:</b> <code>build.cmd</code> (finds VS via <code>vswhere</code>) or <code>msbuild src\SkeletonKey.sln /p:Configuration=Release /p:Platform=Win32</code>. Currently VS&nbsp;2026, toolset v145 (the vcxproj auto-picks v145&rarr;v144&rarr;v143). Must be x86 &mdash; the game is. <code>/MT</code>, C++17. Nothing links <code>Kinect10.lib</code>; the NUI skeleton structs are vendored in <code>nui_types.h</code> with size asserts.</p>
-
-    <h3>M1 &mdash; "Passthrough proxy" task list</h3>
-    <p>Goal: our <code>Kinect10.dll</code> in the game folder, game runs <em>identically</em>, Kinect scoring works, every call logged. No gestures, no input, no vtable patch yet.</p>
-    <ol class="steps">
-      <li>Solution + DLL project, <code>Release|Win32</code>, <code>/MT</code>, output name <code>Kinect10.dll</code>.</li>
-      <li><code>exports.def</code> with the 8 ordinals (bare names + <code>@N</code>). Confirm with <code>dumpbin /exports</code> that the build shows ordinals 5, 6, 9, 16, 17, 21, 22, 26.</li>
-      <li><code>backend.cpp</code>: on <code>InitOnce</code>, <code>LoadLibraryW("Kinect10_backend.dll")</code>, <code>GetProcAddress</code> all 8 by name, assert non-null, log module path + addresses.</li>
-      <li><code>exports.cpp</code>: all 8 as <code>__stdcall</code> thunks with exact SDK signatures. Each logs <code>"[call] NuiXxx(...)"</code> and its <code>HRESULT</code>, then tail-calls the back-end pointer. For the two <code>CreateSensor</code> functions, also log the returned <code>INuiSensor*</code> value.</li>
-      <li><code>log.cpp</code>: append to <code>SkeletonKey.log</code> beside the DLL, one line per call, <code>HH:MM:SS.mmm tid=... msg</code>, flush each line.</li>
-      <li><code>install.bat</code>: back up folder &rarr; verify <code>Kinect10.dll</code> is the genuine one (size / version marker) &rarr; <code>ren Kinect10.dll Kinect10_backend.dll</code> &rarr; copy ours in &rarr; copy <code>kinectnav.default.json</code> to <code>kinectnav.json</code>.</li>
-      <li><b>Test:</b> launch <code>Legacy.exe</code> &rarr; no crash, no missing-DLL error &rarr; controller select shows <b>Kinect Sensor</b>, selectable &rarr; start a song with the real sensor &rarr; scoring and feedback identical to stock &rarr; <code>uninstall.bat</code> restores stock.</li>
-      <li><b>Exit criteria:</b> 30-minute session, zero regressions vs. stock, log shows <code>NuiGetSensorCount</code> &rarr; <code>NuiCreateSensorByIndex</code> (non-null sensor) &rarr; a stream of frame calls during play.</li>
-    </ol>
-    <p><b>M1 answers an M2 question for free:</b> whether the flat <code>NuiSkeletonGetNextFrame</code> (#17) is ever called, or the game only uses the interface method &mdash; in which case #17's log stays silent and M2's vtable patch is mandatory, not optional. Either result is fine and tells M2 exactly what to do.</p>
+  <section id="swipe">
+    <p class="eyebrow">Fallback recogniser &mdash; <code>nav_model = swipe</code></p>
+    <h2>The older motion model, kept as a fallback</h2>
+    <p>The v0.8 swipe model still ships behind the flag &mdash; horizontal/vertical hand swipes for nav, an overhead-raise for Confirm, an arm-down-and-out pose for Back. It went through a long consolidation pass (a code review after the first d-pad idea's precursor):</p>
+    <ul class="steps">
+      <li>The swipe trigger, segmentation and ballistic-peak gate were moved onto the clean <a href="#signal">1&euro;/Savitzky-Golay signal</a>; the dominant-hand EMA was retired.</li>
+      <li><b>Positional invariants</b> replaced three stacked guards: a swipe must <em>end</em> in its target zone &mdash; Up ends raised (and hand above elbow), Down ends low, Left/Right cross the torso midline. A recovery / return-to-park stroke ends near neutral, so it's rejected with no latency and no state.</li>
+      <li>The dead <em>directional reversal guard</em>, the <code>vLock</code> post-swipe lockout and the <code>swipeConfirmFrames</code> delay were all deleted; bug fixes for the Back grace-timeout re-arm, the resync state clear and the log epoch went in.</li>
+    </ul>
+    <p>It works, but the postural d-pad sidesteps the problems this model spent months fighting, so <code>extend</code> is the default.</p>
   </section>
 
-  <section id="milestones">
-    <p class="eyebrow">Sequence</p>
-    <h2>Build milestones</h2>
-    <div class="miles">
-      <div class="mile done"><div><h3>Passthrough proxy</h3><p>Done &mdash; ran on real Kinect v1 hardware. Game boots, controller select still offers Kinect Sensor, a full song danced with zero passthrough errors, every call logged. See results below.</p></div></div>
-      <div class="mile done"><div><h3>Skeleton tap</h3><p>Done &mdash; on real hardware. Frame copied out of the flat export into an SRWLOCK latest-slot buffer (de-duped by frame number + timestamp); recognizer thread picks the navigator body and logs its joints. Vendored structs verified byte-exact via size asserts.</p></div></div>
-      <div class="mile"><div><h3>Positional navigator &nbsp;<span style="color:var(--accent);font-size:0.8rem">&mdash; redesigned, in progress</span></h3><p>Engage/disengage state + dead-zone/activation positional L/R/U/D + rate-controlled auto-repeat. Replaces the swipe-to-navigate model after the <a href="#research">research pass</a> (builds 1&ndash;4 were swipe &mdash; history below). <code>gestures.cpp</code> rewrite next, tuned in SkeletonKeyLab, one in-game confirmation. Thresholds provisional.</p></div></div>
-      <div class="mile"><div><h3>Confirm / Back + either-hand + audio</h3><p>Ballistic cross-body swipe: dominant hand &rarr; <kbd>Enter</kbd>, non-dominant hand &rarr; <kbd>Esc</kbd> (this is the &ldquo;either-hand&rdquo; work, pulled forward). Per-action audio ticks / stingers &mdash; near-essential with no cursor. Dwell-to-confirm and hands-on-hips-Back are dropped.</p></div></div>
-      <div class="mile"><div><h3>Tuning pass</h3><p>Threshold tuning on the real sensor with a dancer, <b>in the actual play space</b> (still unknown). Captures from there, tune every detector, hand the build to friends. Settle the mid-session-crash question if it recurs.</p></div></div>
-    </div>
+  <section id="signal">
+    <p class="eyebrow">Conditioning</p>
+    <h2>1&euro; filter &rarr; Savitzky-Golay</h2>
+    <p>Kinect v1 reports the hands as <em>inferred</em> most of the time: &plusmn;0.1&ndash;0.3&nbsp;m of jitter, and a single bad frame can read as ~9&nbsp;m/s. The dominant hand runs through a <b>1&euro; filter</b> (<code>filter.h</code>; Casiez et al. &mdash; adaptive low-pass, heavy smoothing at rest, opens up during a fast move) for position, and a <b>5-point Savitzky-Golay</b> polynomial-fit differentiator for velocity. Measured across the replay corpus: every &gt;16&nbsp;torso/s spike gone, peak velocity roughly halved, at the cost of ~2&nbsp;frames (~66&nbsp;ms) of lag. The d-pad model needs mostly the clean <em>position</em>; the swipe model runs its whole path on this.</p>
+  </section>
 
-    <h3>Tooling &mdash; two offline harnesses</h3>
-    <p><b>SkeletonKeyReplay</b> (28 Aug) &mdash; a <code>record.flag</code> next to the shim appends every tapped frame to <code>skcap-*.skcap</code>; the replay exe feeds a capture back through the <em>same</em> <code>framebuffer.cpp</code> + <code>recognizer.cpp</code> the DLL ships. <code>--step</code> runs it fast and lossless, <code>--speed N</code> paces from <code>liTimeStamp</code> (the recognizer's clock was moved onto <code>frame.liTimeStamp</code> for this to be faithful). One real capture is banked (~230&nbsp;s, an 83&nbsp;s scripted run) &mdash; but its gestures are windup-heavy and not how players actually move, so it's mainly a false-positive smoke test.</p>
-    <p><b>SkeletonKeyLab</b> (31 Aug) &mdash; opens the Kinect directly and pumps live frames into the same pipeline, <em>no game</em>. This is the primary tuning loop for the positional model: real jitter, real inferred-hand behaviour, zero game crashes, <code>kinectnav.ini</code> hot-editable. <code>--live</code> to inject keys, <code>--record</code> to bank a capture. Replay's role shrinks to a regression check on the banked captures.</p>
-
-    <h3>M1 results &mdash; run on real hardware, 27 Aug 2026</h3>
+  <section id="config">
+    <p class="eyebrow">Reference</p>
+    <h2>Config &mdash; <code>kinectnav.ini</code></h2>
+    <p>Optional overrides beside the DLL, re-read each launch; the DLL runs on compiled defaults with no file. Distances are torso lengths, speeds torso/second, <code>*_ms</code> milliseconds. Full annotated list in <code>dist/kinectnav.example.ini</code>.</p>
     <div class="table-scroll">
       <table>
-        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <thead><tr><th>Key</th><th>Default</th><th>What</th></tr></thead>
         <tbody>
-          <tr><td>Shim loads, game runs</td><td>Pass &mdash; no crash, normal window</td></tr>
-          <tr><td>Kinect Sensor option on controller select</td><td>Pass &mdash; present and selectable with the shim in place</td></tr>
-          <tr><td>Dance a full song / scoring</td><td>Pass &mdash; danced start to finish, no visible regression</td></tr>
-          <tr><td>Passthrough correctness</td><td>Pass &mdash; <b>every one of ~12,000 logged calls returned <code>S_OK</code></b></td></tr>
-          <tr><td>Skeleton poll cadence</td><td><b>Constant ~30 Hz on every screen</b> &mdash; title, controller select, song list, coach, gameplay. Never stalls.</td></tr>
-          <tr><td>Tap point</td><td>Game calls the <b>flat <code>NuiSkeletonGetNextFrame</code> export</b> on a dedicated thread &mdash; <b>no vtable patch needed</b></td></tr>
-          <tr><td>Sensor lifecycle</td><td>One <code>NuiCreateSensorByIndex(0)</code>, held all session; never <code>ById</code></td></tr>
-          <tr><td>Clean uninstall</td><td>Pass &mdash; genuine <code>Kinect10.dll</code> restored byte-identical</td></tr>
+          <tr><td class="mono">nav_model</td><td class="mono">extend</td><td><code>extend</code> = air d-pad &nbsp;&bull;&nbsp; <code>swipe</code> = the motion fallback</td></tr>
+          <tr><td class="mono">mirror / handedness</td><td class="mono">0 / right</td><td>flip left/right output &nbsp;&bull;&nbsp; which arm drives</td></tr>
+          <tr><td class="mono">dpad_park_radius</td><td class="mono">0.32</td><td>hand this close to the shoulder = parked / home</td></tr>
+          <tr><td class="mono">dpad_arm</td><td class="mono">1</td><td>the park-to-arm clutch (0 = always live)</td></tr>
+          <tr><td class="mono">dpad_disarm_ms</td><td class="mono">1500</td><td>hand idle out of play this long &rarr; sleep</td></tr>
+          <tr><td class="mono">dpad_wedge_half_deg</td><td class="mono">24</td><td>half-angle of the R/L/U wedges; gaps are dead</td></tr>
+          <tr><td class="mono">dpad_down_min_drop / _out</td><td class="mono">0.25 / 0.30</td><td>Down = below the shoulder <em>and</em> out sideways</td></tr>
+          <tr><td class="mono">dpad_repeat_dwell_ms</td><td class="mono">600</td><td>hold a wedge this long for nav auto-repeat</td></tr>
+          <tr><td class="mono">dpad_cmd_gate_radius</td><td class="mono">0.42</td><td>non-dom hand this close to the non-dom shoulder = command mode</td></tr>
+          <tr><td class="mono">dpad_cmd_dwell_ms</td><td class="mono">600</td><td>hold up/right this long &rarr; Enter</td></tr>
+          <tr><td class="mono">dpad_back_dwell_ms</td><td class="mono">3000</td><td>hold down/left this long &rarr; Esc</td></tr>
+          <tr><td class="mono">key_* / key_press_ms</td><td class="mono">VK arrows&hellip; / 40</td><td>output virtual-keys and tap length</td></tr>
+          <tr><td class="mono">trace / overlay</td><td class="mono">0 / 1</td><td>~15&nbsp;Hz signal log &nbsp;&bull;&nbsp; dev overlay window</td></tr>
         </tbody>
       </table>
     </div>
-    <p><b>New facts for M2:</b> polls pass <code>wait=0</code> (non-blocking) so the tap must de-dup frames by <code>liTimeStamp</code> / <code>dwFrameNumber</code>. The game <b>hard-exits</b> on quit &mdash; no <code>NuiShutdown</code>, no graceful DLL detach &mdash; so the recognizer thread must tolerate abrupt termination with no exit-flush. <code>NuiSkeletonSetTrackedSkeletons([0,0])</code> is called every frame; its log line needs the same sampling as the other hot paths.</p>
+  </section>
 
-    <h3>M2 results &mdash; run on real hardware, 28 Aug 2026</h3>
-    <p>Tested in a cluttered room, standing in a narrow clear path at marginal distance (~2.75&nbsp;m) &mdash; a pessimistic floor for tracking quality.</p>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Check</th><th>Result</th></tr></thead>
-        <tbody>
-          <tr><td>Tap &rarr; buffer &rarr; recognizer</td><td>Pass &mdash; correct metric skeleton data, 1:1 poll-to-accept (de-dup never misfired), no frame-rate impact</td></tr>
-          <tr><td>Struct layout</td><td>Pass &mdash; vendored <code>NUI_SKELETON_FRAME</code> size asserts hold; positions are sane metres</td></tr>
-          <tr><td>Navigator pick + sticky</td><td>Pass &mdash; held one body 40&nbsp;s straight; <code>ACQUIRED</code>/<code>LOST</code> fire on step-out/step-in; 500&nbsp;ms drop works</td></tr>
-          <tr><td><code>SHOULDER_CENTER</code>, <code>HIP_CENTER</code></td><td><b>Tracked 100% of the time</b> &mdash; torso length ~0.41&nbsp;m, very steady. The anchor pair.</td></tr>
-          <tr><td><code>HEAD</code></td><td>Tracked nearly always</td></tr>
-          <tr><td>Hands</td><td>Usually <b>Inferred</b>; flip to Tracked only on fast deliberate motion. X/Y usable through ~0.1&ndash;0.3&nbsp;m jitter; <b>Z unusable</b></td></tr>
-          <tr><td>Clean uninstall</td><td>Pass &mdash; genuine DLL restored byte-identical</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p><b>Consequences (still hold in v0.7):</b> anchor everything on <code>SHOULDER_CENTER</code> + <code>HIP_CENTER</code>; <b>accept Inferred hands</b> (never require Tracked) and smooth hard &mdash; the v0.7 positional bands make this even more critical; <b>drop &ldquo;push to confirm&rdquo; entirely</b> &mdash; hand Z is unreliable even on a real Kinect. Kinect v1 skeleton needs the dancer &ge;&nbsp;1.2&nbsp;m back &mdash; a walk-up to ~0.9&nbsp;m produced junk.</p>
+  <section id="harness">
+    <p class="eyebrow">Tooling</p>
+    <h2>Three ways to test without the game</h2>
+    <p>The game crashes on its own every ~30&ndash;120&nbsp;s, so the loop is: capture short real sessions &rarr; tune offline &rarr; brief in-game confirmations.</p>
+    <ul class="steps">
+      <li><b>SkeletonKeyReplay</b> &mdash; <code>record.flag</code> beside the shim appends every tapped frame to <code>skcap-*.skcap</code>; the replay exe feeds a capture back through the <em>same</em> <code>framebuffer</code>&nbsp;+&nbsp;<code>recognizer</code>&nbsp;+&nbsp;<code>gestures</code> the DLL ships. <code>--step</code> is fast and lossless; a <code>kinectnav.ini</code> beside it overrides thresholds with no rebuild.</li>
+      <li><b>SkeletonKeyLab</b> &mdash; opens the Kinect directly and pumps live frames into the same pipeline, no game. Real jitter, real inferred-hand behaviour, zero crashes, hot-editable ini. <code>--live</code> injects keys, <code>--record</code> banks a capture.</li>
+      <li><b>Synthetic suite</b> (<code>tools/synth/synth_skcap.py</code>) &mdash; generates valid <code>.skcap</code> files from scripted hand paths on a rock-steady torso, replays each, and PASS/FAILs against expected key tallies. 21 cases incl. the d-pad set (park / idle-rest / each wedge / command / clutch). The fast regression gate &mdash; must stay green on every change.</li>
+    </ul>
+  </section>
 
-    <h3>M3 progress &mdash; four builds, three live tests (28 Aug)</h3>
-    <p class="eyebrow" style="color:var(--muted)">History &mdash; the swipe model, superseded by v0.7</p>
-    <p>These builds are what the <a href="#research">redesign</a> grew out of &mdash; the feedback here (swipe-per-item exhausting, hold-out pose fatiguing) is exactly what the research then addressed. Right hand only (<code>HAND_RIGHT</code>, fallback wrist; Inferred accepted). The gesture model changed twice in response to live feedback:</p>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th>Build</th><th>What changed</th><th>Live result</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>baseline</td>
-            <td>right-swipe &rarr; <kbd>&rarr;</kbd>, full debounce (neutral &rarr; armed &rarr; emit &rarr; cooldown &rarr; re-neutral)</td>
-            <td><b><code>SendInput</code> scrolls the carousel</b> in-game. Swipe detection reliable. Jitter spikes (<code>evx</code>~15&nbsp;torso/s) fired keys &rarr; added a velocity ceiling. <b>Feedback: one-swipe-per-item is exhausting</b>, and the strict re-neutral gate dropped rapid swipes.</td>
-          </tr>
-          <tr>
-            <td>+ hold</td>
-            <td>&ldquo;swipe for one, hold for many&rdquo;: swipe once = one press; swipe and leave the hand out = auto-repeat, accelerating. Re-arm relaxed.</td>
-            <td>Holding was <b>flaky</b> &mdash; entry needed an uncomfortable arm-straight-out-at-shoulder-height pose; a small arm relax ended it; low swipes never held.</td>
-          </tr>
-          <tr>
-            <td>+ L/R + wave</td>
-            <td>Left swipe &rarr; <kbd>&larr;</kbd> (symmetric). Re-arm now only needs the hand back across centre &mdash; <b>a wave works, no arms-at-sides between gestures</b>. Hold decoupled from hand height. Anti-windup: direction must persist 2 frames before it latches.</td>
-            <td><b>Game crashed ~37&nbsp;s in</b> before feel could be judged. Log tail showed right-swipes firing correctly, holds engaging, no wrong-direction fires. Inconclusive.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p>All thresholds live in <code>config.h</code> defaults, overridable by a <code>kinectnav.ini</code> next to the DLL (or the replay exe) &mdash; no rebuild to retune. <b>Everything is provisional.</b> Ven's caution stands: do not overfit to the captures.</p>
-
-    <h3 id="crash">Legacy.exe crashes on its own</h3>
-    <p>Windows crash dumps (<code>%LOCALAPPDATA%\CrashDumps\Legacy.exe.*.dmp</code>) tell two stories:</p>
-    <div class="blocks">
-      <div class="block"><span class="sev sev--low">Not ours</span><div>
-        <p><b>Chronic crash-on-exit</b> &mdash; fault at offset <code>0x003ce1b0</code> in <code>Legacy.exe</code>'s own code, ~every session including <b>two dumps from 26&nbsp;Aug, before this project existed</b>. Ven quits via the menu and the window closes; the fault is silent during teardown. The M1/M2 &ldquo;hard-exit, no <code>NuiShutdown</code>, log stops mid-frame&rdquo; observations were <em>this</em>, not a clean exit. The capture session sent <b>zero</b> keystrokes and still did it. Harmless in practice.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--watch">Watch</span><div>
-        <p><b>One mid-session crash</b> &mdash; live test 3, a <em>different</em> offset (<code>0x007500f0</code>), ~37&nbsp;s in, while attempting a <b>left</b> swipe (first build sending <kbd>&larr;</kbd>). The carousel wraps at both ends, so it is not a boundary underflow. Cause undiagnosed (our LEFT output? fast scrolling racing the song-preview loader? the game being the game?). One data point. If mid-session crashes cluster on LEFT across more sessions, investigate.</p>
-      </div></div>
-    </div>
-    <p><b>Testing implication:</b> the game dies randomly (~30&ndash;120&nbsp;s). Don't rely on long live sessions &mdash; capture short, tune the recognizer offline via <code>SkeletonKeyReplay --step</code>, go live only for brief confirmations. This is exactly what the harness is for.</p>
+  <section id="history">
+    <p class="eyebrow">The path</p>
+    <h2>How we got here</h2>
+    <ul class="steps">
+      <li><b>M3 swipe</b> (Aug) &mdash; left/right then 4-way hand swipes with a state machine. Tiring, and every jitter fix traded one failure for another.</li>
+      <li><b>Positional redesign</b> (research pass 1&ndash;2) &mdash; engage-state + dead-zone/activation bands + rate-controlled repeat. Drafted, coded, but the latched-origin drifted and needed creep hacks; abandoned.</li>
+      <li><b>Signal + consolidation</b> (research pass 3 + a code review) &mdash; committed to the 1&euro;/SG signal, replaced the swipe model's guard stack with the end-zone positional invariants, deleted the dead ones. This is the <code>swipe</code> fallback.</li>
+      <li><b>Air d-pad</b> (now) &mdash; a clean postural model: shoulder-centred, park-box clutch, angle wedges, non-dom-hand command gate. First in-game session: &ldquo;works so much better, got into the dance.&rdquo;</li>
+    </ul>
+    <p>Design notes and the three Gemini deep-research passes live in <code>docs/notes/</code> and <code>docs/Kinect&nbsp;Gesture&nbsp;*.md</code>.</p>
   </section>
 
   <section id="risks">
-    <p class="eyebrow">Known unknowns</p>
-    <h2>Risks &amp; mitigations</h2>
-    <div class="blocks">
-      <div class="block resolved"><span class="sev sev--ok">Resolved &middot; M1</span><div>
-        <p><b>Frame cadence on menu screens.</b> M1 on real hardware showed a constant ~30 Hz poll on every screen &mdash; title, controller select, song list, coach, gameplay &mdash; with no stalls. The recognizer will always have fresh frames.</p>
-      </div></div>
-      <div class="block resolved"><span class="sev sev--ok">Resolved &middot; M1</span><div>
-        <p><b>Flat export vs. vtable method.</b> M1 confirmed the game calls the flat <code>NuiSkeletonGetNextFrame</code> export directly. No vtable patch, no <code>SKEL_GETNEXT_SLOT</code> to get right &mdash; M2 just copies the frame inside the export thunk.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--med">Understood &middot; M3</span><div>
-        <p><b>The game &ldquo;hard-exits&rdquo; because it crashes.</b> What M1/M2 read as an abrupt clean exit is <code>Legacy.exe</code> faulting during teardown &mdash; see <a href="#crash">Legacy.exe crashes</a>. The recognizer thread already carries no exit-flush obligation, so nothing to fix; but live test sessions get cut short randomly.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--med">Confirmed &middot; M2</span><div>
-        <p><b>Hand depth (Z) is unreliable</b> &mdash; not just for webcam users. M2 showed a real Kinect v1 reports hands as <code>Inferred</code> most of the time, with Z bouncing ~0.3&nbsp;m frame to frame.</p>
-        <p>Resolution: <b>&ldquo;push to confirm&rdquo; is dropped entirely.</b> Confirm is a ballistic cross-body swipe (pure X/Y). All hand-based detectors accept <code>Inferred</code> joints and smooth hard.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--watch">Open &middot; v0.7</span><div>
-        <p><b>Positional bands vs. hand jitter.</b> The redesign's dead zone (&plusmn;10&nbsp;cm) is inside the research's own raw-jitter figure (&plusmn;10&ndash;30&nbsp;cm) and the activation band (&plusmn;15&nbsp;cm) barely clears it &mdash; ~5&nbsp;cm of usable hysteresis. Whether a positional model survives real inferred-hand noise at ~2.75&nbsp;m is unproven.</p>
-        <p>Mitigation: explicit low-pass (slow EMA first, 1&nbsp;Euro filter if needed) on the positional joint; tune it in SkeletonKeyLab before anything else. Fallback: widen the bands, or drop to a coarse three-zone scheme per axis (a parked hand repeat-emits) &mdash; loses fine control, keeps reliability.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--watch">Live-test constraint</span><div>
-        <p><b>The play environment is still unknown</b> and the only test room is cramped &mdash; a narrow clear path at marginal distance. Every capture's noise is a pessimistic floor. Provisional M3 thresholds can't be finalised until there's a capture from wherever the community actually plays.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--med">Tuning risk &middot; v0.7</span><div>
-        <p><b>Y-axis positional nav is the weak axis.</b> Spine curvature and weight shifts move the body reference that <code>origin</code> is measured against, so the up/down band drifts more than left/right.</p>
-        <p>Mitigation: evaluate X and Y independently, larger <code>|d|</code> wins (no diagonals); if the &plusmn;15&nbsp;cm Y band can't be made reliable after filtering, fall back to a coarse three-zone Y (low&nbsp;/&nbsp;centre&nbsp;/&nbsp;high, parked hand repeat-emits).</p>
-      </div></div>
-      <div class="block"><span class="sev sev--med">In M4</span><div>
-        <p><b>Either-hand tracking.</b> Builds 1&ndash;4 watched the right hand only. The v0.7 model needs both &mdash; dominant hand navigates + confirms, non-dominant hand is Back &mdash; so this is no longer deferred; it lands with M4's Confirm/Back work. <code>handedness</code> config picks which is which.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--med">Open question</span><div>
-        <p><b>Where does this actually get played?</b> M2 and the first capture were recorded in a cramped room at marginal distance. If the real setting is a cleared space that noise is pessimistic; if it is that same room, that noise level is the tuning target. Still unanswered.</p>
-        <p>The <b>record / replay harness</b> is now built, so this matters less for iteration &mdash; but the final tuning pass should use a capture from wherever it will really be played.</p>
-      </div></div>
-      <div class="block"><span class="sev sev--low">Note</span><div>
-        <p><b>Two DLL variants ship in ItsVexor's zip.</b> <code>JDLEGACY</code> is x86 and matches this game build; <code>DREYN</code> is x64 for a different 64-bit Legacy build and will not load here. Test against the x86 one.</p>
-      </div></div>
-    </div>
-  </section>
-
-  <section id="vexor">
-    <p class="eyebrow">Prior art on the drive</p>
-    <h2>What "Legacy Sensor by ItsVexor" taught us</h2>
-    <p>It is a webcam-to-Kinect emulator for this exact mod: a PyInstaller bundle running OpenCV + MediaPipe Pose that infers a body skeleton from a normal camera, writes joint frames to shared memory, and serves them to the game through a small replacement <code>Kinect10.dll</code>. Replacing the real DLL is also what unlocks the "Kinect Sensor" choice on the controller screen.</p>
-    <p>It confirmed two things we were otherwise guessing: the DLL-replacement hook works on this build in the wild, and the exact eight-ordinal export surface. (We assumed the game would use the <code>INuiSensor</code> vtable; M1 showed it calls the flat export instead &mdash; simpler for us.) Its shared-memory + events + SRW-lock IPC is a reference if Skeleton Key ever needs its own sensor feed. Collaboration is not being pursued &mdash; this is an independent tool.</p>
+    <p class="eyebrow">Watch</p>
+    <h2>Risks</h2>
+    <ul class="decisions">
+      <li><span class="k"><span class="sev sev--watch">watch</span></span><span class="v"><b>Legacy.exe crashes on its own</b><span>Chronic crash-on-exit (<code>+0x3CE1B0</code>) and a recurring mid-session AV at <code>+0x7500F0</code> around song&harr;menu transitions &mdash; both confirmed in <code>legacy.exe.*.dmp</code>, faulting module <code>legacy.exe</code>, not our DLL. Keep sessions short; tune offline.</span></span></li>
+      <li><span class="k"><span class="sev sev--med">med</span></span><span class="v"><b>Kinect v1 at ~2&nbsp;m in a cluttered room</b><span>Hands mostly inferred, &plusmn;0.1&ndash;0.3&nbsp;m. Shoulder / hip / head rock-solid; elbow moderate; hand Z unusable. The d-pad leans entirely on the reliable joints and on ratios/angles, not absolute distal position.</span></span></li>
+      <li><span class="k"><span class="sev sev--med">med</span></span><span class="v"><b>Play space still unknown</b><span>All tuning is in a cramped test room &mdash; a pessimistic floor. Numbers may shift for a real living room; every threshold is an ini key.</span></span></li>
+      <li><span class="k"><span class="sev sev--low">low</span></span><span class="v"><b>Exclusive-fullscreen hides the overlay</b><span>Run the game windowed / borderless. Handling this cleanly is a next-step item.</span></span></li>
+      <li><span class="k"><span class="sev sev--ok">ok</span></span><span class="v"><b>Accidental fires while dancing</b><span>Addressed: the clutch sleeps after 1.5&nbsp;s idle, the straight-down dead wedge ignores a hanging arm, and Esc needs the deliberate hand-on-shoulder pose.</span></span></li>
+    </ul>
   </section>
 
   <section id="next">
     <p class="eyebrow">From here</p>
     <h2>Next steps</h2>
     <ul class="next">
-      <li><b>Rewrite <code>gestures.cpp</code></b> for the positional model &mdash; engage-state machine, dead-zone/activation nav on X and Y, rate-controlled auto-repeat. New <code>config.h</code> keys (see the <a href="#decisions">sketch</a>), defaults from <code>research-thresholds.md</code> as provisional.</li>
-      <li><b>Tune in SkeletonKeyLab</b> on the live sensor &mdash; get the filter right first (bands vs. jitter), then engage dwell, dead zone, activation, repeat cadence. Bank a capture or two with <code>--record</code> as regression fixtures; re-run capture&nbsp;1's non-swipe blocks through Replay as a false-positive check.</li>
-      <li><b>One short in-game confirmation</b> &mdash; keys still scroll the carousel, engage/disengage feels natural, no false fires at rest.</li>
-      <li>Watch whether mid-session crashes keep correlating with <kbd>&larr;</kbd>; if so, dig in.</li>
-      <li>Then <b>M4</b>: Confirm (dominant-hand ballistic swipe &rarr; <kbd>Enter</kbd>), Back (non-dominant &rarr; <kbd>Esc</kbd>), either-hand tracking, per-action audio.</li>
-      <li><b>Fold this plan into place</b> &mdash; v0.7 is drafted from <code>docs/notes/m3-m4-redesign.md</code>; keep both in sync as tuning changes the numbers.</li>
+      <li><b>Player-facing overlay</b> &mdash; a minimal HUD (current state + action feedback only, no dev geometry/numbers), separate from the dev d-pad viz.</li>
+      <li><b>Fullscreen / borderless</b> &mdash; detect exclusive fullscreen and either warn or fall back gracefully; document the windowed requirement in setup.</li>
+      <li><b>Tune from real sessions</b> &mdash; park radius, wedge angles, the clutch timeout, and the command dwells against captures from where it's actually played.</li>
+      <li><b>Installer + setup doc</b> for handing the build to friends.</li>
+      <li>Revisit the swipe fallback's remaining dead knobs if anyone actually uses <code>nav_model = swipe</code>.</li>
     </ul>
   </section>
 
   <footer>
-    Skeleton Key &mdash; build plan v0.7, 31 Aug 2026. M1 &amp; M2 done; Replay + SkeletonKeyLab harnesses done; M3 redesigned after a research pass (swipe &rarr; positional navigation + engage state; swipe repurposed for Confirm/Back). Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
+    Skeleton Key &mdash; build plan v0.9, 1 Sep 2026. Proxy DLL + skeleton tap done and hardware-verified; Replay / SkeletonKeyLab / synthetic-suite harnesses done. Primary recogniser is the postural <b>air d-pad</b> (<code>nav_model = extend</code>); the consolidated swipe model stays as <code>nav_model = swipe</code>. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
   </footer>
 
 </div>
