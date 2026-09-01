@@ -31,6 +31,8 @@ One is active at a time — pick with `nav_model` in `kinectnav.ini` (see
 
 ### `extend` — air d-pad (default)
 
+![Skeleton Key gestures](docs/pictos/gesture-sheet.png)
+
 A virtual d-pad centred on your dominant **shoulder**. No swiping, no timing windows.
 
 - Reach your hand out past a small **park box** into a direction **wedge** → that arrow key.

@@ -31,6 +31,7 @@ if exist "%STAGE%" rmdir /s /q "%STAGE%"
 mkdir "%STAGE%"
 
 copy /y "%HERE%Kinect10.dll"            "%STAGE%\" >nul
+copy /y "%HERE%gestures.png"            "%STAGE%\" >nul
 copy /y "%HERE%SkeletonKey-Setup.ps1"   "%STAGE%\" >nul
 copy /y "%HERE%SkeletonKey-Setup.vbs"   "%STAGE%\" >nul
 copy /y "%HERE%SkeletonKey-Setup.bat"   "%STAGE%\" >nul
@@ -52,7 +53,7 @@ rmdir /s /q "%STAGE%"
 echo.
 echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
-echo Contents: Kinect10.dll, SkeletonKey-Setup.ps1/.vbs/.bat,
+echo Contents: Kinect10.dll, SkeletonKey-Setup.ps1/.vbs/.bat, gestures.png,
 echo           install.bat, uninstall.bat, record.bat,
 echo           kinectnav.example.ini, SETUP.md
 endlocal

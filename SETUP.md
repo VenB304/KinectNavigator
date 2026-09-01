@@ -71,6 +71,8 @@ prompt for the game folder, or pass it as an argument:
 
 Stand ~2.5 m back, centred, facing the sensor.
 
+![Skeleton Key gestures](docs/pictos/gesture-sheet.png)
+
 **Waking it up.** It starts **asleep** and ignores everything. Rest your dominant hand near
 your shoulder for a moment to arm it. It disarms itself again whenever your arm just hangs or
 you start dancing, so it won't fire mid-routine — re-arm the same way.

@@ -342,7 +342,9 @@ $btnUninstall.Add_Click({
     }
 })
 
-$btnHelp.Add_Click({
+$GesturesImg = Join-Path $ScriptDir 'gestures.png'
+
+function Show-GesturesText {
     Msg (
         "WAKING IT UP" + [Environment]::NewLine +
         "Rest your dominant hand near your shoulder for a moment. It sleeps again if your" + [Environment]::NewLine +
@@ -360,6 +362,33 @@ $btnHelp.Add_Click({
         "Stand about 2.5 m back, centred, facing the sensor." + [Environment]::NewLine +
         "Full details and troubleshooting are in SETUP.md."
     ) 'Information'
+}
+
+$btnHelp.Add_Click({
+    if (-not (Test-Path -LiteralPath $GesturesImg)) { Show-GesturesText; return }
+    try {
+        $img = [System.Drawing.Image]::FromFile($GesturesImg)
+    } catch { Show-GesturesText; return }
+    $gf = New-Object System.Windows.Forms.Form
+    $gf.Text = 'Skeleton Key - gestures'
+    $gf.StartPosition = 'CenterParent'
+    $gf.FormBorderStyle = 'FixedSingle'
+    $gf.MaximizeBox = $false
+    $gf.BackColor = $ColBg
+    $maxW = 900
+    $sc = [Math]::Min(1.0, $maxW / $img.Width)
+    $iw = [int]($img.Width * $sc); $ih = [int]($img.Height * $sc)
+    $gf.ClientSize = New-Object System.Drawing.Size ($iw + 24), ($ih + 60)
+    $pb2 = New-Object System.Windows.Forms.PictureBox
+    $pb2.SetBounds(12, 12, $iw, $ih)
+    $pb2.SizeMode = 'Zoom'
+    $pb2.Image = $img
+    $gf.Controls.Add($pb2)
+    $ok = New-Btn 'Close' ($iw + 24 - 112) ($ih + 20) 100 30
+    $ok.Add_Click({ $gf.Close() })
+    $gf.Controls.Add($ok)
+    $gf.Add_FormClosed({ $img.Dispose() })
+    $gf.ShowDialog($Form) | Out-Null
 })
 
 $btnClose.Add_Click({ $Form.Close() })
