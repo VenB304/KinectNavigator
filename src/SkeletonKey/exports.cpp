@@ -13,6 +13,7 @@
 #include "framebuffer.h"
 #include "recognizer.h"
 #include "recorder.h"
+#include "globals.h"
 #include "log.h"
 
 namespace
@@ -68,6 +69,10 @@ HRESULT __stdcall NuiImageGetColorPixelCoordinatesFromDepthPixel(
         long* plColorX, long* plColorY)
 {
     Backend::Ensure();
+    // Probe signals for menu-vs-gameplay detection (logged ~1/s by the recognizer).
+    InterlockedExchange64((volatile LONGLONG*)&g_lastRenderTick, (LONGLONG)GetTickCount64());
+    InterlockedExchange(&g_colorRes, (long)eColorResolution);
+    InterlockedIncrement64((volatile LONGLONG*)&g_colorCalls);
     HRESULT hr = Backend::fn.NuiImageGetColorPixelCoordinatesFromDepthPixel
                ? Backend::fn.NuiImageGetColorPixelCoordinatesFromDepthPixel(
                      eColorResolution, pcViewArea, lDepthX, lDepthY,
@@ -126,6 +131,11 @@ HRESULT __stdcall NuiSetDeviceStatusCallback(void* callback, void* pUserData)
 HRESULT __stdcall NuiSkeletonSetTrackedSkeletons(DWORD* pTrackingIds)
 {
     Backend::Ensure();
+    if (pTrackingIds)
+    {
+        InterlockedExchange((volatile LONG*)&g_trkId0, (LONG)pTrackingIds[0]);
+        InterlockedExchange((volatile LONG*)&g_trkId1, (LONG)pTrackingIds[1]);
+    }
     HRESULT hr = Backend::fn.NuiSkeletonSetTrackedSkeletons
                ? Backend::fn.NuiSkeletonSetTrackedSkeletons(pTrackingIds)
                : E_FAIL;

@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKey", "SkeletonKey\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKeyReplay", "SkeletonKeyReplay\SkeletonKeyReplay.vcxproj", "{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKeyLab", "SkeletonKeyLab\SkeletonKeyLab.vcxproj", "{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +23,10 @@ Global
 		{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}.Debug|Win32.Build.0 = Debug|Win32
 		{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}.Release|Win32.ActiveCfg = Release|Win32
 		{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}.Release|Win32.Build.0 = Release|Win32
+		{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}.Debug|Win32.Build.0 = Debug|Win32
+		{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}.Release|Win32.ActiveCfg = Release|Win32
+		{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

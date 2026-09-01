@@ -3,11 +3,13 @@ build/
 dist/Kinect10.dll
 dist/Kinect10.pdb
 dist/SkeletonKeyReplay.exe
+dist/SkeletonKeyLab.exe
 
 # captured skeleton sessions
 *.skcap
 tools/captures/
 record.flag
+kinectnav.ini
 
 # VS / MSVC cruft
 .vs/
@@ -24,3 +26,7 @@ Legacy Sensor by itsvexor*/
 
 # runtime artifacts
 SkeletonKey.log
+
+# python
+__pycache__/
+*.pyc

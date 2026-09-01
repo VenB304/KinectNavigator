@@ -80,6 +80,7 @@
     <ClCompile Include="..\SkeletonKey\config.cpp" />
     <ClCompile Include="..\SkeletonKey\output.cpp" />
     <ClCompile Include="..\SkeletonKey\gestures.cpp" />
+    <ClCompile Include="..\SkeletonKey\overlay.cpp" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

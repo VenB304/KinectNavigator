@@ -4,6 +4,8 @@
 #include "log.h"
 #include "recognizer.h"
 #include "recorder.h"
+#include "overlay.h"
+#include "gameprobe.h"
 #include "config.h"
 
 namespace Backend
@@ -55,8 +57,10 @@ namespace Backend
 
         // M2: start consuming frames now that the tap can forward them.
         Cfg::Load();
+        GameProbe::Install();
         Recognizer::Start();
         Recorder::Init();
+        Overlay::Start();
         return TRUE;
     }
 
@@ -67,6 +71,8 @@ namespace Backend
 
     void Shutdown()
     {
+        GameProbe::Remove();
+        Overlay::Stop();
         if (s_lib)
         {
             LogLine("Backend: FreeLibrary");
