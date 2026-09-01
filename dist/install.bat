@@ -51,4 +51,13 @@ echo   genuine runtime renamed to Kinect10_backend.dll  ^(backup: Kinect10.dll.o
 echo   Skeleton Key installed as Kinect10.dll
 echo   runtime log will be written to SkeletonKey.log in the game folder
 echo   to tune: copy kinectnav.example.ini to "%GAME%\kinectnav.ini" and edit it
+
+rem  Friendly reminder: the on-screen HUD can't draw over exclusive fullscreen.
+if exist "%GAME%\config.xml" (
+    findstr /i /c:"FullScreen=\"1\"" "%GAME%\config.xml" >nul 2>&1 && (
+        echo.
+        echo   NOTE: config.xml has FullScreen="1". Navigation will still work, but the
+        echo         on-screen HUD stays hidden until you set FullScreen="0" ^(windowed^).
+    )
+)
 endlocal

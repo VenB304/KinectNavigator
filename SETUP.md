@@ -9,12 +9,18 @@ This guide is for players. It assumes you already have the game working.
 
 - **Xbox 360 Kinect sensor (Kinect v1)** plus the **"Kinect for Windows" adapter** — the
   brick that gives it a USB plug and a power lead. The bare Xbox connector won't work on a PC.
-- **Kinect for Windows Runtime v1.8** — the driver. One-time install.
-  Microsoft Download Center: <https://www.microsoft.com/download/details.aspx?id=40277>
-  (the page title should say *Kinect for Windows Runtime v1.8*). The full
-  *Kinect for Windows SDK v1.8* (`id=40278`) also works if you'd rather install that.
+- **Kinect for Windows Runtime v1.8** — the driver. One-time install, `KinectRuntime-v1.8-Setup.exe`
+  (~111 MB) from the Microsoft Download Center:
+  <https://www.microsoft.com/download/details.aspx?id=40277> (the page title says
+  *Kinect for Windows Runtime v1.8*). The full *Kinect for Windows SDK v1.8* (`id=40278`) also
+  works if you'd rather install that.
 - **Room:** you need to stand about **2.5 metres** back from the sensor, centred, facing it,
   with your whole body in view. Kinect v1 tracks poorly closer than that.
+
+> **Not compatible with webcam-emulator setups.** If you drive Legacy with a webcam +
+> *Legacy Sensor* (itsvexor) or a similar tool that already replaces `Kinect10.dll` with a
+> fake one, Skeleton Key can't sit on top of it — `install.bat` needs the genuine ~15 MB
+> Microsoft runtime and will refuse to run otherwise. You need a real Kinect v1 sensor.
 
 ## 2. Install the Kinect Runtime (once)
 
@@ -37,6 +43,12 @@ Open `config.xml` in the game folder and set:
 (If you leave it on `"1"`, navigation still works — you just won't see the HUD.)
 
 ## 4. Install Skeleton Key
+
+**Heads-up on antivirus.** `Kinect10.dll` is not code-signed, and it works by synthesising
+keystrokes and hooking the game's imports — the same things malware does. SmartScreen may say
+"Windows protected your PC" (click *More info → Run anyway*) and some antivirus may quarantine
+the file (restore it / add an exclusion for the game folder). This is a false positive; the
+full source is on GitHub if you'd rather build it yourself.
 
 1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
 2. Copy `Kinect10.dll`, `install.bat`, `uninstall.bat`, and `kinectnav.example.ini` from this
@@ -90,6 +102,7 @@ Check `SkeletonKey.log` in the game folder — it records what the recogniser sa
 
 | Symptom | Fix |
 |---|---|
+| **Windows blocked the DLL / AV quarantined it** | False positive — see the antivirus note in section 4. Restore the file and add a folder exclusion, or build from source. |
 | **No HUD on screen** | The game is in exclusive fullscreen. Set `FullScreen="0"` in `config.xml`. |
 | HUD says **STEP BACK** / **STEP INTO VIEW** | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
 | HUD shows but **gestures do nothing** | The game window must be focused (click it). Make sure the Kinect Runtime installed and the sensor light is solid. |

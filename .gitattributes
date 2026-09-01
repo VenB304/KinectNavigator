@@ -1,0 +1,19 @@
+# Normalise line endings: LF in the repo, native on checkout.
+* text=auto
+
+*.cpp    text
+*.h      text
+*.def    text
+*.cmd    text eol=crlf
+*.bat    text eol=crlf
+*.md     text
+*.ini    text
+*.html   text
+*.py     text
+*.sln    text eol=crlf
+*.vcxproj text eol=crlf
+
+*.skcap  binary
+*.dll    binary
+*.pdb    binary
+*.png    binary

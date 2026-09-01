@@ -5,7 +5,13 @@ skeleton poses — so a dancer can browse the song list and start a routine with
 keyboard or phone.
 
 Design doc: [`docs/build-plan.html`](docs/build-plan.html) · Setup guide (for players):
-[`SETUP.md`](SETUP.md)
+[`SETUP.md`](SETUP.md) · Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+
+> **Built with AI assistance.** The recogniser was designed and iterated with Claude (Anthropic)
+> and Gemini Deep Research. `docs/notes/` are the raw session hand-offs and tuning logs, and
+> `docs/research/` holds the (AI-generated, lightly verified) background research passes —
+> kept for transparency, not as polished documentation. The code, the design decisions, and
+> every in-game test are real.
 
 ## How it works
 
@@ -124,3 +130,22 @@ build/                  build output (git-ignored)
 Git-ignored: `build/`, built binaries in `dist/`, `*.skcap` / `tools/captures/`,
 `record.flag`, `kinectnav.ini`, `SkeletonKey.log`, `*.zip`, Deep Research raw exports, and the
 `Legacy Sensor by itsvexor*` reference folder (not redistributable).
+
+## Antivirus
+
+`Kinect10.dll` is unsigned and it synthesises keystrokes and hooks the game's imports — both
+are textbook malware behaviours, so SmartScreen or your AV may flag it. It is a false
+positive. The full source is here; build it yourself if you'd rather not trust the release
+binary. See [`SETUP.md`](SETUP.md#6-troubleshooting).
+
+## Credits
+
+- **[itsvexor](https://github.com/itsvexor)** — *Legacy Sensor*, the webcam→Kinect emulator
+  for this same mod. Confirmed the drop-in-`Kinect10.dll` approach; not affiliated.
+- Skeleton structs vendored in `nui_types.h` are the public Kinect for Windows SDK 1.8
+  layouts (Microsoft), used for ABI interop only.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). This is clean-room interop code; it contains no Ubisoft or
+Microsoft source and ships no game assets.
