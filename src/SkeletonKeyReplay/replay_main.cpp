@@ -18,6 +18,7 @@
 #include "recorder.h"      // for Recorder::Header
 #include "config.h"
 #include "output.h"
+#include "overlay.h"
 #include "log.h"
 
 static unsigned long long g_published = 0;
@@ -63,14 +64,19 @@ int wmain(int argc, wchar_t** argv)
     double speed = 1.0;
     int    loops = 1;
     bool   step  = false;
+    bool   overlay = false;
 
     for (int i = 1; i < argc; ++i)
     {
         if (!wcscmp(argv[i], L"--step"))                          step  = true;
+        else if (!wcscmp(argv[i], L"--overlay"))                  overlay = true;
         else if (!wcscmp(argv[i], L"--speed") && i + 1 < argc)    speed = _wtof(argv[++i]);
         else if (!wcscmp(argv[i], L"--loop")  && i + 1 < argc)    loops = _wtoi(argv[++i]);
         else if (argv[i][0] != L'-')                              path  = argv[i];
     }
+    // the overlay wants wall-clock pacing -- --step would blur 6000 frames past
+    // in a blink. Fall back to real-time and keep the window up at the end.
+    if (overlay && step) { step = false; speed = 1.0; }
     if (!path)
     {
         fwprintf(stderr, L"usage: SkeletonKeyReplay <file.skcap> [--step | --speed N] [--loop K]\n");
@@ -106,6 +112,7 @@ int wmain(int argc, wchar_t** argv)
             path, step ? L"step" : L"timed", loops);
 
     Recognizer::Start();
+    if (overlay) { Overlay::Start(); wprintf(L"overlay: window up (top-left)\n"); }
 
     const long headerEnd = ftell(f);
     for (int L = 0; L < loops; ++L)
@@ -116,6 +123,14 @@ int wmain(int argc, wchar_t** argv)
     fclose(f);
 
     if (!step) Sleep(300);      // let the recognizer drain the final frame
+
+    if (overlay)
+    {
+        wprintf(L"overlay held on the last frame -- press Enter to close\n");
+        (void)getwchar();
+        Overlay::Stop();
+    }
+
     Recognizer::Stop();
     wprintf(L"replay complete: %llu frames published, %llu consumed\n",
             g_published, FrameBuffer::ConsumedCount());

@@ -553,7 +553,7 @@
       <li><b>The recogniser thread</b> picks the navigator body (closest + centred tracked skeleton, sticky by tracking ID for 500&nbsp;ms), normalises joints by torso length (<code>|SHOULDER_CENTER &minus; HIP_CENTER|</code>, ~0.41&nbsp;m), runs the recogniser, and taps keys via <code>SendInput</code> &mdash; only while <code>Legacy.exe</code> is foreground. All timing is off the sensor's <code>liTimeStamp</code>, never wall clock, so replay-at-speed is faithful.</li>
       <li><b>Uninstall</b> renames the genuine runtime back, byte-identical. <code>dist/install.bat</code> / <code>uninstall.bat</code> do the rename dance with a 15&nbsp;MB size guard and an <code>.orig-backup</code>.</li>
     </ul>
-    <p>Verified on every build: <code>dumpbin</code> shows exactly the 8 <code>Nui*</code> ordinals (base 5), machine x86, imports <code>KERNEL32 + USER32 + GDI32</code> only (GDI32 is the dev overlay), and no self-import of <code>Kinect10.dll</code>.</p>
+    <p>Verified on every build: <code>dumpbin</code> shows exactly the 8 <code>Nui*</code> ordinals (base 5), machine x86, imports <code>KERNEL32 + USER32 + GDI32 + SHELL32</code> only (GDI32 is the dev overlay; SHELL32 is <code>SHQueryUserNotificationState</code>, the display-mode probe), and no self-import of <code>Kinect10.dll</code>.</p>
   </section>
 
   <section id="dpad">

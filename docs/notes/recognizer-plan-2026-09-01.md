@@ -30,7 +30,7 @@ research pass.**
 
 - Working-tree only, **no commits / no push** unless Ven asks.
 - Each stage must leave a **shippable build**: `build.cmd` 0/0, synth suite green, DLL sanity
-  (8 Nui ordinals, base 5, machine x86, imports = KERNEL32 + USER32 + GDI32), byte-deploy to
+  (8 Nui ordinals, base 5, machine x86, imports = KERNEL32 + USER32 + GDI32 + SHELL32), byte-deploy to
   `E:\LegacyOfflinePC`.
 - Replay corpus for regression: `tools/captures/skcap-20260901-150717.skcap`,
   `…-152922.skcap`, `…-032901.skcap`, plus `tools/captures/skcap-20260828-001358` and

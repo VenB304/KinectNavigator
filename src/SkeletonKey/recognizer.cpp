@@ -1,6 +1,13 @@
 #include "framework.h"
 #include <math.h>
 #include "recognizer.h"
+
+// SHQueryUserNotificationState (shell32) -- not surfaced under WIN32_LEAN_AND_MEAN,
+// declared here. QUNS_RUNNING_D3D_FULL_SCREEN == 3 means an exclusive-fullscreen
+// D3D app is running (the signal Windows itself uses to suppress toasts).
+extern "C" __declspec(dllimport) HRESULT __stdcall SHQueryUserNotificationState(int* pquns);
+#pragma comment(lib, "shell32.lib")
+#define SK_QUNS_RUNNING_D3D_FULL_SCREEN 3
 #include "framebuffer.h"
 #include "gestures.h"
 #include "output.h"
@@ -120,10 +127,26 @@ namespace
         int cur = GetCursorInfo(&ci) ? (int)((ci.flags & CURSOR_SHOWING) != 0) : -1;
         const LONGLONG mp = g_menuPollTick;
 
+        // Display-mode probe (diagnostic). SHQueryUserNotificationState reports
+        // QUNS_RUNNING_D3D_FULL_SCREEN (3) exactly when an exclusive-fullscreen D3D
+        // app is up -- the same signal Windows uses to suppress toasts, which (like
+        // our overlay) are topmost windows that exclusive fullscreen hides. Combined
+        // with win== the monitor rect this separates windowed / borderless / exclusive.
+        int quns = 0;
+        SHQueryUserNotificationState(&quns);
+        const int d3dfs = (quns == SK_QUNS_RUNNING_D3D_FULL_SCREEN) ? 1 : 0;
+        int mw = 0, mh = 0;
+        if (gw)
+        {
+            MONITORINFO miq{}; miq.cbSize = sizeof(miq);
+            if (GetMonitorInfoW(MonitorFromWindow(gw, MONITOR_DEFAULTTONEAREST), &miq))
+            { mw = miq.rcMonitor.right - miq.rcMonitor.left; mh = miq.rcMonitor.bottom - miq.rcMonitor.top; }
+        }
+
         LogLine("GameProbe: cp=%.0f/s res=%ld trk=[%lu,%lu] bodies=%d/%d cursor=%d "
-                "win=%dx%d wact=%ld style=%08lX menupoll=%ldms open/s=%.0f last=\"%ls\" title=\"%ls\"",
+                "win=%dx%d mon=%dx%d d3dfs=%d quns=%d wact=%ld style=%08lX menupoll=%ldms open/s=%.0f last=\"%ls\" title=\"%ls\"",
                 cpRate, g_colorRes, g_trkId0, g_trkId1, bodies, anyPos, cur,
-                rw, rh, g_gameWndActive, wstyle, mp ? (long)(nowTick - mp) : -1, opRate, g_lastFile, title);
+                rw, rh, mw, mh, d3dfs, quns, g_gameWndActive, wstyle, mp ? (long)(nowTick - mp) : -1, opRate, g_lastFile, title);
     }
 
     DWORD WINAPI ThreadProc(LPVOID)
