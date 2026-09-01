@@ -51,12 +51,13 @@ kill inferred-joint jitter. Kept as a fallback; `extend` is the one that's tuned
 ## On-screen HUD
 
 A small dark overlay (top-left) shows what the recogniser sees: current state, a live d-pad,
-tracking distance, and action feedback, plus one line of raw numbers for tuning. `overlay = 1`
-by default.
+tracking distance, and action feedback, plus one line of raw numbers for tuning. **Off by
+default** — it's a troubleshooting aid; enable it with `overlay = 1` in `kinectnav.ini`.
 
-The overlay is a layered window — **exclusive-fullscreen DirectX hides it**. Run the game
-windowed or borderless (`<Screen FullScreen="0" />` in the game's `config.xml`). Navigation
-itself still works in fullscreen; you just lose the HUD.
+The overlay is a layered window — **exclusive-fullscreen DirectX hides it**. To see it, run the
+game windowed or borderless (`<Screen FullScreen="0" />` in the game's `config.xml`).
+Navigation works the same either way. `SkeletonKeyLab` and `SkeletonKeyReplay --overlay` always
+show it (dev tools).
 
 ## Build
 

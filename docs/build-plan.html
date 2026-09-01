@@ -581,8 +581,8 @@
     <h3>Why a hanging arm is safe</h3>
     <p>Three independent guards, and a relaxed arm fails all of them: it's outside the park box but points straight <em>down</em> (dead wedge, so no wedge is entered); the clutch disarms after 1.5&nbsp;s of that; and Esc additionally can't fire at all without the deliberate hand-on-shoulder pose.</p>
 
-    <h3>Dev overlay</h3>
-    <p>A layered click-through GDI window draws the d-pad: field square + crosshair, the park box, R&nbsp;/&nbsp;L&nbsp;/&nbsp;U&nbsp;/&nbsp;D labels with the live wedge lit, a hand-position marker (grey&nbsp;parked&nbsp;/&nbsp;cyan&nbsp;nav&nbsp;/&nbsp;magenta&nbsp;command), an <code>ASLEEP</code>/<code>READY</code> banner, a <code>L&nbsp;hand&nbsp;&rarr;&nbsp;shoulder&nbsp;0.34&nbsp;/&nbsp;0.42</code> gate readout, and the action flash. <code>trace = 1</code> also logs a <code>dpad[]</code> line ~15&nbsp;Hz.</p>
+    <h3>On-screen HUD</h3>
+    <p>A layered click-through GDI window &mdash; a compact dark panel, top-left: a status line (<code>ASLEEP</code>&nbsp;/&nbsp;<code>READY</code>&nbsp;/&nbsp;<code>NAVIGATING</code>&nbsp;/&nbsp;<code>COMMAND</code>&nbsp;/&nbsp;<code>STEP&nbsp;BACK</code>), the d-pad glyph with the live wedge lit and a hand marker (grey&nbsp;parked&nbsp;/&nbsp;cyan&nbsp;nav&nbsp;/&nbsp;magenta&nbsp;command), heading&nbsp;/&nbsp;distance, the command-gate bar, a CONFIRM/BACK dwell bar, one dim diagnostic line, and a centre-screen action flash. Scales off screen height. <strong>Off by default</strong> (<code>overlay = 1</code> to opt in) &mdash; a troubleshooting aid, windowed / borderless only. <code>SkeletonKeyLab</code> and <code>SkeletonKeyReplay&nbsp;--overlay</code> force it on. <code>trace = 1</code> also logs a <code>dpad[]</code> line ~15&nbsp;Hz.</p>
   </section>
 
   <section id="swipe">

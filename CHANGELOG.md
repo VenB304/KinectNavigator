@@ -24,13 +24,13 @@ browse the song list and start a routine without a keyboard or phone.
   >16 torso/s spikes Kinect v1 produces when a joint is inferred.
 - Recogniser is muted while a routine is playing (detected from the game's own file I/O).
 
-### On-screen HUD
+### On-screen HUD (optional, off by default)
 
 - Compact dark panel (top-left): current state, a live d-pad, tracking distance, action
-  feedback, and one line of raw numbers.
+  feedback, and one line of raw numbers. A troubleshooting aid — enable with `overlay = 1`
+  in `kinectnav.ini`.
 - Windowed / borderless only — exclusive-fullscreen DirectX hides any overlay. Navigation
-  still works in fullscreen; you just lose the HUD. `install.bat` warns if `config.xml` is
-  set to fullscreen.
+  works the same either way. `install.bat` prints a note if `config.xml` is set to fullscreen.
 
 ### Tooling (source repo)
 

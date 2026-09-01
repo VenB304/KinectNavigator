@@ -112,7 +112,7 @@ int wmain(int argc, wchar_t** argv)
             path, step ? L"step" : L"timed", loops);
 
     Recognizer::Start();
-    if (overlay) { Overlay::Start(); wprintf(L"overlay: window up (top-left)\n"); }
+    if (overlay) { Overlay::Start(true); wprintf(L"overlay: window up (top-left)\n"); }
 
     const long headerEnd = ftell(f);
     for (int L = 0; L < loops; ++L)

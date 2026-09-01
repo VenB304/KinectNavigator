@@ -475,10 +475,10 @@ namespace
     }
 }
 
-void Overlay::Start()
+void Overlay::Start(bool force)
 {
     if (s_thread) return;
-    if (!Cfg::Get().overlay) return;
+    if (!force && !Cfg::Get().overlay) return;
     if (!s_csInit) { InitializeCriticalSection(&s_cs); s_csInit = true; }
     InterlockedExchange(&s_stop, 0);
     s_thread = CreateThread(nullptr, 0, ThreadProc, nullptr, 0, nullptr);

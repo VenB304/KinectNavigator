@@ -176,7 +176,8 @@ struct Config
     int    keyPressMs        = 40;
 
     bool   trace             = false;   // ~15 Hz hand-signal trace to the log
-    bool   overlay           = true;    // on-screen HUD window (windowed mode only)
+    bool   overlay           = false;   // on-screen HUD window -- OFF by default (windowed
+                                        // mode only; opt in with overlay = 1 for troubleshooting)
 };
 
 namespace Cfg

@@ -195,7 +195,7 @@ int wmain(int argc, wchar_t** argv)
 
     SetConsoleCtrlHandler(CtrlHandler, TRUE);
     Recognizer::Start();
-    Overlay::Start();
+    Overlay::Start(true);   // dev tool -- always show the HUD
 
     wprintf(L"[lab] running %ls%ls -- Ctrl+C to stop\n",
             live ? L"LIVE (keys -> foreground window)" : L"(dry-run)",
