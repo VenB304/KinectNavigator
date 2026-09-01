@@ -29,19 +29,21 @@ the file (restore it / add a folder exclusion). This is a false positive; the fu
 on GitHub if you'd rather build it yourself.
 
 1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
-2. Extract this release's files into the game folder — the one with `legacy.exe` in it.
-3. Double-click **`install.bat`**. It:
+2. Extract this release anywhere (not the game folder — just somewhere handy).
+3. Double-click **`install.bat`**. It asks for your game folder — paste the path or drag the
+   folder (the one with `legacy.exe`) onto the window. Then it:
    - copies the game's real `Kinect10.dll` to `Kinect10.dll.orig-backup` (a spare),
    - renames the real `Kinect10.dll` → `Kinect10_backend.dll`,
-   - drops Skeleton Key's `Kinect10.dll` into its place.
+   - copies Skeleton Key's `Kinect10.dll` into its place.
    It refuses to run unless it sees the genuine ~15 MB runtime, so it can't double-install.
 
 Launch the game normally. A log is written to `SkeletonKey.log` in the game folder.
 
 ### Uninstall
 
-Double-click **`uninstall.bat`** in the game folder — it restores the original `Kinect10.dll`.
-Your `kinectnav.ini`, `SkeletonKey.log`, and any `skcap-*.skcap` are left in place.
+Double-click **`uninstall.bat`** (same folder as `install.bat`), point it at the game folder
+the same way — it restores the original `Kinect10.dll`. Your `kinectnav.ini`,
+`SkeletonKey.log`, and any `skcap-*.skcap` are left in place.
 
 ## 3. Playing
 

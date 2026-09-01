@@ -84,16 +84,13 @@ imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.
 
 ## Install
 
-For players, follow [`SETUP.md`](SETUP.md). In short — into the game folder (back it up first;
-`legacy.exe` is a large, unstable modded build):
+For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, then run
+`install.bat` and give it the game folder path (double-click and it prompts, or
+`install.bat "C:\path\to\game folder"`).
 
-```
-dist\install.bat "E:\LegacyOfflinePC"
-```
-
-Renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`) and drops
-the shim in its place. Refuses to run unless `Kinect10.dll` is the real ~15 MB runtime.
-`dist\uninstall.bat "<game folder>"` reverses it exactly.
+It renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`) and
+copies the shim into its place. Refuses to run unless `Kinect10.dll` is the real ~15 MB
+runtime. `uninstall.bat` reverses it exactly.
 
 The shim runs on compiled-in defaults; `kinectnav.ini` next to it overrides thresholds with no
 rebuild.
