@@ -31,13 +31,17 @@ on GitHub if you'd rather build it yourself.
 1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
 2. Extract this release anywhere — keep all the files together, and *not* inside the game
    folder.
-3. Double-click **`SkeletonKey-Setup`** (the `.vbs`; `.bat` also works). A small window opens:
+3. Double-click **`SkeletonKey-Setup`** — that's the `.vbs`; `.bat` also works, both open the
+   same window. (Don't double-click `SkeletonKey-Setup.ps1` directly — Windows opens `.ps1`
+   files for editing, not running.) A small window opens:
    - It tries to find your game folder; if it can't, click **Browse…** and pick the folder
      with `legacy.exe` in it.
-   - The status line confirms it sees the genuine ~15 MB Kinect runtime.
+   - The status line confirms it sees the genuine ~15 MB Kinect runtime, and notes whether the
+     Kinect for Windows Runtime looks installed (best-effort check — a miss doesn't block you).
    - Optionally tick **Also enable the on-screen HUD** (writes `overlay = 1`; only shows when
      the game runs windowed — see section 4).
-   - Click **Install**.
+   - Click **Install**. A **Gestures** button in the same window has the how-to-play
+     cheat-sheet if you don't want to come back to this doc.
 
 Under the hood it copies the real `Kinect10.dll` to `Kinect10.dll.orig-backup`, renames the
 real one to `Kinect10_backend.dll`, and drops Skeleton Key's `Kinect10.dll` in its place. It
@@ -50,6 +54,12 @@ Launch the game normally. A log is written to `SkeletonKey.log` in the game fold
 Open **`SkeletonKey-Setup`** again, point it at the game folder, and click **Uninstall** — it
 restores the original `Kinect10.dll`. Your `kinectnav.ini`, `SkeletonKey.log`, and any
 `skcap-*.skcap` are left in place.
+
+### Updating to a new version
+
+Extract the new release, run its `SkeletonKey-Setup`, point it at the game folder — if
+Skeleton Key is already installed there the button reads **Update** instead of Install and
+just swaps in the new `Kinect10.dll`. No need to uninstall first.
 
 ### Command line
 

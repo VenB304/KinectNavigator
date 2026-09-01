@@ -1,8 +1,8 @@
 # SkeletonKey-Setup.ps1 - windowed installer for Skeleton Key.
 #
 # Swaps the game's Kinect10.dll for the Skeleton Key shim (and back). Launched
-# flash-free by SkeletonKey-Setup.vbs / .bat. Anything fatal has to surface as a
-# MessageBox, not Write-Host.
+# flash-free by SkeletonKey-Setup.vbs / .bat. Anything fatal here must surface
+# as a MessageBox, not Write-Host.
 
 $ErrorActionPreference = 'Stop'
 
@@ -16,10 +16,11 @@ if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
     $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 }
 
-$ShimSrc     = Join-Path $ScriptDir 'Kinect10.dll'
-$StateDir    = Join-Path $env:LOCALAPPDATA 'SkeletonKey'
+$ShimSrc      = Join-Path $ScriptDir 'Kinect10.dll'
+$StateDir     = Join-Path $env:LOCALAPPDATA 'SkeletonKey'
 $LastPathFile = Join-Path $StateDir 'gamefolder.txt'
-$MIN_GENUINE = 1000000            # the real runtime is ~15 MB
+$MIN_GENUINE  = 1000000            # the real runtime is ~15 MB
+$RuntimeUrl   = 'https://www.microsoft.com/download/details.aspx?id=40277'
 
 # ---- theme (matches Legacy Downloader) ----
 $FontBase  = New-Object System.Drawing.Font('Segoe UI', 9)
@@ -32,6 +33,8 @@ $ColPrim   = [System.Drawing.Color]::FromArgb(18, 98, 200)
 $ColText   = [System.Drawing.Color]::FromArgb(30, 41, 59)
 $ColBorder = [System.Drawing.Color]::FromArgb(203, 213, 225)
 $ColMuted  = [System.Drawing.Color]::FromArgb(100, 116, 139)
+$ColWarn   = [System.Drawing.Color]::FromArgb(180, 83, 9)
+$ColOk     = [System.Drawing.Color]::FromArgb(21, 128, 61)
 
 function New-Btn([string]$Text, [int]$X, [int]$Y, [int]$W, [int]$H = 30, [bool]$Primary = $false) {
     $b = New-Object System.Windows.Forms.Button
@@ -61,12 +64,40 @@ if (-not (Test-Path -LiteralPath $ShimSrc)) {
 }
 
 # ---------------------------------------------------------------------------
+# best-effort checks
+# ---------------------------------------------------------------------------
+
+# Looks for ANY "Kinect ... Runtime/SDK" entry in the installed-programs
+# registry (both native and the 32-bit view on a 64-bit OS). This is a
+# heuristic, not a guarantee -- it only tells us an installer of that shape
+# ran at some point, never gates Install, and a miss just shows a soft note.
+function Test-KinectRuntime {
+    $roots = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    foreach ($p in $roots) {
+        try {
+            $hit = Get-ItemProperty -Path $p -ErrorAction SilentlyContinue |
+                   Where-Object { $_.DisplayName -match 'Kinect.*(Runtime|SDK)' }
+            if ($hit) { return $true }
+        } catch { }
+    }
+    return $false
+}
+function Test-GameRunning { return [bool](Get-Process -Name 'legacy' -ErrorAction SilentlyContinue) }
+
+$script:RuntimeDetected = Test-KinectRuntime
+
+# ---------------------------------------------------------------------------
 # game-folder inspection
 # ---------------------------------------------------------------------------
 function Get-State([string]$gf) {
     $r = [ordered]@{ folder = $gf; state = 'none'; detail = 'Choose your game folder.'; fs = $null }
-    if ([string]::IsNullOrWhiteSpace($gf) -or -not (Test-Path -LiteralPath $gf)) { return $r }
-
+    if ([string]::IsNullOrWhiteSpace($gf)) { return $r }
+    if (-not (Test-Path -LiteralPath $gf)) {
+        $r.detail = "That folder doesn't exist - choose your game folder."; return $r
+    }
     if (-not (Test-Path -LiteralPath (Join-Path $gf 'legacy.exe'))) {
         $r.state = 'nogame'; $r.detail = 'No legacy.exe in this folder - pick the folder that has the game in it.'
         return $r
@@ -74,7 +105,7 @@ function Get-State([string]$gf) {
     $dll     = Join-Path $gf 'Kinect10.dll'
     $backend = Join-Path $gf 'Kinect10_backend.dll'
     if (Test-Path -LiteralPath $backend) {
-        $r.state = 'installed'; $r.detail = 'Skeleton Key is already installed here.'
+        $r.state = 'installed'; $r.detail = 'Skeleton Key is installed here.'
     }
     elseif (-not (Test-Path -LiteralPath $dll)) {
         $r.state = 'nodll'; $r.detail = 'No Kinect10.dll here - is this the right folder?'
@@ -133,7 +164,7 @@ function Load-LastPath {
 # ---------------------------------------------------------------------------
 $Form = New-Object System.Windows.Forms.Form
 $Form.Text = 'Skeleton Key - Setup'
-$Form.ClientSize = New-Object System.Drawing.Size(600, 484)
+$Form.ClientSize = New-Object System.Drawing.Size(600, 534)
 $Form.StartPosition = 'CenterScreen'
 $Form.FormBorderStyle = 'FixedSingle'
 $Form.MaximizeBox = $false
@@ -159,23 +190,38 @@ $btnBrowse = New-Btn 'Browse...' 483 107 97 26
 $Form.Controls.Add($btnBrowse)
 
 $pnl = New-Object System.Windows.Forms.Panel
-$pnl.SetBounds(20, 148, 560, 116); $pnl.BackColor = $ColCard; $pnl.BorderStyle = 'FixedSingle'
+$pnl.SetBounds(20, 148, 560, 132); $pnl.BackColor = $ColCard; $pnl.BorderStyle = 'FixedSingle'
 $Form.Controls.Add($pnl)
 $lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.SetBounds(14, 12, 532, 92); $lblStatus.Font = $FontBase; $lblStatus.ForeColor = $ColText
+$lblStatus.SetBounds(14, 12, 532, 108); $lblStatus.Font = $FontBase; $lblStatus.ForeColor = $ColText
 $pnl.Controls.Add($lblStatus)
+
+$lnkRuntime = New-Object System.Windows.Forms.LinkLabel
+$lnkRuntime.SetBounds(20, 288, 560, 20); $lnkRuntime.Font = $FontBase
+$lnkRuntime.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
+$Form.Controls.Add($lnkRuntime)
+$lnkRuntime.Add_LinkClicked({ Start-Process $RuntimeUrl })
+if ($script:RuntimeDetected) {
+    $lnkRuntime.Text = 'Kinect for Windows Runtime: detected'
+    $lnkRuntime.LinkColor = $ColMuted; $lnkRuntime.ActiveLinkColor = $ColMuted; $lnkRuntime.DisabledLinkColor = $ColMuted
+    $lnkRuntime.Enabled = $false
+} else {
+    $lnkRuntime.Text = 'Kinect for Windows Runtime: not detected - click to download it'
+    $lnkRuntime.LinkColor = $ColWarn
+}
 
 $chkHud = New-Object System.Windows.Forms.CheckBox
 $chkHud.Text = 'Also enable the on-screen HUD  (writes overlay = 1; only shows when the game runs windowed)'
-$chkHud.SetBounds(20, 276, 560, 20); $chkHud.ForeColor = $ColText; $Form.Controls.Add($chkHud)
+$chkHud.SetBounds(20, 314, 560, 20); $chkHud.ForeColor = $ColText; $Form.Controls.Add($chkHud)
 
-$btnInstall   = New-Btn 'Install'   20 308 130 34 $true
-$btnUninstall = New-Btn 'Uninstall' 160 308 130 34
-$btnClose     = New-Btn 'Close'     470 308 110 34
-$Form.Controls.AddRange(@($btnInstall, $btnUninstall, $btnClose))
+$btnInstall   = New-Btn 'Install'   20 348 130 34 $true
+$btnUninstall = New-Btn 'Uninstall' 160 348 130 34
+$btnHelp      = New-Btn 'Gestures'  350 348 100 34
+$btnClose     = New-Btn 'Close'     460 348 100 34
+$Form.Controls.AddRange(@($btnInstall, $btnUninstall, $btnHelp, $btnClose))
 
 $txtLog = New-Object System.Windows.Forms.TextBox
-$txtLog.SetBounds(20, 356, 560, 112); $txtLog.Multiline = $true; $txtLog.ReadOnly = $true
+$txtLog.SetBounds(20, 396, 560, 118); $txtLog.Multiline = $true; $txtLog.ReadOnly = $true
 $txtLog.ScrollBars = 'Vertical'; $txtLog.BackColor = [System.Drawing.Color]::White; $txtLog.Font = $FontMono
 $Form.Controls.Add($txtLog)
 
@@ -200,9 +246,12 @@ function Refresh-Status {
     if ($st.fs -eq 1)     { $lines += '[ i  ]  config.xml is set to fullscreen - the HUD stays hidden unless you set FullScreen="0".' }
     elseif ($st.fs -eq 0) { $lines += '[ i  ]  config.xml is windowed - the HUD can show.' }
     $lblStatus.Text = ($lines -join "`r`n")
-    $btnInstall.Enabled   = ($st.state -eq 'genuine')
+
+    $canInstall = ($st.state -eq 'genuine' -or $st.state -eq 'installed')
+    $btnInstall.Enabled = $canInstall
+    $btnInstall.Text    = if ($st.state -eq 'installed') { 'Update' } else { 'Install' }
     $btnUninstall.Enabled = ($st.state -eq 'installed')
-    if ($st.state -eq 'genuine' -or $st.state -eq 'installed') { Save-LastPath $st.folder }
+    if ($canInstall) { Save-LastPath $st.folder }
 }
 
 $btnBrowse.Add_Click({
@@ -218,31 +267,48 @@ $txtGF.Add_TextChanged({ Refresh-Status })
 
 $btnInstall.Add_Click({
     $st = $script:CurState
-    if ($null -eq $st -or $st.state -ne 'genuine') { return }
+    if ($null -eq $st -or ($st.state -ne 'genuine' -and $st.state -ne 'installed')) { return }
     $gf  = $st.folder
     $dll = Join-Path $gf 'Kinect10.dll'
+
+    if (Test-GameRunning) {
+        Msg 'Legacy is currently running. Close the game first, then try again.' 'Warning'
+        return
+    }
     try {
-        Copy-Item -LiteralPath $dll -Destination (Join-Path $gf 'Kinect10.dll.orig-backup') -Force
-        Rename-Item -LiteralPath $dll -NewName 'Kinect10_backend.dll'
+        $isUpdate = ($st.state -eq 'installed')
+        if (-not $isUpdate) {
+            Copy-Item -LiteralPath $dll -Destination (Join-Path $gf 'Kinect10.dll.orig-backup') -Force
+            Rename-Item -LiteralPath $dll -NewName 'Kinect10_backend.dll'
+            Write-Log 'Renamed the genuine runtime to Kinect10_backend.dll (backup: Kinect10.dll.orig-backup).'
+        }
         Copy-Item -LiteralPath $ShimSrc -Destination $dll -Force
-        Write-Log 'Renamed the genuine runtime to Kinect10_backend.dll (backup: Kinect10.dll.orig-backup).'
-        Write-Log 'Installed Skeleton Key as Kinect10.dll.'
+
+        $srcLen = (Get-Item -LiteralPath $ShimSrc).Length
+        $dstLen = (Get-Item -LiteralPath $dll).Length
+        if ($dstLen -ne $srcLen) {
+            throw "Kinect10.dll copied but landed at $dstLen bytes, not $srcLen -- antivirus may have altered it. Check your antivirus quarantine / add a folder exclusion, then try again."
+        }
+        Write-Log $(if ($isUpdate) { 'Updated the installed Kinect10.dll.' } else { 'Installed Skeleton Key as Kinect10.dll.' })
+
         if ($chkHud.Checked) {
             Set-IniKey (Join-Path $gf 'kinectnav.ini') 'overlay' '1'
             Write-Log 'Set overlay = 1 in kinectnav.ini.'
         }
         Refresh-Status
+
         $extra = ''
         if ($script:CurState.fs -eq 1 -and $chkHud.Checked) {
             $extra = [Environment]::NewLine + [Environment]::NewLine +
                      'Note: set FullScreen="0" in config.xml if you want to see the HUD.'
         }
-        Msg ('Skeleton Key is installed.' + [Environment]::NewLine + [Environment]::NewLine +
-             'Launch the game normally. Stand about 2.5 m back and rest a hand near your shoulder to wake it.' + $extra) 'Information'
+        $head = if ($isUpdate) { 'Skeleton Key is updated.' } else { 'Skeleton Key is installed.' }
+        Msg ($head + [Environment]::NewLine + [Environment]::NewLine +
+             'Launch the game normally. Stand about 2.5 m back and rest a hand near your shoulder to wake it. ' +
+             "Click 'Gestures' above any time for the how-to." + $extra) 'Information'
     } catch {
         Write-Log ('ERROR: ' + $_.Exception.Message)
-        Msg ('Install failed:' + [Environment]::NewLine + $_.Exception.Message + [Environment]::NewLine + [Environment]::NewLine +
-             'If the game is running, close it and try again.') 'Error'
+        Msg ('Install failed:' + [Environment]::NewLine + $_.Exception.Message) 'Error'
         Refresh-Status
     }
 })
@@ -251,11 +317,18 @@ $btnUninstall.Add_Click({
     $st = $script:CurState
     if ($null -eq $st -or $st.state -ne 'installed') { return }
     $gf = $st.folder
+    if (Test-GameRunning) {
+        Msg 'Legacy is currently running. Close the game first, then try again.' 'Warning'
+        return
+    }
     try {
         $dll     = Join-Path $gf 'Kinect10.dll'
         $backend = Join-Path $gf 'Kinect10_backend.dll'
         if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force }
         Rename-Item -LiteralPath $backend -NewName 'Kinect10.dll'
+        if ((Get-Item -LiteralPath (Join-Path $gf 'Kinect10.dll')).Length -lt $MIN_GENUINE) {
+            throw 'Kinect10.dll is back but looks too small -- something is wrong. Check the game folder by hand.'
+        }
         $bak = Join-Path $gf 'Kinect10.dll.orig-backup'
         if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
         Write-Log 'Removed the shim and restored the genuine Kinect10.dll.'
@@ -269,12 +342,33 @@ $btnUninstall.Add_Click({
     }
 })
 
+$btnHelp.Add_Click({
+    Msg (
+        "WAKING IT UP" + [Environment]::NewLine +
+        "Rest your dominant hand near your shoulder for a moment. It sleeps again if your" + [Environment]::NewLine +
+        "arm just hangs or you dance, so it won't fire mid-routine." + [Environment]::NewLine + [Environment]::NewLine +
+        "NAVIGATING - a small + centred on your dominant shoulder" + [Environment]::NewLine +
+        "  reach out to the side ......... Left / Right" + [Environment]::NewLine +
+        "  reach up ....................... Up" + [Environment]::NewLine +
+        "  reach down-and-out ............. Down" + [Environment]::NewLine +
+        "  hold the reach ................. repeats (speeds up)" + [Environment]::NewLine +
+        "  bend the elbow / pull back ..... stops" + [Environment]::NewLine + [Environment]::NewLine +
+        "CONFIRM / BACK" + [Environment]::NewLine +
+        "  put your OTHER hand on your OTHER shoulder, then:" + [Environment]::NewLine +
+        "  reach up or right and hold ..... Enter" + [Environment]::NewLine +
+        "  reach down or left and hold .... Esc" + [Environment]::NewLine + [Environment]::NewLine +
+        "Stand about 2.5 m back, centred, facing the sensor." + [Environment]::NewLine +
+        "Full details and troubleshooting are in SETUP.md."
+    ) 'Information'
+})
+
 $btnClose.Add_Click({ $Form.Close() })
+$Form.Add_Shown({ $Form.Activate(); $Form.TopMost = $true; $Form.TopMost = $false })
 
 $seed = Load-LastPath
 if ([string]::IsNullOrWhiteSpace($seed)) {
-    foreach ($g in @('C:\LegacyOfflinePC', 'D:\LegacyOfflinePC', 'E:\LegacyOfflinePC')) {
-        if (Test-Path -LiteralPath (Join-Path $g 'legacy.exe')) { $seed = $g; break }
+    foreach ($g in @($ScriptDir, (Split-Path -Parent $ScriptDir))) {
+        if ($g -and (Test-Path -LiteralPath (Join-Path $g 'legacy.exe'))) { $seed = $g; break }
     }
 }
 $txtGF.Text = $seed
