@@ -17,7 +17,7 @@ This guide is for players. It assumes you already play Legacy with a working Kin
 
 > **Not compatible with webcam-emulator setups.** If you drive Legacy with a webcam +
 > *Legacy Sensor* (itsvexor) or anything else that already replaces `Kinect10.dll` with a
-> fake one, Skeleton Key can't sit on top of it — `install.bat` needs the genuine ~15 MB
+> fake one, Skeleton Key can't sit on top of it — the installer needs the genuine ~15 MB
 > Microsoft runtime and refuses to run otherwise. You need a real Kinect v1 sensor.
 
 ## 2. Install
@@ -29,21 +29,33 @@ the file (restore it / add a folder exclusion). This is a false positive; the fu
 on GitHub if you'd rather build it yourself.
 
 1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
-2. Extract this release anywhere (not the game folder — just somewhere handy).
-3. Double-click **`install.bat`**. It asks for your game folder — paste the path or drag the
-   folder (the one with `legacy.exe`) onto the window. Then it:
-   - copies the game's real `Kinect10.dll` to `Kinect10.dll.orig-backup` (a spare),
-   - renames the real `Kinect10.dll` → `Kinect10_backend.dll`,
-   - copies Skeleton Key's `Kinect10.dll` into its place.
-   It refuses to run unless it sees the genuine ~15 MB runtime, so it can't double-install.
+2. Extract this release anywhere — keep all the files together, and *not* inside the game
+   folder.
+3. Double-click **`SkeletonKey-Setup`** (the `.vbs`; `.bat` also works). A small window opens:
+   - It tries to find your game folder; if it can't, click **Browse…** and pick the folder
+     with `legacy.exe` in it.
+   - The status line confirms it sees the genuine ~15 MB Kinect runtime.
+   - Optionally tick **Also enable the on-screen HUD** (writes `overlay = 1`; only shows when
+     the game runs windowed — see section 4).
+   - Click **Install**.
+
+Under the hood it copies the real `Kinect10.dll` to `Kinect10.dll.orig-backup`, renames the
+real one to `Kinect10_backend.dll`, and drops Skeleton Key's `Kinect10.dll` in its place. It
+won't run over an existing install or over anything that isn't the genuine runtime.
 
 Launch the game normally. A log is written to `SkeletonKey.log` in the game folder.
 
 ### Uninstall
 
-Double-click **`uninstall.bat`** (same folder as `install.bat`), point it at the game folder
-the same way — it restores the original `Kinect10.dll`. Your `kinectnav.ini`,
-`SkeletonKey.log`, and any `skcap-*.skcap` are left in place.
+Open **`SkeletonKey-Setup`** again, point it at the game folder, and click **Uninstall** — it
+restores the original `Kinect10.dll`. Your `kinectnav.ini`, `SkeletonKey.log`, and any
+`skcap-*.skcap` are left in place.
+
+### Command line
+
+Prefer a terminal? `install.bat` / `uninstall.bat` do the same thing — double-click and they
+prompt for the game folder, or pass it as an argument:
+`install.bat "C:\path\to\game folder"`.
 
 ## 3. Playing
 

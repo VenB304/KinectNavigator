@@ -84,13 +84,13 @@ imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.
 
 ## Install
 
-For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, then run
-`install.bat` and give it the game folder path (double-click and it prompts, or
-`install.bat "C:\path\to\game folder"`).
+For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the
+release, and run **`SkeletonKey-Setup`** — a small window that finds the game folder, checks
+it, and installs on one click. (`install.bat` / `uninstall.bat` do the same from a terminal.)
 
-It renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`) and
-copies the shim into its place. Refuses to run unless `Kinect10.dll` is the real ~15 MB
-runtime. `uninstall.bat` reverses it exactly.
+Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
+and copies the shim into its place; uninstalling reverses it. Neither runs unless it sees the
+real ~15 MB runtime.
 
 The shim runs on compiled-in defaults; `kinectnav.ini` next to it overrides thresholds with no
 rebuild.

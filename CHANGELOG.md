@@ -41,9 +41,10 @@ browse the song list and start a routine without a keyboard or phone.
 
 ### Install
 
-Extract the release zip into the game folder and run `install.bat`. It renames the genuine
-`Kinect10.dll` to `Kinect10_backend.dll` (keeping a `.orig-backup`) and drops the shim in.
-`uninstall.bat` reverses it. Full walkthrough in [`SETUP.md`](SETUP.md).
+Extract the release and run **`SkeletonKey-Setup`** — a small windowed installer that locates
+the game folder, verifies the genuine Kinect runtime, and does the DLL swap on one click
+(optionally enabling the HUD). `install.bat` / `uninstall.bat` do the same from a terminal.
+Full walkthrough in [`SETUP.md`](SETUP.md).
 
 **Requires** a real Kinect v1 sensor + the *Kinect for Windows Runtime v1.8*. Not compatible
 with webcam-emulator setups. The DLL is unsigned — your antivirus may flag it (false

@@ -30,12 +30,15 @@ if %SZ% GEQ 1000000 (
 if exist "%STAGE%" rmdir /s /q "%STAGE%"
 mkdir "%STAGE%"
 
-copy /y "%HERE%Kinect10.dll"           "%STAGE%\" >nul
-copy /y "%HERE%install.bat"            "%STAGE%\" >nul
-copy /y "%HERE%uninstall.bat"          "%STAGE%\" >nul
-copy /y "%HERE%record.bat"             "%STAGE%\" >nul
-copy /y "%HERE%kinectnav.example.ini"  "%STAGE%\" >nul
-copy /y "%ROOT%\SETUP.md"             "%STAGE%\" >nul
+copy /y "%HERE%Kinect10.dll"            "%STAGE%\" >nul
+copy /y "%HERE%SkeletonKey-Setup.ps1"   "%STAGE%\" >nul
+copy /y "%HERE%SkeletonKey-Setup.vbs"   "%STAGE%\" >nul
+copy /y "%HERE%SkeletonKey-Setup.bat"   "%STAGE%\" >nul
+copy /y "%HERE%install.bat"             "%STAGE%\" >nul
+copy /y "%HERE%uninstall.bat"           "%STAGE%\" >nul
+copy /y "%HERE%record.bat"              "%STAGE%\" >nul
+copy /y "%HERE%kinectnav.example.ini"   "%STAGE%\" >nul
+copy /y "%ROOT%\SETUP.md"              "%STAGE%\" >nul
 
 if exist "%OUT%" del "%OUT%"
 powershell -NoProfile -Command "Compress-Archive -Path '%STAGE%\*' -DestinationPath '%OUT%' -Force"
@@ -49,6 +52,7 @@ rmdir /s /q "%STAGE%"
 echo.
 echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
-echo Contents: Kinect10.dll, install.bat, uninstall.bat, record.bat,
+echo Contents: Kinect10.dll, SkeletonKey-Setup.ps1/.vbs/.bat,
+echo           install.bat, uninstall.bat, record.bat,
 echo           kinectnav.example.ini, SETUP.md
 endlocal
