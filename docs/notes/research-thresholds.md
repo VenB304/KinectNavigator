@@ -1,6 +1,6 @@
 # Research doc — threshold values (extracted from the inline images)
 
-`docs/Kinect Gesture Navigation UI Design.md` renders every number as a base64 PNG
+`docs/research/Kinect Gesture Navigation UI Design.md` renders every number as a base64 PNG
 (`[image1]`..`[image19]`), so none of them are greppable. Decoded here for reference.
 Source of truth is still the research doc's prose; this is just the machine-unreadable bits.
 

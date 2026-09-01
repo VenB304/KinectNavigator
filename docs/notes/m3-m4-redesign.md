@@ -1,7 +1,7 @@
 # M3 / M4 redesign — post-research draft
 
 Status: **draft for review.** Not yet folded into `docs/build-plan.html` (that becomes plan
-v0.7 once the direction is signed off). Input: `docs/Kinect Gesture Navigation UI Design.md`
+v0.7 once the direction is signed off). Input: `docs/research/Kinect Gesture Navigation UI Design.md`
 (Gemini Deep Research) + `docs/notes/research-thresholds.md`.
 
 ## Why the model changes

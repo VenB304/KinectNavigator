@@ -1,8 +1,9 @@
 # Recognition-architecture research — digest (Deep Research pass 3)
 
-Source: `docs/Kinect Gesture Recognition Architecture.md` (Gemini Deep Research, 2026-09-01).
+Source: `docs/research/Kinect Gesture Recognition Architecture.md` (Gemini Deep Research, 2026-09-01).
 Brief that produced it: `docs/notes/research-brief-2026-09-01-movement-modeling.md`.
-Raw export (HTML + formula PNGs): `docs/Kinect Gesture Recognition Architecture/`.
+Raw HTML export + formula PNGs: not in the repo (redundant with the cleaned `.md`); in git
+history before this cleanup, and kept locally.
 
 ## Verdict / trust level
 

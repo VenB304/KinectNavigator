@@ -1,6 +1,6 @@
 # Back gesture + dance-segmentation — research digest
 
-Source: `docs/Kinect Gesture Design and Segmentation.md` (Gemini Deep Research, 2026-09-01).
+Source: `docs/research/Kinect Gesture Design and Segmentation.md` (Gemini Deep Research, 2026-09-01).
 Numbers are again mostly locked in rendered-formula images; the legible/prose ones are below.
 Treat every number as provisional (same caveats as the first research doc).
 

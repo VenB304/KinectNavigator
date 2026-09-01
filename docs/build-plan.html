@@ -498,7 +498,7 @@
     <span><span class="dot">&#9679;</span> <b>TESTING</b></span>
     <span><b>v0.9</b> &mdash; air d-pad shipped</span>
     <span><b>M1</b> &check; <b>M2</b> &check; <b>harness</b> &check; <b>Lab</b> &check; <b>swipe model</b> &check; <b>air d-pad</b> &rarr; live</span>
-    <span>next: <b>player-facing overlay, fullscreen handling, tuning from real sessions</b></span>
+    <span>next: <b>tuning from real-play-space sessions</b></span>
   </div>
 
   <ul class="toc">
@@ -553,7 +553,7 @@
       <li><b>The recogniser thread</b> picks the navigator body (closest + centred tracked skeleton, sticky by tracking ID for 500&nbsp;ms), normalises joints by torso length (<code>|SHOULDER_CENTER &minus; HIP_CENTER|</code>, ~0.41&nbsp;m), runs the recogniser, and taps keys via <code>SendInput</code> &mdash; only while <code>Legacy.exe</code> is foreground. All timing is off the sensor's <code>liTimeStamp</code>, never wall clock, so replay-at-speed is faithful.</li>
       <li><b>Uninstall</b> renames the genuine runtime back, byte-identical. <code>dist/install.bat</code> / <code>uninstall.bat</code> do the rename dance with a 15&nbsp;MB size guard and an <code>.orig-backup</code>.</li>
     </ul>
-    <p>Verified on every build: <code>dumpbin</code> shows exactly the 8 <code>Nui*</code> ordinals (base 5), machine x86, imports <code>KERNEL32 + USER32 + GDI32 + SHELL32</code> only (GDI32 is the dev overlay; SHELL32 is <code>SHQueryUserNotificationState</code>, the display-mode probe), and no self-import of <code>Kinect10.dll</code>.</p>
+    <p>Verified on every build: <code>dumpbin</code> shows exactly the 8 <code>Nui*</code> ordinals (base 5), machine x86, imports <code>KERNEL32 + USER32 + GDI32 + SHELL32</code> only (GDI32 is the on-screen HUD; SHELL32 is <code>SHQueryUserNotificationState</code>, the display-mode probe), and no self-import of <code>Kinect10.dll</code>.</p>
   </section>
 
   <section id="dpad">
@@ -659,7 +659,7 @@
       <li><span class="k"><span class="sev sev--watch">watch</span></span><span class="v"><b>Legacy.exe crashes on its own</b><span>Chronic crash-on-exit (<code>+0x3CE1B0</code>) and a recurring mid-session AV at <code>+0x7500F0</code> around song&harr;menu transitions &mdash; both confirmed in <code>legacy.exe.*.dmp</code>, faulting module <code>legacy.exe</code>, not our DLL. Keep sessions short; tune offline.</span></span></li>
       <li><span class="k"><span class="sev sev--med">med</span></span><span class="v"><b>Kinect v1 at ~2&nbsp;m in a cluttered room</b><span>Hands mostly inferred, &plusmn;0.1&ndash;0.3&nbsp;m. Shoulder / hip / head rock-solid; elbow moderate; hand Z unusable. The d-pad leans entirely on the reliable joints and on ratios/angles, not absolute distal position.</span></span></li>
       <li><span class="k"><span class="sev sev--med">med</span></span><span class="v"><b>Play space still unknown</b><span>All tuning is in a cramped test room &mdash; a pessimistic floor. Numbers may shift for a real living room; every threshold is an ini key.</span></span></li>
-      <li><span class="k"><span class="sev sev--low">low</span></span><span class="v"><b>Exclusive-fullscreen hides the overlay</b><span>Run the game windowed / borderless. Handling this cleanly is a next-step item.</span></span></li>
+      <li><span class="k"><span class="sev sev--ok">ok</span></span><span class="v"><b>Exclusive-fullscreen hides the HUD</b><span>Investigated: <code>FullScreen="1"</code> in this mod is true DXGI exclusive fullscreen, which a layered window can't draw over. By design the HUD is windowed / borderless only; navigation still works in fullscreen. <code>GameProbeTick</code> logs the display mode (<code>d3dfs=1</code>) and <code>SETUP.md</code> states the requirement.</span></span></li>
       <li><span class="k"><span class="sev sev--ok">ok</span></span><span class="v"><b>Accidental fires while dancing</b><span>Addressed: the clutch sleeps after 1.5&nbsp;s idle, the straight-down dead wedge ignores a hanging arm, and Esc needs the deliberate hand-on-shoulder pose.</span></span></li>
     </ul>
   </section>
@@ -668,11 +668,14 @@
     <p class="eyebrow">From here</p>
     <h2>Next steps</h2>
     <ul class="next">
-      <li><b>Player-facing overlay</b> &mdash; a minimal HUD (current state + action feedback only, no dev geometry/numbers), separate from the dev d-pad viz.</li>
-      <li><b>Fullscreen / borderless</b> &mdash; detect exclusive fullscreen and either warn or fall back gracefully; document the windowed requirement in setup.</li>
       <li><b>Tune from real sessions</b> &mdash; park radius, wedge angles, the clutch timeout, and the command dwells against captures from where it's actually played.</li>
-      <li><b>Installer + setup doc</b> for handing the build to friends.</li>
       <li>Revisit the swipe fallback's remaining dead knobs if anyone actually uses <code>nav_model = swipe</code>.</li>
+    </ul>
+    <p class="eyebrow" style="margin-top:1.5rem">Done since v0.9</p>
+    <ul class="next">
+      <li><b>On-screen HUD</b> &mdash; the d-pad overlay reworked into a compact dark panel (status line, d-pad glyph, distance, command gate, action flash, one diagnostic line). Verified in-game.</li>
+      <li><b>Fullscreen handling</b> &mdash; display-mode probe in <code>GameProbeTick</code>; windowed requirement documented. See Risks.</li>
+      <li><b>Installer + <code>SETUP.md</code></b> &mdash; player-facing setup guide; <code>dist/package.cmd</code> builds the release zip.</li>
     </ul>
   </section>
 

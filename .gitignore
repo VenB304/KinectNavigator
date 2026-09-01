@@ -24,6 +24,9 @@ ipch/
 Legacy Sensor by itsvexor*/
 *.zip
 
+# Deep Research raw exports -- keep only the cleaned .md in docs/research/
+docs/Kinect Gesture */
+
 # runtime artifacts
 SkeletonKey.log
 
