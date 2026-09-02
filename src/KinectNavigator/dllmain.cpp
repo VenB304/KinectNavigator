@@ -4,6 +4,7 @@
 #include "recognizer.h"
 #include "recorder.h"
 #include "log.h"
+#include "version.h"
 
 BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
 {
@@ -14,7 +15,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
         DisableThreadLibraryCalls(hInst);
         // No LoadLibrary / thread creation here -- that happens lazily via
         // Backend::Ensure() on the first export call, outside the loader lock.
-        LogLine("==== Skeleton Key attached  (pid=%lu) ====", GetCurrentProcessId());
+        LogLine("==== KinectNavigator v%s attached  (pid=%lu) ====", KN_VER_STRING, GetCurrentProcessId());
         break;
 
     case DLL_PROCESS_DETACH:
@@ -26,7 +27,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst, DWORD reason, LPVOID reserved)
             // the OS reclaim everything.
             break;
         }
-        LogLine("==== Skeleton Key detaching (FreeLibrary) ====");
+        LogLine("==== KinectNavigator detaching (FreeLibrary) ====");
         Recognizer::Stop();
         Recorder::Close();
         Backend::Shutdown();

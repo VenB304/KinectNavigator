@@ -1,4 +1,4 @@
-<title>Skeleton Key</title>
+<title>KinectNavigator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -458,7 +458,7 @@
   <header class="hero">
     <div>
       <p class="eyebrow">Build plan &middot; v0.9 &middot; 2026-09-01</p>
-      <h1>Skeleton Key</h1>
+      <h1>KinectNavigator</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
     <div class="hero-figure" aria-hidden="true">
@@ -517,7 +517,7 @@
   <section id="what">
     <p class="eyebrow">The idea</p>
     <h2>Pose in, keystroke out</h2>
-    <p class="lead">The <em>Just&nbsp;Dance Legacy Offline PC</em> menus already take <kbd>&larr;&uarr;&rarr;&darr;</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>. Skeleton Key watches the Kinect skeleton the game is <em>already</em> receiving, recognises a small set of deliberate arm poses, and synthesises those exact keys &mdash; so a dancer can pick a song, start it, and back out without a keyboard or phone.</p>
+    <p class="lead">The <em>Just&nbsp;Dance Legacy Offline PC</em> menus already take <kbd>&larr;&uarr;&rarr;&darr;</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>. KinectNavigator watches the Kinect skeleton the game is <em>already</em> receiving, recognises a small set of deliberate arm poses, and synthesises those exact keys &mdash; so a dancer can pick a song, start it, and back out without a keyboard or phone.</p>
     <p>It ships as one drop-in <code>Kinect10.dll</code> that sits <strong>between</strong> the game and the real Kinect runtime. It adds a feature; it replaces nothing.</p>
   </section>
 
@@ -539,7 +539,7 @@
       <div class="arrow">&darr;</div>
 
       <div class="node node--span node--key">
-        <span class="tag">Skeleton Key &mdash; our Kinect10.dll</span>
+        <span class="tag">KinectNavigator &mdash; our Kinect10.dll</span>
         forwards 8 ordinals &nbsp;&bull;&nbsp; taps flat export <code>#17 NuiSkeletonGetNextFrame</code> &nbsp;&bull;&nbsp; recogniser thread &rarr; <code>SendInput</code>
       </div>
       <div class="arrow">&darr;</div>
@@ -582,7 +582,7 @@
     <p>Three independent guards, and a relaxed arm fails all of them: it's outside the park box but points straight <em>down</em> (dead wedge, so no wedge is entered); the clutch disarms after 1.5&nbsp;s of that; and Esc additionally can't fire at all without the deliberate hand-on-shoulder pose.</p>
 
     <h3>On-screen HUD</h3>
-    <p>A layered click-through GDI window &mdash; a compact dark panel, top-left: a status line (<code>ASLEEP</code>&nbsp;/&nbsp;<code>READY</code>&nbsp;/&nbsp;<code>NAVIGATING</code>&nbsp;/&nbsp;<code>COMMAND</code>&nbsp;/&nbsp;<code>STEP&nbsp;BACK</code>), the d-pad glyph with the live wedge lit and a hand marker (grey&nbsp;parked&nbsp;/&nbsp;cyan&nbsp;nav&nbsp;/&nbsp;magenta&nbsp;command), heading&nbsp;/&nbsp;distance, the command-gate bar, a CONFIRM/BACK dwell bar, one dim diagnostic line, and a centre-screen action flash. Scales off screen height. <strong>Off by default</strong> (<code>overlay = 1</code> to opt in) &mdash; a troubleshooting aid, windowed / borderless only. <code>SkeletonKeyLab</code> and <code>SkeletonKeyReplay&nbsp;--overlay</code> force it on. <code>trace = 1</code> also logs a <code>dpad[]</code> line ~15&nbsp;Hz.</p>
+    <p>A layered click-through GDI window &mdash; a compact dark panel, top-left: a status line (<code>ASLEEP</code>&nbsp;/&nbsp;<code>READY</code>&nbsp;/&nbsp;<code>NAVIGATING</code>&nbsp;/&nbsp;<code>COMMAND</code>&nbsp;/&nbsp;<code>STEP&nbsp;BACK</code>), the d-pad glyph with the live wedge lit and a hand marker (grey&nbsp;parked&nbsp;/&nbsp;cyan&nbsp;nav&nbsp;/&nbsp;magenta&nbsp;command), heading&nbsp;/&nbsp;distance, the command-gate bar, a CONFIRM/BACK dwell bar, one dim diagnostic line, and a centre-screen action flash. Scales off screen height. <strong>Off by default</strong> (<code>overlay = 1</code> to opt in) &mdash; a troubleshooting aid, windowed / borderless only. <code>KinectNavigatorLab</code> and <code>KinectNavigatorReplay&nbsp;--overlay</code> force it on. <code>trace = 1</code> also logs a <code>dpad[]</code> line ~15&nbsp;Hz.</p>
   </section>
 
   <section id="swipe">
@@ -634,8 +634,8 @@
     <h2>Three ways to test without the game</h2>
     <p>The game crashes on its own every ~30&ndash;120&nbsp;s, so the loop is: capture short real sessions &rarr; tune offline &rarr; brief in-game confirmations.</p>
     <ul class="steps">
-      <li><b>SkeletonKeyReplay</b> &mdash; <code>record.flag</code> beside the shim appends every tapped frame to <code>skcap-*.skcap</code>; the replay exe feeds a capture back through the <em>same</em> <code>framebuffer</code>&nbsp;+&nbsp;<code>recognizer</code>&nbsp;+&nbsp;<code>gestures</code> the DLL ships. <code>--step</code> is fast and lossless; a <code>kinectnav.ini</code> beside it overrides thresholds with no rebuild.</li>
-      <li><b>SkeletonKeyLab</b> &mdash; opens the Kinect directly and pumps live frames into the same pipeline, no game. Real jitter, real inferred-hand behaviour, zero crashes, hot-editable ini. <code>--live</code> injects keys, <code>--record</code> banks a capture.</li>
+      <li><b>KinectNavigatorReplay</b> &mdash; <code>record.flag</code> beside the shim appends every tapped frame to <code>skcap-*.skcap</code>; the replay exe feeds a capture back through the <em>same</em> <code>framebuffer</code>&nbsp;+&nbsp;<code>recognizer</code>&nbsp;+&nbsp;<code>gestures</code> the DLL ships. <code>--step</code> is fast and lossless; a <code>kinectnav.ini</code> beside it overrides thresholds with no rebuild.</li>
+      <li><b>KinectNavigatorLab</b> &mdash; opens the Kinect directly and pumps live frames into the same pipeline, no game. Real jitter, real inferred-hand behaviour, zero crashes, hot-editable ini. <code>--live</code> injects keys, <code>--record</code> banks a capture.</li>
       <li><b>Synthetic suite</b> (<code>tools/synth/synth_skcap.py</code>) &mdash; generates valid <code>.skcap</code> files from scripted hand paths on a rock-steady torso, replays each, and PASS/FAILs against expected key tallies. 21 cases incl. the d-pad set (park / idle-rest / each wedge / command / clutch). The fast regression gate &mdash; must stay green on every change.</li>
     </ul>
   </section>
@@ -680,7 +680,7 @@
   </section>
 
   <footer>
-    Skeleton Key &mdash; build plan v0.9, 1 Sep 2026. Proxy DLL + skeleton tap done and hardware-verified; Replay / SkeletonKeyLab / synthetic-suite harnesses done. Primary recogniser is the postural <b>air d-pad</b> (<code>nav_model = extend</code>); the consolidated swipe model stays as <code>nav_model = swipe</code>. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
+    KinectNavigator &mdash; build plan v0.9, 1 Sep 2026. Proxy DLL + skeleton tap done and hardware-verified; Replay / KinectNavigatorLab / synthetic-suite harnesses done. Primary recogniser is the postural <b>air d-pad</b> (<code>nav_model = extend</code>); the consolidated swipe model stays as <code>nav_model = swipe</code>. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
   </footer>
 
 </div>

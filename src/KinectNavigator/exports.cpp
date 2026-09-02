@@ -1,8 +1,8 @@
-// Skeleton Key -- Milestone 1 (passthrough proxy)
+// KinectNavigator -- Milestone 1 (passthrough proxy)
 //
 // The eight functions Legacy.exe imports from Kinect10.dll by ordinal.
 // Each one lazily loads the renamed genuine runtime, forwards the call
-// unchanged, and appends a line to SkeletonKey.log. Nothing is intercepted
+// unchanged, and appends a line to KinectNavigator.log. Nothing is intercepted
 // or modified yet -- M1 exists only to prove the DLL-replacement hook and
 // to capture the real call sequence.
 //

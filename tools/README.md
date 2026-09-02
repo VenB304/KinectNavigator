@@ -20,31 +20,31 @@ Everything here runs the **same** `framebuffer.cpp` / `recognizer.cpp` / `gestur
    (drops `record.flag` next to the shim; `record.bat "<folder>" off` disarms it)
 
 2. `dist\install.bat "<game folder>"`, launch, move in front of the sensor. The shim appends
-   `skcap-<timestamp>.skcap` to the game folder and notes the name in `SkeletonKey.log`. The
+   `skcap-<timestamp>.skcap` to the game folder and notes the name in `KinectNavigator.log`. The
    game usually crashes before you're done — fine, the capture just ends early.
 
 3. Move the `.skcap` into `tools\captures\` (git-ignored).
 
-`.skcap` = a 24-byte header (`Recorder::Header`, `src/SkeletonKey/recorder.h`) then raw
+`.skcap` = a 24-byte header (`Recorder::Header`, `src/KinectNavigator/recorder.h`) then raw
 `NUI_SKELETON_FRAME` records. Both sides `static_assert(sizeof(NUI_SKELETON_FRAME) == 2664)`,
 so a struct-layout drift fails the build instead of replaying garbage. ~2.7 KB/frame ≈
 5 MB/min.
 
 ---
 
-## Replay — `SkeletonKeyReplay.exe`
+## Replay — `KinectNavigatorReplay.exe`
 
 Feeds a capture through the real pipeline, echoing recogniser output to the terminal and to
-`SkeletonKey.log`. Key injection is forced to dry-run — nothing leaves the tool.
+`KinectNavigator.log`. Key injection is forced to dry-run — nothing leaves the tool.
 
 ```
-SkeletonKeyReplay capture.skcap --step         publish, wait for the recogniser, repeat
+KinectNavigatorReplay capture.skcap --step         publish, wait for the recogniser, repeat
                                                -> fast AND lossless: THE mode for tuning
-SkeletonKeyReplay capture.skcap --speed 1      real time, paced from frame.liTimeStamp
-SkeletonKeyReplay capture.skcap --speed 4      4x
-SkeletonKeyReplay capture.skcap --speed 0      unpaced (recogniser drops frames)
-SkeletonKeyReplay capture.skcap --loop 3       play it 3x back to back
-SkeletonKeyReplay capture.skcap --overlay      show the real on-screen HUD against the
+KinectNavigatorReplay capture.skcap --speed 1      real time, paced from frame.liTimeStamp
+KinectNavigatorReplay capture.skcap --speed 4      4x
+KinectNavigatorReplay capture.skcap --speed 0      unpaced (recogniser drops frames)
+KinectNavigatorReplay capture.skcap --loop 3       play it 3x back to back
+KinectNavigatorReplay capture.skcap --overlay      show the real on-screen HUD against the
                                                capture (forces wall-clock pacing; holds the
                                                window on the last frame until you press Enter)
 ```
@@ -55,7 +55,7 @@ replay actually runs.
 
 ### Tuning without rebuilding
 
-Drop a `kinectnav.ini` next to `SkeletonKeyReplay.exe` (template:
+Drop a `kinectnav.ini` next to `KinectNavigatorReplay.exe` (template:
 `dist\kinectnav.example.ini`) to override thresholds. `trace = 1` adds a ~15 Hz signal line
 to the log:
 
@@ -66,16 +66,16 @@ plus `Gesture[..]:` lines on every emit. Edit, re-run, read — no build step.
 
 ---
 
-## Live, no game — `SkeletonKeyLab.exe`
+## Live, no game — `KinectNavigatorLab.exe`
 
 Opens the Kinect directly and pumps frames into the same recogniser. Lets you feel the
 gestures on a live sensor without the crash-prone game. Needs the **Kinect for Windows
 Runtime/SDK 1.8** and the sensor powered.
 
 ```
-SkeletonKeyLab               recogniser only, on-screen HUD, no key injection
-SkeletonKeyLab --live        also inject keys (only while the Lab console is focused)
-SkeletonKeyLab --record      write a skcap-*.skcap next to the exe
+KinectNavigatorLab               recogniser only, on-screen HUD, no key injection
+KinectNavigatorLab --live        also inject keys (only while the Lab console is focused)
+KinectNavigatorLab --record      write a skcap-*.skcap next to the exe
 ```
 
 `kinectnav.ini` next to the exe overrides thresholds, same as replay.
@@ -88,7 +88,7 @@ Generates synthetic `.skcap` files (steady torso + a scripted hand path) and rep
 asserting the recogniser's emit tally against an expected count. No Kinect, no recording.
 
 ```
-python tools/synth/synth_skcap.py --run "C:/Github/KinectNavigator/dist/SkeletonKeyReplay.exe"
+python tools/synth/synth_skcap.py --run "C:/Github/KinectNavigator/dist/KinectNavigatorReplay.exe"
 ```
 
 Covers idle / the four d-pad directions / command Enter+Esc / swipe L-R-U-D / confirm-hold /

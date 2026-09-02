@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 
-rem  Skeleton Key uninstaller -- reverses install.bat.
+rem  KinectNavigator uninstaller -- reverses install.bat.
 rem    - double-click it, or
 rem    - uninstall.bat "C:\path\to\your game folder"
 
@@ -26,13 +26,13 @@ if not exist "%GAME%\Kinect10_backend.dll" (
     goto done
 )
 
-echo Removing Skeleton Key from "%GAME%"
+echo Removing KinectNavigator from "%GAME%"
 if exist "%GAME%\Kinect10.dll" del "%GAME%\Kinect10.dll"
 ren "%GAME%\Kinect10_backend.dll" "Kinect10.dll"
 if exist "%GAME%\Kinect10.dll.orig-backup" del "%GAME%\Kinect10.dll.orig-backup"
 
 echo Done. Genuine Kinect10.dll restored.
-echo   ^(kinectnav.ini, SkeletonKey.log and any skcap-*.skcap were left in place^)
+echo   ^(kinectnav.ini, KinectNavigator.log and any skcap-*.skcap were left in place^)
 
 :done
 echo.

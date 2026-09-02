@@ -35,10 +35,10 @@ namespace Backend
             LogLine("Backend: LoadLibrary FAILED (err=%lu) -- forwards will return E_FAIL",
                     GetLastError());
             MessageBoxW(nullptr,
-                        L"Skeleton Key could not load Kinect10_backend.dll.\n\n"
+                        L"KinectNavigator could not load Kinect10_backend.dll.\n\n"
                         L"Run dist\\install.bat in the game folder so the genuine "
                         L"Kinect10.dll is renamed to Kinect10_backend.dll.",
-                        L"Skeleton Key", MB_ICONERROR | MB_OK);
+                        L"KinectNavigator", MB_ICONERROR | MB_OK);
             return TRUE;
         }
         LogLine("Backend: loaded at %p", reinterpret_cast<void*>(s_lib));

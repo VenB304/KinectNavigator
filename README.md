@@ -1,4 +1,4 @@
-# KinectNavigator — "Skeleton Key"
+# KinectNavigator
 
 Hands-free menu navigation for the Just Dance **Legacy Offline PC** mod, driven by Kinect v1
 skeleton poses — so a dancer can browse the song list and start a routine without touching a
@@ -11,11 +11,12 @@ Design doc: [`docs/build-plan.html`](docs/build-plan.html) · Setup guide (for p
 > and Gemini Deep Research. `docs/notes/` are the raw session hand-offs and tuning logs, and
 > `docs/research/` holds the (AI-generated, lightly verified) background research passes —
 > kept for transparency, not as polished documentation. The code, the design decisions, and
-> every in-game test are real.
+> every in-game test are real. Those older notes still call the project *Skeleton Key*, its
+> working title before the rename — same project.
 
 ## How it works
 
-Skeleton Key is a single drop-in `Kinect10.dll` that sits **between** the game and the real
+KinectNavigator is a single drop-in `Kinect10.dll` that sits **between** the game and the real
 Kinect runtime. It exports the eight `Nui*` ordinals `legacy.exe` imports, forwards every call
 to a renamed `Kinect10_backend.dll` (the genuine Microsoft runtime — or a webcam emulator's
 fake DLL), and taps the skeleton frame on its way past. A background thread turns hand pose
@@ -31,7 +32,7 @@ One is active at a time — pick with `nav_model` in `kinectnav.ini` (see
 
 ### `extend` — air d-pad (default)
 
-![Skeleton Key gestures](docs/pictos/gesture-sheet.png)
+![KinectNavigator gestures](docs/pictos/gesture-sheet.png)
 
 A virtual d-pad centred on your dominant **shoulder**. No swiping, no timing windows.
 
@@ -58,7 +59,7 @@ default** — it's a troubleshooting aid; enable it with `overlay = 1` in `kinec
 
 The overlay is a layered window — **exclusive-fullscreen DirectX hides it**. To see it, run the
 game windowed or borderless (`<Screen FullScreen="0" />` in the game's `config.xml`).
-Navigation works the same either way. `SkeletonKeyLab` and `SkeletonKeyReplay --overlay` always
+Navigation works the same either way. `KinectNavigatorLab` and `KinectNavigatorReplay --overlay` always
 show it (dev tools).
 
 ## Build
@@ -71,15 +72,15 @@ are vendored in `nui_types.h`).
 build.cmd
 ```
 
-or `msbuild src\SkeletonKey.sln /p:Configuration=Release /p:Platform=Win32`.
+or `msbuild src\KinectNavigator.sln /p:Configuration=Release /p:Platform=Win32`.
 
 Outputs to `build\Win32\Release\` (also copied to `dist\`):
 
 | File | What |
 |---|---|
 | `Kinect10.dll` | the shim |
-| `SkeletonKeyReplay.exe` | offline replay of a captured session (see `tools/README.md`) |
-| `SkeletonKeyLab.exe` | run the recogniser live off the Kinect, without the game |
+| `KinectNavigatorReplay.exe` | offline replay of a captured session (see `tools/README.md`) |
+| `KinectNavigatorLab.exe` | run the recogniser live off the Kinect, without the game |
 
 A build must keep `dumpbin` clean: exactly the 8 `Nui*` ordinals (base 5), machine x86,
 imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.dll`.
@@ -87,7 +88,7 @@ imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.
 ## Install
 
 For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the
-release, and run **`SkeletonKey-Setup`** — a small window that finds the game folder, checks
+release, and run **`KinectNavigator-Setup`** — a small window that finds the game folder, checks
 it, and installs on one click. (`install.bat` / `uninstall.bat` do the same from a terminal.)
 
 Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
@@ -106,7 +107,7 @@ a zero-keystroke capture session crashed too). So don't tune live:
 
 1. `dist\record.bat "<game folder>"` to arm capture, play a short session — the shim writes
    `skcap-<timestamp>.skcap` into the game folder.
-2. `SkeletonKeyReplay.exe <file>.skcap --step` replays it through the **same**
+2. `KinectNavigatorReplay.exe <file>.skcap --step` replays it through the **same**
    `framebuffer` / `recognizer` / `gestures` code the DLL ships, echoing recogniser output.
    `--overlay` shows the real HUD against the capture (no game, no Kinect).
 3. Edit `kinectnav.ini` next to the exe, re-run. `trace = 1` adds a ~15 Hz signal log.
@@ -116,9 +117,9 @@ a zero-keystroke capture session crashed too). So don't tune live:
 ## Layout
 
 ```
-src/SkeletonKey/        the shim DLL
-src/SkeletonKeyReplay/  offline replay tool
-src/SkeletonKeyLab/     live-Kinect recogniser tool (no game)
+src/KinectNavigator/        the shim DLL
+src/KinectNavigatorReplay/  offline replay tool
+src/KinectNavigatorLab/     live-Kinect recogniser tool (no game)
 dist/                   install / uninstall / record / package scripts, example config
 docs/                   design doc, field notes (docs/notes/), research digests (docs/research/)
 tools/                  replay-harness docs + the synthetic-capture regression suite
@@ -128,7 +129,7 @@ build/                  build output (git-ignored)
 ## Repo hygiene
 
 Git-ignored: `build/`, built binaries in `dist/`, `*.skcap` / `tools/captures/`,
-`record.flag`, `kinectnav.ini`, `SkeletonKey.log`, `*.zip`, Deep Research raw exports, and the
+`record.flag`, `kinectnav.ini`, `KinectNavigator.log`, `*.zip`, Deep Research raw exports, and the
 `Legacy Sensor by itsvexor*` reference folder (not redistributable).
 
 ## Antivirus

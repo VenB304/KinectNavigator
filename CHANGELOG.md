@@ -34,17 +34,20 @@ browse the song list and start a routine without a keyboard or phone.
 
 ### Tooling (source repo)
 
-- `SkeletonKeyReplay` — replay a captured session offline through the real recogniser
+- `KinectNavigatorReplay` — replay a captured session offline through the real recogniser
   (`--overlay` renders the HUD against a capture, no game or sensor needed).
-- `SkeletonKeyLab` — run the recogniser live off the Kinect without the game.
+- `KinectNavigatorLab` — run the recogniser live off the Kinect without the game.
 - `tools/synth/synth_skcap.py` — synthetic-capture regression suite.
 
 ### Install
 
-Extract the release and run **`SkeletonKey-Setup`** — a small windowed installer that locates
+Extract the release and run **`KinectNavigator-Setup`** — a small windowed installer that locates
 the game folder, verifies the genuine Kinect runtime, and does the DLL swap on one click
-(optionally enabling the HUD). `install.bat` / `uninstall.bat` do the same from a terminal.
-Full walkthrough in [`SETUP.md`](SETUP.md).
+(optionally enabling the HUD). It doubles as a live editor for `kinectnav.ini` (navigation hand,
+mirror, Back gesture, HUD, plus feel presets and key bindings under **More settings…**). The
+shim carries a version resource, so the installer shows the installed version and only offers
+**Update** when the copy it bundles is newer. `install.bat` / `uninstall.bat` do the same swap
+from a terminal. Full walkthrough in [`SETUP.md`](SETUP.md).
 
 **Requires** a real Kinect v1 sensor + the *Kinect for Windows Runtime v1.8*. Not compatible
 with webcam-emulator setups. The DLL is unsigned — your antivirus may flag it (false

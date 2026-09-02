@@ -1,4 +1,4 @@
-; Skeleton Key proxy exports.
+; KinectNavigator proxy exports.
 ;
 ; Legacy.exe imports these eight from Kinect10.dll BY ORDINAL, so the ordinal
 ; numbers below are the contract and must not change. The left-hand name is

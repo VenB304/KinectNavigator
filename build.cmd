@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 
-rem  Build Skeleton Key (Release ^| Win32) with whatever Visual Studio is installed.
+rem  Build KinectNavigator (Release ^| Win32) with whatever Visual Studio is installed.
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (
@@ -21,7 +21,7 @@ if not exist "%MSBUILD%" (
     exit /b 1
 )
 
-"%MSBUILD%" "%~dp0src\SkeletonKey.sln" /nologo /m ^
+"%MSBUILD%" "%~dp0src\KinectNavigator.sln" /nologo /m ^
     /p:Configuration=Release /p:Platform=Win32 %*
 if errorlevel 1 exit /b 1
 

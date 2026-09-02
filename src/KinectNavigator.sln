@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKey", "SkeletonKey\SkeletonKey.vcxproj", "{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KinectNavigator", "KinectNavigator\KinectNavigator.vcxproj", "{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKeyReplay", "SkeletonKeyReplay\SkeletonKeyReplay.vcxproj", "{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KinectNavigatorReplay", "KinectNavigatorReplay\KinectNavigatorReplay.vcxproj", "{2B9E6C14-7A3D-4F81-B2E5-9C1A4D6E8F02}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SkeletonKeyLab", "SkeletonKeyLab\SkeletonKeyLab.vcxproj", "{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KinectNavigatorLab", "KinectNavigatorLab\KinectNavigatorLab.vcxproj", "{3C1F7A28-9B4E-4D6A-A3F2-1E5B7C9D0A34}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -12,7 +12,7 @@ void LogLine(const char* fmt, ...)
     GetSelfDir(path, MAX_PATH);
     if (path[0] == L'\0')
         return;
-    wcscat_s(path, MAX_PATH, L"SkeletonKey.log");
+    wcscat_s(path, MAX_PATH, L"KinectNavigator.log");
 
     HANDLE h = CreateFileW(path, FILE_APPEND_DATA,
                            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,

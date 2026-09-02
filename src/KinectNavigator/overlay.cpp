@@ -444,7 +444,7 @@ namespace
         WNDCLASSW wc = {};
         wc.lpfnWndProc   = WndProc;
         wc.hInstance     = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"SkeletonKeyOverlay";
+        wc.lpszClassName = L"KinectNavigatorOverlay";
         RegisterClassW(&wc);
 
         const int sw = GetSystemMetrics(SM_CXSCREEN);

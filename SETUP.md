@@ -1,4 +1,4 @@
-# Skeleton Key — setup guide
+# KinectNavigator — setup guide
 
 Hands-free menu navigation for **Just Dance Legacy Offline PC** using an Xbox 360 Kinect.
 This guide is for players. It assumes you already play Legacy with a working Kinect.
@@ -17,7 +17,7 @@ This guide is for players. It assumes you already play Legacy with a working Kin
 
 > **Not compatible with webcam-emulator setups.** If you drive Legacy with a webcam +
 > *Legacy Sensor* (itsvexor) or anything else that already replaces `Kinect10.dll` with a
-> fake one, Skeleton Key can't sit on top of it — the installer needs the genuine ~15 MB
+> fake one, KinectNavigator can't sit on top of it — the installer needs the genuine ~15 MB
 > Microsoft runtime and refuses to run otherwise. You need a real Kinect v1 sensor.
 
 ## 2. Install
@@ -31,8 +31,8 @@ on GitHub if you'd rather build it yourself.
 1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
 2. Extract this release anywhere — keep all the files together, and *not* inside the game
    folder.
-3. Double-click **`SkeletonKey-Setup`** — that's the `.vbs`; `.bat` also works, both open the
-   same window. (Don't double-click `SkeletonKey-Setup.ps1` directly — Windows opens `.ps1`
+3. Double-click **`KinectNavigator-Setup`** — that's the `.vbs`; `.bat` also works, both open the
+   same window. (Don't double-click `KinectNavigator-Setup.ps1` directly — Windows opens `.ps1`
    files for editing, not running.) A small window opens:
    - It tries to find your game folder; if it can't, click **Browse…** and pick the folder
      with `legacy.exe` in it.
@@ -44,21 +44,21 @@ on GitHub if you'd rather build it yourself.
      cheat-sheet if you don't want to come back to this doc.
 
 Under the hood it copies the real `Kinect10.dll` to `Kinect10.dll.orig-backup`, renames the
-real one to `Kinect10_backend.dll`, and drops Skeleton Key's `Kinect10.dll` in its place. It
+real one to `Kinect10_backend.dll`, and drops KinectNavigator's `Kinect10.dll` in its place. It
 won't run over an existing install or over anything that isn't the genuine runtime.
 
-Launch the game normally. A log is written to `SkeletonKey.log` in the game folder.
+Launch the game normally. A log is written to `KinectNavigator.log` in the game folder.
 
 ### Uninstall
 
-Open **`SkeletonKey-Setup`** again, point it at the game folder, and click **Uninstall** — it
-restores the original `Kinect10.dll`. Your `kinectnav.ini`, `SkeletonKey.log`, and any
+Open **`KinectNavigator-Setup`** again, point it at the game folder, and click **Uninstall** — it
+restores the original `Kinect10.dll`. Your `kinectnav.ini`, `KinectNavigator.log`, and any
 `skcap-*.skcap` are left in place.
 
 ### Updating to a new version
 
-Extract the new release, run its `SkeletonKey-Setup`, point it at the game folder — if
-Skeleton Key is already installed there the button reads **Update** instead of Install and
+Extract the new release, run its `KinectNavigator-Setup`, point it at the game folder — if
+KinectNavigator is already installed there the button reads **Update** instead of Install and
 just swaps in the new `Kinect10.dll`. No need to uninstall first.
 
 ### Command line
@@ -71,7 +71,7 @@ prompt for the game folder, or pass it as an argument:
 
 Stand ~2.5 m back, centred, facing the sensor.
 
-![Skeleton Key gestures](docs/pictos/gesture-sheet.png)
+![KinectNavigator gestures](docs/pictos/gesture-sheet.png)
 
 **Waking it up.** It starts **asleep** and ignores everything. Rest your dominant hand near
 your shoulder for a moment to arm it. It disarms itself again whenever your arm just hangs or
@@ -114,18 +114,18 @@ To turn it on:
 
 ## 5. Troubleshooting
 
-`SkeletonKey.log` in the game folder records what the recogniser saw — start there.
+`KinectNavigator.log` in the game folder records what the recogniser saw — start there.
 
 | Symptom | Fix |
 |---|---|
 | **Windows blocked the DLL / AV quarantined it** | False positive — see the antivirus note in section 2. Restore the file and add a folder exclusion, or build from source. |
-| **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game without Skeleton Key. Turn on the HUD (section 4) to see whether you're being tracked. |
+| **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game without KinectNavigator. Turn on the HUD (section 4) to see whether you're being tracked. |
 | Want to see the HUD and can't | It's off by default *and* hidden by exclusive fullscreen — do both parts of section 4. |
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
 | **Left / right reversed** | Put `mirror = 1` in `kinectnav.ini`. |
 | Wrong arm drives it | Put `handedness = left` (or `right`) in `kinectnav.ini`. |
 | It fires while I dance | Let your arm hang for ~1.5 s and it disarms. If it's still too eager, raise `dpad_disarm_ms`. |
-| **Game crashes** | That's the game itself (it does this without Skeleton Key too). Restart it. |
+| **Game crashes** | That's the game itself (it does this without KinectNavigator too). Restart it. |
 
 ## 6. Tweaking
 

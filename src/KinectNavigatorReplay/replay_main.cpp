@@ -1,9 +1,9 @@
-// SkeletonKeyReplay -- feed a captured .skcap session through the real
+// KinectNavigatorReplay -- feed a captured .skcap session through the real
 // FrameBuffer + Recognizer, offline. Lets the recognizer be iterated without
 // the game or the Kinect. Same recognizer.cpp / framebuffer.cpp that ship in
 // the DLL are linked here, so what you see is what the shim would do.
 //
-//   SkeletonKeyReplay <file.skcap> [--step | --speed N] [--loop K]
+//   KinectNavigatorReplay <file.skcap> [--step | --speed N] [--loop K]
 //     --step        publish a frame, wait for the recognizer to consume it,
 //                   repeat. Fast AND lossless -- the mode for gesture work.
 //     --speed 1.0   real time (default), paced from frame.liTimeStamp
@@ -79,7 +79,7 @@ int wmain(int argc, wchar_t** argv)
     if (overlay && step) { step = false; speed = 1.0; }
     if (!path)
     {
-        fwprintf(stderr, L"usage: SkeletonKeyReplay <file.skcap> [--step | --speed N] [--loop K]\n");
+        fwprintf(stderr, L"usage: KinectNavigatorReplay <file.skcap> [--step | --speed N] [--loop K]\n");
         return 2;
     }
 

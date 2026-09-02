@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Generate synthetic .skcap captures for SkeletonKey recognizer testing.
+"""Generate synthetic .skcap captures for KinectNavigator recognizer testing.
 
 A synthetic capture has a fixed, fully-tracked skeleton (torso anchor rock
 steady) with only HAND_RIGHT / HAND_LEFT driven along a scripted path. Feed the
-files through SkeletonKeyReplay to check the recognizer deterministically -- no
+files through KinectNavigatorReplay to check the recognizer deterministically -- no
 Kinect, no recording session.
 
     python synth_skcap.py            # write all cases into ./out/
-    python synth_skcap.py --run <path-to-SkeletonKeyReplay.exe>   # + replay & check
+    python synth_skcap.py --run <path-to-KinectNavigatorReplay.exe>   # + replay & check
 
-Frame format matches src/SkeletonKey/nui_types.h (pack(8)):
+Frame format matches src/KinectNavigator/nui_types.h (pack(8)):
   NUI_SKELETON_FRAME = 2664 bytes, NUI_SKELETON_DATA = 436, Vector4 = 16.
 Header matches Recorder::Header (pack(1), 24 bytes): "SKCAP01\n", frameSize=2664.
 """
@@ -389,7 +389,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "out"))
     ap.add_argument("--run", metavar="REPLAY_EXE",
-                    help="path to SkeletonKeyReplay.exe; replay each case and print a summary")
+                    help="path to KinectNavigatorReplay.exe; replay each case and print a summary")
     args = ap.parse_args()
 
     # the Back gesture ships disabled; the regression still exercises its detector
@@ -414,7 +414,7 @@ def main():
 
     if not args.run:
         print(f"\n{len(made)} files in {args.out}")
-        print("replay one:  SkeletonKeyReplay.exe out\\<name>.skcap --step")
+        print("replay one:  KinectNavigatorReplay.exe out\\<name>.skcap --step")
         return
 
     replay = args.run

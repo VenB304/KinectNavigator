@@ -6,7 +6,7 @@ rem    record.bat "C:\path\to\LegacyPC - Game"          -> capture ON
 rem    record.bat "C:\path\to\LegacyPC - Game" off      -> capture OFF
 rem
 rem  When ON, launching Legacy.exe writes skcap-<timestamp>.skcap into the game
-rem  folder. Replay it with:  SkeletonKeyReplay skcap-....skcap
+rem  folder. Replay it with:  KinectNavigatorReplay skcap-....skcap
 
 set "GAME=%~1"
 if "%GAME%"=="" set "GAME=%CD%"

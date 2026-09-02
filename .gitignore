@@ -2,8 +2,8 @@
 build/
 dist/Kinect10.dll
 dist/Kinect10.pdb
-dist/SkeletonKeyReplay.exe
-dist/SkeletonKeyLab.exe
+dist/KinectNavigatorReplay.exe
+dist/KinectNavigatorLab.exe
 
 # captured skeleton sessions
 *.skcap
@@ -28,7 +28,7 @@ Legacy Sensor by itsvexor*/
 docs/Kinect Gesture */
 
 # runtime artifacts
-SkeletonKey.log
+KinectNavigator.log
 
 # python
 __pycache__/

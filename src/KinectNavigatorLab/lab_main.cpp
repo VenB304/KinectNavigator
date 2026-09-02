@@ -1,4 +1,4 @@
-// SkeletonKeyLab -- run the live recognizer straight off the Kinect, with no game.
+// KinectNavigatorLab -- run the live recognizer straight off the Kinect, with no game.
 //
 // The game crashes every 30-120 s, which makes live gesture tuning miserable. But
 // the game isn't needed to tune gestures -- only real skeleton data + the real
@@ -7,7 +7,7 @@
 // it prints is what the shim would do. Iterate here; go to Legacy.exe only for a
 // final "the keystroke still scrolls the carousel and the feel is right" check.
 //
-//   SkeletonKeyLab [--live] [--record]
+//   KinectNavigatorLab [--live] [--record]
 //     (default)   dry-run: the recognizer logs gestures, no keys are injected
 //     --live      inject keystrokes, but only while THIS console is foreground
 //                 (Output's requireForeground gate keys off our own PID)
@@ -17,7 +17,7 @@
 //   set trace=1 there for the ~15 Hz hand-signal log. No rebuild for tuning.
 //
 // The flat Kinect 1.x NUI API is resolved from the genuine Kinect10.dll at
-// runtime (same approach as src/SkeletonKey/backend.cpp) so this tool has no
+// runtime (same approach as src/KinectNavigator/backend.cpp) so this tool has no
 // link-time dependency on the Kinect SDK. A Win32 build picks up the real
 // Kinect10.dll from SysWOW64 when the Kinect for Windows Runtime/SDK 1.8 is
 // installed.
@@ -149,7 +149,7 @@ int wmain(int argc, wchar_t** argv)
         else if (!wcscmp(argv[i], L"--record")) record = true;
         else if (!wcscmp(argv[i], L"--help") || !wcscmp(argv[i], L"-h") || !wcscmp(argv[i], L"/?"))
         {
-            wprintf(L"usage: SkeletonKeyLab [--live] [--record]\n"
+            wprintf(L"usage: KinectNavigatorLab [--live] [--record]\n"
                     L"  (default)  dry-run: recognizer logs gestures, no keys injected\n"
                     L"  --live     inject keystrokes while THIS console is foreground\n"
                     L"  --record   also write skcap-<ts>.skcap next to the exe\n"

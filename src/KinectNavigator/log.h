@@ -1,6 +1,6 @@
 #pragma once
 
-// Appends one timestamped line to SkeletonKey.log, next to this module.
+// Appends one timestamped line to KinectNavigator.log, next to this module.
 // printf-style, ASCII. Cheap enough for call tracing; each call is an
 // independent atomic append so lines from multiple threads never interleave.
 void LogLine(const char* fmt, ...);

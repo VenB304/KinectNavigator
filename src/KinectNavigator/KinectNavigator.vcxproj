@@ -14,7 +14,7 @@
 
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}</ProjectGuid>
-    <RootNamespace>SkeletonKey</RootNamespace>
+    <RootNamespace>KinectNavigator</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -113,6 +113,11 @@
     <ClInclude Include="output.h" />
     <ClInclude Include="gestures.h" />
     <ClInclude Include="filter.h" />
+    <ClInclude Include="version.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ResourceCompile Include="version.rc" />
   </ItemGroup>
 
   <ItemGroup>
@@ -129,7 +134,7 @@
           DestinationFolder="$(SolutionDir)..\dist\"
           SkipUnchangedFiles="false"
           Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
-    <Message Importance="high" Text="Skeleton Key: $(TargetPath) -> $(SolutionDir)..\dist\" />
+    <Message Importance="high" Text="KinectNavigator: $(TargetPath) -> $(SolutionDir)..\dist\" />
   </Target>
 
 </Project>

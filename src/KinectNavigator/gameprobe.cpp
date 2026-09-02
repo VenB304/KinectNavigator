@@ -105,7 +105,7 @@ namespace
         if (wcsstr(low, L"\\windows\\"))       return false;
         if (wcsstr(low, L"\\program files"))   return false;
         if (wcsstr(low, L"\\programdata\\"))   return false;
-        if (wcsstr(low, L"skeletonkey"))       return false;   // our own log
+        if (wcsstr(low, L"kinectnavigator"))       return false;   // our own log
         if (wcsstr(low, L"\\\\.\\"))           return false;   // device paths
         if (wcsstr(low, L"\\\\?\\"))           return false;
         return true;
