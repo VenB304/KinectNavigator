@@ -41,8 +41,8 @@ Double-click **`KinectNavigator-Setup`** (the `.vbs`; `.bat` works too). Don't d
 
 1. Pick your **language** from the flag menu, top-right (starts in your Windows language if
    it's one of the twelve).
-2. Confirm the **game folder** — it usually finds it; otherwise **Browse…** to the folder with
-   `legacy.exe`.
+2. Set the **game folder**: click **Browse…** and pick the folder that has `legacy.exe` in it.
+   (It remembers this for next time; on the first run you always have to point it there.)
 3. Check the status line: it should say it sees the genuine ~15 MB runtime.
 4. *(optional)* Set anything under **Settings** / **More settings…** — these save to
    `kinectnav.ini` as you change them and take effect next launch, no Install needed.

@@ -34,8 +34,9 @@ struct Config
     // --- nav_model = extend : air d-pad centred on the dominant shoulder (frontal plane,
     // torso units; +x = outward on the dominant side after `mirror`, +y = up) ---
     // Clutch: starts DISARMED. Park the hand at the shoulder (dpadArmDwellMs) to arm it.
-    // It auto-disarms after the hand sits in no-man's-land (not parked, not in a wedge --
-    // arm hanging / dancing / gesturing) for dpadDisarmMs. Re-arm = park again.
+    // It auto-disarms after the hand sits in no-man's-land -- not parked and not in any wedge
+    // (arm lowered / between gestures) -- for dpadDisarmMs continuously (any wedge or park
+    // touch resets the timer). No motion/dance detection. Re-arm = park again.
     bool   dpadArm           = true;    // 0 = always live (no clutch)
     int    dpadArmDwellMs    = 200;     // hold the hand in the park box this long to arm
     int    dpadDisarmMs      = 1500;    // ...hand idle out of park & out of every wedge this long -> disarm

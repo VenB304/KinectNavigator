@@ -34,8 +34,9 @@ park box, that timer resets.
 
 It is **not dance-aware.** If you leave it armed and dance with that hand up and moving, it
 stays awake and can send arrow keys. Those do nothing during a routine (the game only takes
-the arrows in menus), and Back/Esc is off by default — but if you want it fully quiet while
-dancing, just **drop your arm for a second first** to disarm it.
+the arrows in menus), and command-mode Esc needs the deliberate two-hand pose held ~3 s — but
+if you want it fully quiet while dancing, just **drop your arm for a second first** to disarm
+it.
 
 You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
 so it's always live — only sensible if you're navigating menus and never dancing with it on.
@@ -51,32 +52,35 @@ The default model (`nav_model = extend`). Picture a small **`+`** centred on you
 
 A small dead circle around your shoulder. While your hand is inside it, nothing happens —
 this is "home". Reaching your hand **out past the park box** into a direction is what triggers
-a key. Each direction is a **wedge** — a cone of angles — and the **gaps between the wedges are
-dead**, so you don't need to aim precisely, but a diagonal that lands between two wedges does
+a key.
+
+Each direction is a **wedge** about **±25° wide** — Left/Right around horizontal, Up around
+straight-up, Down a separate down-and-out case (below). You don't need to aim precisely, but
+the gaps between the wedges are dead, so a diagonal that lands between two of them does
 nothing.
 
 ### Left / Right
 
 <img src="pictos/left.png" alt="reach out to the side" width="150" align="right">
 
-Reach your hand **straight out to the side**, past the park box — left of your shoulder for
-`←`, right for `→`. Elbow roughly at shoulder height; you don't need to fully extend, just
-clear the park box into the side wedge.
+Reach your hand **out to the side**, arm roughly horizontal — left of your shoulder for `←`,
+right for `→`. You don't need to fully extend, just clear the park box into the side wedge.
 
 ### Up
 
 <img src="pictos/up.png" alt="reach straight up" width="150" align="right">
 
-Reach **straight up** above your shoulder for `↑`. Keep it vertical — drifting outward turns
-it into a side reach, drifting down-and-out turns it into `↓`.
+Reach **up**, within about 25° of straight up, for `↑`. Lean it much further out and it drops
+into a dead gap; lean it all the way toward horizontal and it becomes a side reach instead.
 
 ### Down
 
 <img src="pictos/down.png" alt="reach down and out to the side" width="150" align="right">
 
-Reach **down *and* out to the side** for `↓` — not straight down. **Straight down is a dead
-zone**: an arm hanging at your side is deliberately ignored, so "down" needs that outward
-angle to tell it apart from resting.
+Reach into a **steep diagonal down toward your hip** for `↓` — clearly below the shoulder and
+angled out to the side, but **more down than out**. **Straight down is a dead zone** (an arm
+hanging at your side is deliberately ignored), and so is straight out to the side — Down needs
+that down-and-out angle to tell it apart from both.
 
 ### One press vs. hold-to-repeat
 
@@ -100,8 +104,8 @@ hand off the shoulder to go back to plain navigation.
 
 <img src="pictos/confirm.png" alt="off-hand on shoulder, dominant hand reached up" width="150" align="right">
 
-With the gate held: reach the dominant hand **up or right** and **hold** it briefly. Sends
-**Enter** — pick the highlighted song, start the routine, confirm a dialog.
+With the gate held: reach the dominant hand **up or right** and **hold** it for about half a
+second. Sends **Enter** — pick the highlighted song, start the routine, confirm a dialog.
 
 ### Back — Esc
 
@@ -182,10 +186,10 @@ re-reads it on each launch and runs fine with no file at all.
 `nav_model = swipe` selects an older, motion-based model instead of the air d-pad:
 
 - **left/right and up/down hand swipes** for navigation,
-- **raise your dominant hand overhead** for Confirm,
-- **non-dominant arm down and out to the side** for Back.
+- **dominant hand raised and held still, high above the shoulder**, for Confirm,
+- **non-dominant arm down and out to the side (~45°), held**, for Back.
 
-It runs on the same jitter-filtered hand signal as the d-pad. The **air d-pad is the default
-and the tuned one**; swipe is kept as a fallback for anyone whose tracking makes the postural
-d-pad awkward. Set it in `kinectnav.ini` (`nav_model = swipe`) — there's no toggle in the
-setup window.
+It runs on the same 1€-filtered hand signal as the d-pad, plus a Savitzky-Golay velocity
+estimate for the swipe detection. The **air d-pad is the default and the tuned one**; swipe is
+kept as a fallback for anyone whose tracking makes the postural d-pad awkward. Set it in
+`kinectnav.ini` (`nav_model = swipe`) — there's no toggle in the setup window.
