@@ -12,8 +12,9 @@ keyboard or phone.
 
 ## Gestures at a glance
 
-Wake it by resting your **dominant hand near your shoulder**. It sleeps again when your arm
-just hangs or you dance, so it won't fire mid-routine.
+Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep after that
+hand sits out of play — not reaching in any direction — for a moment, i.e. when you lower your
+arm.
 
 Then picture a small `+` centred on that shoulder:
 

@@ -21,12 +21,18 @@ KinectNavigator starts **asleep** and ignores everything. To wake it, **rest you
 hand near your dominant shoulder** for a moment. The diagnostic HUD (if on) shows
 `ASLEEP → READY`.
 
-It **disarms itself** whenever your arm just hangs at your side or you start dancing — no
-input for a second or so and it's asleep again, so it can't fire in the middle of a routine.
-Wake it the same way when you next need it.
+It **disarms itself** once your dominant hand spends about **1.5 seconds continuously out of
+play** — that is, not in the park box and not reaching into any direction. In practice that
+means it sleeps when you **lower your arm**. Any time your hand touches a direction or the
+park box, that timer resets.
 
-You can turn the clutch off (`dpad_arm = 0`, or the checkbox in **More settings…**) so it's
-always live — only useful if you're navigating menus and never dancing.
+It is **not dance-aware.** If you leave it armed and dance with that hand up and moving, it
+stays awake and can send arrow keys. Those do nothing during a routine (the game only takes
+the arrows in menus), and Back/Esc is off by default — but if you want it fully quiet while
+dancing, just **drop your arm for a second first** to disarm it.
+
+You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
+so it's always live — only sensible if you're navigating menus and never dancing with it on.
 
 ---
 
