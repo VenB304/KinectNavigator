@@ -457,7 +457,7 @@
 
   <header class="hero">
     <div>
-      <p class="eyebrow">Build plan &middot; v0.9 &middot; 2026-09-01</p>
+      <p class="eyebrow">Build plan &middot; v0.9 &middot; 2026-09-02</p>
       <h1>KinectNavigator</h1>
       <p class="lede">Hands-free menu navigation for the Just&nbsp;Dance <em>Legacy Offline PC</em> mod, driven by Kinect skeleton poses.</p>
     </div>
@@ -606,7 +606,7 @@
   <section id="config">
     <p class="eyebrow">Reference</p>
     <h2>Config &mdash; <code>kinectnav.ini</code></h2>
-    <p>Optional overrides beside the DLL, re-read each launch; the DLL runs on compiled defaults with no file. Distances are torso lengths, speeds torso/second, <code>*_ms</code> milliseconds. Full annotated list in <code>dist/kinectnav.example.ini</code>.</p>
+    <p>Optional overrides beside the DLL, re-read each launch; the DLL runs on compiled defaults with no file. Distances are torso lengths, speeds torso/second, <code>*_ms</code> milliseconds. Full annotated list in <code>dist/kinectnav.example.ini</code> &mdash; or edit it live from <code>KinectNavigator-Setup</code> (see below).</p>
     <div class="table-scroll">
       <table>
         <thead><tr><th>Key</th><th>Default</th><th>What</th></tr></thead>
@@ -671,16 +671,19 @@
       <li><b>Tune from real sessions</b> &mdash; park radius, wedge angles, the clutch timeout, and the command dwells against captures from where it's actually played.</li>
       <li>Revisit the swipe fallback's remaining dead knobs if anyone actually uses <code>nav_model = swipe</code>.</li>
     </ul>
-    <p class="eyebrow" style="margin-top:1.5rem">Done since v0.9</p>
+    <p class="eyebrow" style="margin-top:1.5rem">Done since v0.9 (not yet released)</p>
     <ul class="next">
       <li><b>On-screen HUD</b> &mdash; the d-pad overlay reworked into a compact dark panel (status line, d-pad glyph, distance, command gate, action flash, one diagnostic line). Verified in-game.</li>
       <li><b>Fullscreen handling</b> &mdash; display-mode probe in <code>GameProbeTick</code>; windowed requirement documented. See Risks.</li>
-      <li><b>Installer + <code>SETUP.md</code></b> &mdash; player-facing setup guide; <code>dist/package.cmd</code> builds the release zip.</li>
+      <li><b>Renamed</b> &mdash; &ldquo;Skeleton Key&rdquo; dropped; the project, code tree, tools, log file and installer are all <b>KinectNavigator</b> now. <code>docs/notes/</code> keep the old name as a dated record.</li>
+      <li><b><code>KinectNavigator-Setup</code></b> &mdash; the windowed installer is now also a <b>live editor for <code>kinectnav.ini</code></b> in the game folder: navigation hand, mirror, Back gesture, HUD, plus feel presets and key rebinds under &ldquo;More settings&hellip;&rdquo;. Writes on change; applies next launch.</li>
+      <li><b>Versioned</b> &mdash; the shim carries a Win32 version resource (<code>version.rc</code> &larr; <code>version.h</code>). The installer reads <code>FILEVERSION</code> from the bundled vs. the installed DLL and only offers <b>Update</b> when it's newer (&ldquo;Up to date&rdquo; and disabled otherwise).</li>
+      <li><b>Localised</b> &mdash; 12-language flag picker, <code>dist/lang/*.json</code> key&rarr;string maps with English as the fallback layer (LegacyDownloader's system). Fully portable: game folder + language remembered in a <code>config.txt</code> beside the installer, nothing else on the PC. <code>package.cmd</code> bundles <code>lang/</code>.</li>
     </ul>
   </section>
 
   <footer>
-    KinectNavigator &mdash; build plan v0.9, 1 Sep 2026. Proxy DLL + skeleton tap done and hardware-verified; Replay / KinectNavigatorLab / synthetic-suite harnesses done. Primary recogniser is the postural <b>air d-pad</b> (<code>nav_model = extend</code>); the consolidated swipe model stays as <code>nav_model = swipe</code>. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
+    KinectNavigator &mdash; build plan v0.9, 2 Sep 2026. Proxy DLL + skeleton tap done and hardware-verified; Replay / KinectNavigatorLab / synthetic-suite harnesses done. Primary recogniser is the postural <b>air d-pad</b> (<code>nav_model = extend</code>); the consolidated swipe model stays as <code>nav_model = swipe</code>. Installer does live <code>kinectnav.ini</code> editing, version-aware Update, and a 12-language picker; release still on hold. Scope: Kinect v1, menu navigation, keystroke output. Target build: <span class="mono">Legacy Offline PC (JDLEGACY, x86)</span>.
   </footer>
 
 </div>
