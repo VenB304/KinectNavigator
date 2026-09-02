@@ -4,15 +4,12 @@ Hands-free menu navigation for the Just Dance **Legacy Offline PC** mod, driven 
 skeleton poses — so a dancer can browse the song list and start a routine without touching a
 keyboard or phone.
 
-Design doc: [`docs/build-plan.html`](docs/build-plan.html) · Setup guide (for players):
-[`SETUP.md`](SETUP.md) · Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+**Players:** grab the latest [release](../../releases), unzip it anywhere, run
+`KinectNavigator-Setup`, pick your language, install, and close. Full walkthrough in
+[`SETUP.md`](SETUP.md).
 
-> **Built with AI assistance.** The recogniser was designed and iterated with Claude (Anthropic)
-> and Gemini Deep Research. `docs/notes/` are the raw session hand-offs and tuning logs, and
-> `docs/research/` holds the (AI-generated, lightly verified) background research passes —
-> kept for transparency, not as polished documentation. The code, the design decisions, and
-> every in-game test are real. Those older notes still call the project *Skeleton Key*, its
-> working title before the rename — same project.
+> Built with AI assistance (Claude and Gemini). The code, the design decisions, and every
+> in-game test are real.
 
 ## How it works
 
@@ -32,7 +29,7 @@ One is active at a time — pick with `nav_model` in `kinectnav.ini` (see
 
 ### `extend` — air d-pad (default)
 
-![KinectNavigator gestures](docs/pictos/gesture-sheet.png)
+![KinectNavigator gestures](dist/gestures.png)
 
 A virtual d-pad centred on your dominant **shoulder**. No swiping, no timing windows.
 
@@ -55,14 +52,30 @@ kill inferred-joint jitter. Kept as a fallback; `extend` is the one that's tuned
 
 A small dark overlay (top-left) shows what the recogniser sees: current state, a live d-pad,
 tracking distance, and action feedback, plus one line of raw numbers for tuning. **Off by
-default** — it's a troubleshooting aid; enable it with `overlay = 1` in `kinectnav.ini`.
+default** — a troubleshooting aid; enable it with `overlay = 1` in `kinectnav.ini` (or the
+checkbox in `KinectNavigator-Setup`).
 
-The overlay is a layered window — **exclusive-fullscreen DirectX hides it**. To see it, run the
-game windowed or borderless (`<Screen FullScreen="0" />` in the game's `config.xml`).
-Navigation works the same either way. `KinectNavigatorLab` and `KinectNavigatorReplay --overlay` always
-show it (dev tools).
+It's a layered window, so **exclusive-fullscreen DirectX hides it** — run the game windowed or
+borderless (`<Screen FullScreen="0" />` in the game's `config.xml`) to see it. Navigation works
+the same either way.
 
-## Build
+## Install
+
+Follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the release, and run
+**`KinectNavigator-Setup`** — a small window that finds the game folder, checks it, and installs
+on one click. It also doubles as a live editor for `kinectnav.ini` (navigation hand, mirror,
+Back gesture, HUD, feel presets, key bindings), ships in 12 languages with a flag picker, and is
+fully portable (its own `config.txt` beside the exe, nothing else touched). `install.bat` /
+`uninstall.bat` do the same swap from a terminal.
+
+Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
+and copies the shim into its place; uninstalling reverses it. Neither runs unless it sees the
+real ~15 MB runtime. The shim runs on compiled-in defaults; `kinectnav.ini` next to it
+overrides thresholds with no rebuild.
+
+Players also need the **Kinect for Windows Runtime v1.8** installed (see `SETUP.md`).
+
+## Build from source
 
 Visual Studio 2022 or later, **Desktop C++** workload (x86 tools), and the **Kinect for
 Windows SDK 1.8** (headers only — the DLL does not link `Kinect10.lib`; the skeleton structs
@@ -72,76 +85,18 @@ are vendored in `nui_types.h`).
 build.cmd
 ```
 
-or `msbuild src\KinectNavigator.sln /p:Configuration=Release /p:Platform=Win32`.
-
-Outputs to `build\Win32\Release\` (also copied to `dist\`):
-
-| File | What |
-|---|---|
-| `Kinect10.dll` | the shim |
-| `KinectNavigatorReplay.exe` | offline replay of a captured session (see `tools/README.md`) |
-| `KinectNavigatorLab.exe` | run the recogniser live off the Kinect, without the game |
+or `msbuild src\KinectNavigator.sln /p:Configuration=Release /p:Platform=Win32`. Output is
+`build\Win32\Release\Kinect10.dll`, also copied to `dist\`.
 
 A build must keep `dumpbin` clean: exactly the 8 `Nui*` ordinals (base 5), machine x86,
 imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.dll`.
-
-## Install
-
-For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the
-release, and run **`KinectNavigator-Setup`** — a small window that finds the game folder, checks
-it, and installs on one click. It also doubles as a live editor for `kinectnav.ini` (navigation
-hand, mirror, Back gesture, HUD, feel presets, key bindings), is localised (12 languages, flag
-picker — English/French/Spanish translated, the rest awaiting a translation pass), and is fully
-portable (its own `config.txt` beside the exe, nothing else touched). `install.bat` /
-`uninstall.bat` do the same swap from a terminal.
-
-Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
-and copies the shim into its place; uninstalling reverses it. Neither runs unless it sees the
-real ~15 MB runtime.
-
-The shim runs on compiled-in defaults; `kinectnav.ini` next to it overrides thresholds with no
-rebuild.
-
-Players also need the **Kinect for Windows Runtime v1.8** installed (see `SETUP.md`).
-
-## Offline tuning harness
-
-`legacy.exe` crashes on its own every 30–120 s (its bug — it faults on nearly every quit, and
-a zero-keystroke capture session crashed too). So don't tune live:
-
-1. `dist\record.bat "<game folder>"` to arm capture, play a short session — the shim writes
-   `skcap-<timestamp>.skcap` into the game folder.
-2. `KinectNavigatorReplay.exe <file>.skcap --step` replays it through the **same**
-   `framebuffer` / `recognizer` / `gestures` code the DLL ships, echoing recogniser output.
-   `--overlay` shows the real HUD against the capture (no game, no Kinect).
-3. Edit `kinectnav.ini` next to the exe, re-run. `trace = 1` adds a ~15 Hz signal log.
-4. `tools/synth/synth_skcap.py` generates synthetic captures and asserts recogniser output —
-   the regression suite. Full details in [`tools/README.md`](tools/README.md).
-
-## Layout
-
-```
-src/KinectNavigator/        the shim DLL
-src/KinectNavigatorReplay/  offline replay tool
-src/KinectNavigatorLab/     live-Kinect recogniser tool (no game)
-dist/                   installer (GUI + .bat), record / package scripts, example config, lang/
-docs/                   design doc, field notes (docs/notes/), research digests (docs/research/)
-tools/                  replay-harness docs + the synthetic-capture regression suite
-build/                  build output (git-ignored)
-```
-
-## Repo hygiene
-
-Git-ignored: `build/`, built binaries in `dist/`, `*.skcap` / `tools/captures/`,
-`record.flag`, `kinectnav.ini`, `KinectNavigator.log`, `*.zip`, Deep Research raw exports, and the
-`Legacy Sensor by itsvexor*` reference folder (not redistributable).
 
 ## Antivirus
 
 `Kinect10.dll` is unsigned and it synthesises keystrokes and hooks the game's imports — both
 are textbook malware behaviours, so SmartScreen or your AV may flag it. It is a false
 positive. The full source is here; build it yourself if you'd rather not trust the release
-binary. See [`SETUP.md`](SETUP.md#6-troubleshooting).
+binary. See [`SETUP.md`](SETUP.md#5-troubleshooting).
 
 ## Credits
 

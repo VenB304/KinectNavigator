@@ -37,7 +37,6 @@ copy /y "%HERE%KinectNavigator-Setup.vbs"   "%STAGE%\" >nul
 copy /y "%HERE%KinectNavigator-Setup.bat"   "%STAGE%\" >nul
 copy /y "%HERE%install.bat"             "%STAGE%\" >nul
 copy /y "%HERE%uninstall.bat"           "%STAGE%\" >nul
-copy /y "%HERE%record.bat"              "%STAGE%\" >nul
 copy /y "%HERE%kinectnav.example.ini"   "%STAGE%\" >nul
 copy /y "%ROOT%\SETUP.md"              "%STAGE%\" >nul
 
@@ -62,6 +61,6 @@ echo.
 echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
 echo Contents: Kinect10.dll, KinectNavigator-Setup.ps1/.vbs/.bat, gestures.png,
-echo           install.bat, uninstall.bat, record.bat,
-echo           kinectnav.example.ini, SETUP.md, lang\ (12 languages)
+echo           install.bat, uninstall.bat, kinectnav.example.ini, SETUP.md,
+echo           lang\ (12 languages)
 endlocal

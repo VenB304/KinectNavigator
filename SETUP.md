@@ -79,7 +79,7 @@ prompt for the game folder, or pass it as an argument:
 
 Stand ~2.5 m back, centred, facing the sensor.
 
-![KinectNavigator gestures](docs/pictos/gesture-sheet.png)
+![KinectNavigator gestures](dist/gestures.png)
 
 **Waking it up.** It starts **asleep** and ignores everything. Rest your dominant hand near
 your shoulder for a moment to arm it. It disarms itself again whenever your arm just hangs or
