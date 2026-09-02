@@ -29,6 +29,7 @@ docs/Kinect Gesture */
 
 # runtime artifacts
 KinectNavigator.log
+dist/config.txt
 
 # python
 __pycache__/

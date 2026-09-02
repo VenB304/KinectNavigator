@@ -46,8 +46,11 @@ the game folder, verifies the genuine Kinect runtime, and does the DLL swap on o
 (optionally enabling the HUD). It doubles as a live editor for `kinectnav.ini` (navigation hand,
 mirror, Back gesture, HUD, plus feel presets and key bindings under **More settings…**). The
 shim carries a version resource, so the installer shows the installed version and only offers
-**Update** when the copy it bundles is newer. `install.bat` / `uninstall.bat` do the same swap
-from a terminal. Full walkthrough in [`SETUP.md`](SETUP.md).
+**Update** when the copy it bundles is newer. The installer is localised (12 languages via
+`lang/*.json`, flag picker; English/French/Spanish done, others fall back to English pending a
+translation pass) and fully portable — it remembers your folder and language in a `config.txt`
+beside itself and writes nothing else to the system. `install.bat` / `uninstall.bat` do the
+same swap from a terminal. Full walkthrough in [`SETUP.md`](SETUP.md).
 
 **Requires** a real Kinect v1 sensor + the *Kinect for Windows Runtime v1.8*. Not compatible
 with webcam-emulator setups. The DLL is unsigned — your antivirus may flag it (false

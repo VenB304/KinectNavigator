@@ -4,6 +4,12 @@
 # kinectnav.ini in the game folder live. Launched flash-free by
 # KinectNavigator-Setup.vbs / .bat. Anything fatal here must surface as a MessageBox,
 # not Write-Host.
+#
+# Fully portable: everything it needs sits next to it (Kinect10.dll, lang\, the
+# batch helpers). The only thing it remembers is a config.txt written beside this
+# script - no registry, no %APPDATA%. Delete the folder and nothing is left behind.
+# UI strings live in lang\*.json (see Translate / T); add a language by dropping a
+# new <code>.json in there.
 
 $ErrorActionPreference = 'Stop'
 
@@ -17,19 +23,233 @@ if ([string]::IsNullOrWhiteSpace($ScriptDir)) {
     $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 }
 
-$ShimSrc      = Join-Path $ScriptDir 'Kinect10.dll'
-$ExampleIni   = Join-Path $ScriptDir 'kinectnav.example.ini'
-$StateDir     = Join-Path $env:LOCALAPPDATA 'KinectNavigator'
-$LastPathFile = Join-Path $StateDir 'gamefolder.txt'
-$MIN_GENUINE  = 1000000            # the real runtime is ~15 MB
-$RuntimeUrl   = 'https://www.microsoft.com/download/details.aspx?id=40277'
+$ShimSrc     = Join-Path $ScriptDir 'Kinect10.dll'
+$ExampleIni  = Join-Path $ScriptDir 'kinectnav.example.ini'
+$LangDir     = Join-Path $ScriptDir 'lang'
+$ConfigPath  = Join-Path $ScriptDir 'config.txt'
+$MIN_GENUINE = 1000000            # the real runtime is ~15 MB
+$RuntimeUrl  = 'https://www.microsoft.com/download/details.aspx?id=40277'
 
 $script:Loading    = $false        # true while controls are being populated from the ini
 $script:dlgLoading = $false        # ditto, for the "more settings" dialog
 $script:CurState   = $null
+$script:CurLang    = 'en'
 
-# FILEVERSION baked into the shim we ship (version.rc -> version.h). $null if the
-# DLL beside us predates the version resource.
+# ===========================================================================
+# i18n  (mirrors LegacyDownloader: lang\<code>.json flat key -> string maps,
+# English is always the fallback layer, {tokens} filled from -Vars)
+# ===========================================================================
+$script:Strings         = @{}
+$script:StringsFallback = @{}
+
+function Import-LangFile([string]$Code) {
+    $h = @{}
+    if ([string]::IsNullOrWhiteSpace($LangDir)) { return $h }
+    $path = Join-Path $LangDir ($Code + '.json')
+    if (-not (Test-Path -LiteralPath $path)) { return $h }
+    try {
+        $raw  = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
+        $json = $raw | ConvertFrom-Json
+        foreach ($p in $json.PSObject.Properties) { $h[$p.Name] = [string]$p.Value }
+    } catch { return @{} }
+    return $h
+}
+
+function Get-AvailableLanguages {
+    $out = @()
+    if ([string]::IsNullOrWhiteSpace($LangDir) -or -not (Test-Path -LiteralPath $LangDir)) { return $out }
+    $files = Get-ChildItem -LiteralPath $LangDir -Filter '*.json' -File -ErrorAction SilentlyContinue | Sort-Object Name
+    foreach ($f in $files) {
+        try {
+            $json = ([System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)) | ConvertFrom-Json
+            $code   = if ($json.'_meta.code')       { [string]$json.'_meta.code' }       else { $f.BaseName }
+            $native = if ($json.'_meta.nativeName') { [string]$json.'_meta.nativeName' } else { $code }
+            $eng    = if ($json.'_meta.name')       { [string]$json.'_meta.name' }       else { $code }
+            $out += [PSCustomObject]@{ Code = $code; NativeName = $native; Name = $eng }
+        } catch { }
+    }
+    return $out
+}
+
+function Resolve-DefaultLanguage {
+    $avail = @(Get-AvailableLanguages | ForEach-Object { $_.Code })
+    if ($avail.Count -eq 0) { return 'en' }
+    try { $c = [System.Globalization.CultureInfo]::CurrentUICulture } catch { return 'en' }
+    $name = $c.Name
+    $two  = $c.TwoLetterISOLanguageName
+    if ($two -eq 'zh') {
+        if (($name -match 'Hant|TW|HK|MO') -and ($avail -contains 'zh-Hant')) { return 'zh-Hant' }
+        if ($avail -contains 'zh-Hans') { return 'zh-Hans' }
+        if ($avail -contains 'zh-Hant') { return 'zh-Hant' }
+    }
+    if ($avail -contains $name) { return $name }
+    if ($avail -contains $two)  { return $two }
+    return 'en'
+}
+
+function Initialize-Language {
+    param([string]$Code)
+    $script:StringsFallback = Import-LangFile 'en'
+    if ([string]::IsNullOrWhiteSpace($Code)) { $Code = 'en' }
+    if ($Code -eq 'en') {
+        $script:Strings = $script:StringsFallback
+        $script:CurLang = 'en'
+        return 'en'
+    }
+    $loaded = Import-LangFile $Code
+    if ($loaded.Count -eq 0) {
+        $script:Strings = $script:StringsFallback
+        $script:CurLang = 'en'
+    } else {
+        $script:Strings = $loaded
+        $script:CurLang = $Code
+    }
+    return $script:CurLang
+}
+
+function T {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)][string]$Key,
+        [Parameter(Position = 1)][hashtable]$Vars
+    )
+    $s = $null
+    if ($script:Strings -and $script:Strings.ContainsKey($Key))                     { $s = $script:Strings[$Key] }
+    elseif ($script:StringsFallback -and $script:StringsFallback.ContainsKey($Key)) { $s = $script:StringsFallback[$Key] }
+    if ($null -eq $s) { return $Key }
+    if ($null -ne $Vars -and $Vars.get_Count() -gt 0) {
+        $s = [regex]::Replace($s, '\{([A-Za-z0-9_]+)\}', {
+            param($m)
+            $n = $m.Groups[1].Value
+            if ($Vars.ContainsKey($n)) { return [string]$Vars[$n] }
+            return $m.Value
+        })
+    }
+    return $s
+}
+
+# ---- embedded flag bitmaps (20x15 PNGs), same set as LegacyDownloader ----
+$script:FlagB64 = @{
+    'de'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAABxUlEQVQ4ja3Ty24URxQA0FPVNWT8APwIEYoMgjVIZpdIUf4i4g/5APb5CUvsYY1lGxuPPY/uWyyqEZOJ2SBaurpd1apT91Z3p1LK3xFxjOf4LSK2kXLOq4j4jEucjXGOT5hhjowdPBrXH6eU0r94VWs9QHL3tRyxszVwMYLbI/gMuwn1O8gPXflnYlAyjvAUB7g3Pqi4xpXW48WY53cg09F4jPIP/tAOYH8E6xgz7Y2sg5e4wbCG7eN3rd30lvoS3Vpl63lzbjmC/TieYgsrvEPZWqvoLmAzT/BgY83X+0BZh9Iu6ZdWbl0wzFu+C94EQyu1dEdsv2B6RN5rYOqIBXFLXDFcMlzQXzFcEzNqbVCa0O2z9Zj725Td1+z9xfQJqfx/61gQnxo4XH4DRUPThLKPR+yeUqZ/MnnaqvpPL2PkCflXyuF3+hznlivqR0odB/MFfU8M1Gj/YE50uX2sXyNtHmIlgtt5W1dqcHruuu996AenQ++mMqimXbKTk73MYc4OuuReyW2jrLU8DCyX6uzW+RBOSq3enF04ifB+lZx2K7NIovamkezUsJc4iMEhDifFw8z9LplEqKvezWLp49B7X6uTL16L4e3tydldAAAAAElFTkSuQmCC'
+    'en'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAMAAADTRh9nAAABgFBMVEUBG1SYl6efDSfKfooAG1cCLGy+n6UCIF0AE0YAGlSpL0LAlZynUmifDSeSkqLTiJjZ2dm7u7u2b3i/VG6vt8NGZJGUPUjFpq1AS2xRT3VeWoAAEkV5cImapbm6FDSjCh+mCSCflKR9hJa3EzMCKWmGeZLHDizJEjLCDCfkj5/afo7OIUEAF1TgeotTZpWpscjFvMwCK3DGGzXLFjjRPlbll6PliJrqp7Lonq2tuM9dcJkBIWTPL0rVW3HduMOjVHNhVH8qT4mwW3EWKmK7CyNGWYMxRXbLJkDt1Nvcc4P39/q8hZ/ck6DsydHIbYSGU3mWFSerqr6YhKWifJZ8T3Q7ToWZXmxfe6jBa4rayNTptb3Iz98VOXemnK5NUHW4tsuPmbHbipe5sMStpLfhhJO9fZFpWIbpqrWsGDdTW3a1bH+Ch6uPepXda33NT2GEg6bByNqvKkT77/IAET+HXoj67O7rusUoNFhtNkqMocKgbIHNw9IpR4Pcz9rV2eSdlqS0UDBzAAAAJnRSTlM1jXrzwaw9ta1CdaTTZ1XsbGzsvI2jvf6jvr6cVNT55/nUjeecVBCdCscAAAEnSURBVBjTHdADlsMAFADAX7trW1HjpE3T1LZtrG3j6vte5wgD+tnFJZ1Od6hS2+wmADAdmS2wMOOXG12Om2wfbGkNBsO6VfMHhabL3foIcWMBZRSlGwyP2DiE6Oem61WmBygqc7VC3snSJHChRsntfuz8oOj9aYA4G9DxPnjKmQxO4ZKEokk/nkwzd5U6XPpEr8OR8IoIkqKOnSMidVuEc0EQHA4BmUJ5HsOiRXjwUQTudFE3CCJ6EzyfEH11+Cxfyekc7s9hWFvCqexJ5foCYt8eViICQRbDfjsv7myPjjyB4vnC89WaMsYwJsa0iXC1/wYxdhQIRkhyEo0yZHzYchLhd+hprGsGo1a7t7M7JMmIp7QyvwwW8+Y0x25T728YjcZV1Zz+HwHdQPKkb2RfAAAAAElFTkSuQmCC'
+    'es'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAACmUlEQVQ4y22Ty25jRRCGv2r3sR1fZpJ4MmRAkBkWLBAoiH0WiCUPxcMgJN6DBRuEyEgsAI2GEZpLHHzie+zTp+tnYTsJEd0qVau79P1VrSr77pNPzzz7qbs/C+6PDXXkWMZTFrMsn7j7SNjIlUtzjTMs3FkJBVDXPR9JeubSafQ6f7tn9kXD7JAQzAQKjivgiIyRQ6PK7qUsjLL5OEuLbL6WCCZ1DDvCeDpx70W5f91tRKIZutmG2Cwn4PJmNjvO0nHGcNvcSwKEGSDjChEpMvtPE52jiqJXY9HBRK4gr4y0CKS5sZ4GqpmRFlBfbwQFEKH50GkOalJvTXzyVcnJaaL3OFH0akIUo2GH+TDQfSC6rTVpHqimgWoWqJdGWhpyIUGIovkg0zzIFKkmvnc2ZnACMWwkyzIwfFXw+/MOH36W+PzLJf33EwDapaXbs219SvDqDwjYNsg3/u27J5QvjOnkI8r1Ga//eYT0X9gOtIPhoK0F+Z1Ah+XVCYtJg8niAPnHXPx5jHwreC92Z7t3zxDuK68iNA8S9fgN899+RGqh/wPpNqu7WcYb9bApa//4HU1bY3tj+ipJH5xg3Mvu7hfcgecEsZoGLp8XVJcNVtPAejHFVdDKNa0Clr+OeD1s0eo7Rdcp2qJo6waYK1hNjPJt4MUvhv3wTV+Pxi3WF4HVLOC1cLYt0XbinhO7ugHGthPbm7YXoq7gemJcXQR+/lvENz+18dDA3Uk4rlugLYUtDRsZgYCJ7SSBpE21ElniWiJ5JrrE2PM8u/+V4bJGS3dlzNpIXWAfMTB0aNC07UiyBWaJWtI1Kl2cR5e+n3k+z9hLzC9dWtQ1TqPRdvduNvYNDrMxcPdBhIeG9SUVQkrSMsEwu7800/m/wsXxL/gOJaYAAAAASUVORK5CYII='
+    'fr'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAB2UlEQVQ4jY2SPW4TURRGz33z7DhxEJFHQZRkAShUdNCwAdgBPYugoqBlD6yCkhVkBaG0EmxMYsfxeO79KDz+i+yIJ13Nm+bofPd7ll9/fBPYOeFnwLMIHRFh79++nH/99OF2Pp//lTSQNACG7j66+vJtMv7x816tSFFH1xWnCjuT/Dw7fCalV7LUQxgmsKBz2KUsS9wdd6/cfShpUNf16MbSpErMwi0lFUeGnWK8GKk+zop4R+4AQAgkIDg4OKQsSyTh7m13f94M43YbIyEJQyQSIIaITMQCIiCC9b8AMDNyzuScWZ7j3KLGEICBJOaIkMiEN5AN4HL2HElIgdDijohm8trqAbAx3AlkCWQN1cowwBtAPPg+ZoiaTS1AIRGwabgERVPO/sg0kM3IQvh6h/6glP/Y4SZsZagdhku7RyIvI24bxj7g9rPZW8pmw1rP7shNf49GbiJuxV4Zet3AHOQgMZtOGI1GFEWxetg5Z8yssYot0L1i49nU0zEev8CvibhD+Gx62+n3+92U0klKqUwp9YqiaOec+T2944981WyFNMWHgS4y6Dvz2QXSJebXeEywFFFVncFg0JV0Yma9iCiBstVqPe2Pb5/cyFsBqhV3lXRVo0u5XfwD3Lj3FBPR3T4AAAAASUVORK5CYII='
+    'it'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAB40lEQVQ4jZWTvXLTQBRGv7u7/kkcJhlrwjBU5AnCQE3FC9CFt6GmoaSh5k1oKP0EofQk2DGOFWJL9/soVjI2iSHszB1pC505R1pZ+vD2FeGnEE8APqZhH6K9efqyev/i7Lqqqh+SJpImAKbuPrv4+KlcfPl6KzLQMXD4sZwnAk+Tw9+hF58rhiEggwSI6B/uoSgKuDvcfeXuU0mTuq5nc4vlSrakhRCi9o3hGMmezVZ+kCS+xl4XiAAggARk6A36KIoCkuDuXXd/0gwWvR4sRkiESQhmgISphAQSCEJrloHNHoCZIaWElBLaddDpog4BYpaQiEoCM9AzBA1wDSV2LZGQOyQ1Q7CZbEgCpt8gEaB2A6UMRQNk3nOdLN9Ibk3/AdyYbKcN4J1k/TUZDWQbTHhO9vuT/8NQdw09A7eSdxtSBPmHIe/7KFvJDzVs7QiyPTZq3mEL10OAGdTeayu5qgEnUHu+UljObzCbzRBjXB/slBLMLD9MQSDEbHdL30ieLxdwfkPllxBv4PLl1aI/Ho8HIYSjEEIRQhjGGLspJXwvS1x5lX9LEitRP+VTAqME4TPK5Qi1ncN5CdUlFMhy2Z9MJgNJR2Y2JFkAKDqdzuH4ev5oXlUdmlRTNyv6RS2dixr9AmYGJOT/Z+8EAAAAAElFTkSuQmCC'
+    'ja'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAMAAADTRh9nAAAA5FBMVEXX19fQ0NDMzMzc3NzMzMzFxcXe3t7Pz8/h4eHMzMzl5eXb29va2trX19fZ2dnKysrLy8vGxsbAwMDAwMDZ2dne3t7Z2dnj4+Pi4uLX19fb29vT09Pe3t65ubn////7+/v6+vq9AC7x8PG7ACv+/f65ACm/ATPV1dW2ACfR0dH89/jv7+/29vbo6Ojbe5O+vr7GxsbKM1jqsb7s7Oz08vO7DzbBCTjPSWrDw8PBFj7stsTsusbgjaHX19fz8/O2AyrKysrt7e326OvOV3DNQGL9+vvtxc3EOlfNzc3aaojUboTg4ODg1fN6AAAAHnRSTlO1d6bUVDyuQfMz/bu+japwrqCNaWzEnOfUxOfs/r1uIjwUAAAA10lEQVQY01XQ15KCQBAF0CYJomLWTaIM44gIKEFds2PYNfz//8gAVmk/nltdfatBbpS0XE5rlbiyKEv5vCxyPBSUkCJEQ1dtfzQLAEVBucDGwTob+xA5EaIUbZ09DLqM8NK7eoGdxL0nrnxCiL8+JzjJcE6IYRiL5SviGTPTnGc4TJFRvz9lR3u/Keonk5n1jsEiJss6JuvjDO21v7N2/39vqNuBd/NWOMOLsx3RkI4idEi7YxSjIhRBg0/hS7mrruuqP98d4Dkx/o0ki/VyrcpXKtVaXXoAVAEniyY09XwAAAAASUVORK5CYII='
+    'ko'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAMAAADTRh9nAAABNVBMVEXe3t7MzMzMzMzc3Nzd3d3S0tLIyMjMzMzFxcXc3NzV1dXX19fU1NTh4eHf39/Z2dnLy8vX19fa2trGxsbAwMDLy8ve3t7m5ubX19fl5eXT09PCwsK5ubnT09O7u7v////6+vv+/v77+/u9vb3CwsL29vbOMT3X19cAQptlZWXv7u/Q0NDt7e11dXWxsbGrq6uioqLx8vTg4ODw8PDl5eXGxsabm5u5ubn5+fm0tLRtbW6NjY3T09NpOGmZNFPppKkyPoUaP4/geYH88PHyzdA8bLGzx+H44OJahL3z8/Pr6+vKysra4/D56eqmM03IQ1LxyMqINVvRQEs/PX5oaGi/M0UjVqK/yd/bZ3CEpdDd5/IVU6XXV2FZWVmSrtSBgYFfX1/uvMDHx8fNzc1WVlfB0OZWVlaQJKoeAAAAH3RSTlPUM1Su/XJBpju8s7dB8+e9Z42gn42uxPnE7Hp6vexsd+Kq8QAAARNJREFUGNNFztdygkAAheGlKNh7erK7wiIQAUHEFntfTe+9mOT9HyGQyUzuznw35wfxUCbLcVw2s5Nm4yLDhNmQAFLbVDclndLNJNiIcLEISKxBiWDaMmoQFxvEps1mdUGWoFSElc9vGc/GMwyl1iuFaAmOfHxro/fh3bA3kq60CkQfAeqmU35SFOWihzzNgqgWIMTw9lpRTrqnx3yd/OO00z2/7HfO/AmRHCBpOg83/YGqDsYBNmRwWISW1kb3j6qqTkYls/yHnvYs2y/zyXxKPP+9IQXoGoYM8eprBestw/pFstCtOtVtgvx4o23jqgTWCZCKRmNbIMk7rmuaLr+/B4QQG2YYMcymd/M5oVDI5Q/EH+/7MZmhhNx7AAAAAElFTkSuQmCC'
+    'nl'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAACnElEQVQ4jY2TzW5cRRSEv3OnZ+Z6xiNPbGIZJwHCA5CwQyDYsGCFxIo3Yc3DIMQjsEA8QdgYiQULEiuKosSOx2PPjz33dlexGNtJJCRypJbqqHWqVN114qdPvviSogdyuV/Zu2EGlqLIbcGzVjqTy0k4TrLKJPC0hBedNl827lS4DEW5bem+xYOkoh8HEQ87dLbBERhXgRDFRhUU0xR5ouicFGsqaaHorCpUVcHAqm5HxEdntJvJ0teD1KUbYBtLGOGqWvcGiV4J75VKe0WBCBQVBrCJMISZZJMkUeHXZNIVkbHXOGw6mAqTAAgcYGItiGltZJOMqff32Ly7T3e8RaSEbbBo5wva83Oa0ymrySnN6ZS8vHhLzDZR9xndu8Puzpi09+03fPz5Z4w+vEfv1pjodgHAIi+WtOczmtPp+kzPaKZn5MUSl4yBqt+n/942vTvvs5Fb0t3vv2P/04ektDbzf1VWDWW5xKUAUNU13c0hbdvy4tEjUrVRvxPRdXX6PTr93n/eSSLZXju0mS8bLleZXETdS2zUibrffSch28wWl6SnL854fPw3z48XTKZLLlYtbS7UvUTdT2xt9hmPara3NhiPNhgN+wwHPTpVAHCxanl1Mufx05f89vsfpF9+/ZOjWc2zlzNWTUZ6/YNY9FLFeFRza6tmvFkzGvQZDrpUEdjictVy/GrG4bMjDv/5i/jgqx/cHexiB3orh4KrWPBGRG6wrvF6Rmpp58/XwS65RSqoZFB5Y/jqfQiCuNmMG8FrNyo4N1hlTZhXs7mVD13KsVSWtgqmBg+Bsc1OOLaNeybAYNY7aRWsbJVmYusggX/Oq/kBUZ4gH0fWIldWVVyDh8ZjF23b3rG1A7GFGRHuIlvKSzkfUfQE6eBfZNwTNPI35mgAAAAASUVORK5CYII='
+    'pt'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAACEUlEQVQ4jY3UT2uUVxTH8c/zzDPJNGNMnDBptAq1GApBVEpXFXHRZd3YfXHnvq+gr8IX4ELcu3bRhUVcSRRaAsW/YG3ixNiZyfy997qYh1FrHDxwuJd7D9/zO+dwb1b8WlyIMZ4VnZSsRnFBlOUxHx3uxfad694kWokWdgN76Ob0AznqaGacjJwtQgy/KZxLUgOZhEhMUR5oIjAM7CZaY/YS3cAgkecsVGhW+HqHQ0WK6UdVZCYWS0/kc1PgXGCt9GkIE4mVcv0XhVDepHeRFawv0Vyks8HCc+bbZtqoRBQfpCv3l05x5lHNUkFnhc7RqsbDtvnt2dB4EHC1xi+n+ebGss7ln4WN/3RGd8Uv247eJE+fBibkU2Dp3y7R77OW6nbXr3j+01WhWNQ7Rn91tsIPgWW3U+TeM7pHojB/2KB5wlxrrGjTO/45JYcSVqbYesXpBltfdXz3x035F/OGq6/F76nenq3uwKHsdPm7xe31N4Z/XfPDq5q9i7saL6k/+xyFB0z59ye8aAw9WNtzfquwdmug/pTKaDYwTUv+H3Cc+PMl24Ng+X5Q7ZHNmO7HCsdMexneNWQ8YLA/OSpKzz4B6nm/h/s6gieCHdG+KKAWB+r/sJyzktOoMFeYPLO8BAQMSd3Jx7FZiG7o2xQ9Fu0IuoKoUMt66tssZzQiK1ipspSzWKEaSSP2B2wHHic23wLmpgDwKBqqjgAAAABJRU5ErkJggg=='
+    'ru'      = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAClUlEQVQ4jW2Sy24jVRCGv3PpTsd2MrGTGYHECOYB0LBGgg0vwdvwGKxZ8AhIbFgiFrPKCiIEGWYWkDh2nKTtuC9VPws3c2NK+lXn6Jz66qIKZ2dnXwBPgScxxkc555G7B0mdmd11XXcjaSFpASzNbAWsY4xbM4vAGHgYQnji7k8z8M1kMvmsLMtZSinEGAFwd9wdM8PMWjNbSlr0fb+StDazRlKMMY5SSg9TSp/M5/NJdvevptMpVVURQuBdk4SZlWb2waBXyQBijKSUiDFycXFBlkRRFO+FAYQQyDmTc37v+3/WdR2SyO7iz3/WvJg3zFcNTecgCMDBfuZoUjA7LDk5LJkdloyq/4PX9z2//3XNjz+/JH/30wv+3tacX2yZX29pWgOHiDioMg/GBccHBceHJbODgumkZFwlUgoguN92XC7u+ePlNc+e/Ub+9ofn1KxBEdxBAh8kgXjjLMocGO8lcgQkNtuWdd2CeljfketNB5VA/jboXT+obUS77Xb/pdfeHeRk3IdLZGIbKmtJMhrP3JNpVOyCeBv8qoA3wPt+T37cXfFpuOSj/pqp3bHnLdmNrRIbCm5DxQ37LBlxS0XNHrVKpF3LpRqmVvOhXTFqfyV/vf2FL/tbHtuSwns0zFESEjQkVmHEkhE37FNTUrM3TEKU3jL1mke25LK7In/envExiSQhH8QOiKBQxwk3nGg1dCu023h8aF+C1p0LF9nd6QwaF50L8wHGbhejRAQSEAfQa/CuABdsfZcgy51Fp7p3PTdpbmLjJiOqwhlHdBTgOKBZVCgjIgyL79oV0EnayJeGTrOk71e9n5rpXFHzYKx7w7vCq9AzJnAkNJNzLHSc4QEKB0EqPEi9a9O4Ll06dw+n/wKygA3Jb422RgAAAABJRU5ErkJggg=='
+    'zh-Hans' = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAACHklEQVQ4jWWTy24VRxRF16nu9jvCDxF5hIJQpoERM0ZMGPNDfA1/gJRR/oAMjBhFikBRIku+upaT4Fd3n70ZdN2H7Z5U1S7VOquOquP3X16+Inlu62lrfgxrJ6TgyfXQf938f1D+iz23maM8F+Uiw5cxjDfFKrJ2Ez0OxVMrn7eRvNuNeNFRDtvj2+C0gxKU46T/K0gaZPejdO4o89G+sHw5BrdBlIiy0ygeR+inOd5rJb3e32vYfnLLxpsZw2/75KdtynwTfu7xf8Fw2m5kxHGWcpwSwigCgDA0ARGF2WhaSXQb0L2Z0b09Y/y4A9pEf3aUZ1eQhcamAcBMX+AKxGDMYCOb1hK+LkSTDL8eoL9bSIGNe3APKMGeMhtksKZ5zWwjKpBrGD4coH86KIklyrMbkKY7iRWsAo0mu0VW91tbWEl+3gIJuwGJOOgZP24TKSzdNbQB18GYamiqoar+4qCE/uig912DqWEVtp5N46qHS4MV3LMyra3KWLPiHmwN3rpCFsAlXKsDD0HrBVbQpeEC6DXDh6DpeSyh6wWqzB3gIrR1r091/qB/3LnyytCiz0QWQ61iQ2AC09Q/oQWa+1awBF2vv8OZh29pfx3MLK0r7ARvRbBbxH6EjxrHYcEbDVAwUXs52gy2L5Xntk9aw/vzzBOFv8gxg7zUGBobtsLjrrPsR9GhiSOnj9rwo4AfCnQCj9LVDT6T/UWZJ98BB7RLvvMNl40AAAAASUVORK5CYII='
+    'zh-Hant' = 'iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAB40lEQVQ4jaXTz2pTQRzF8c+de41tolhTKhUX/gFxqXQrQqHv4mvoukvfwYXP0E1duRCFoghuVFCIWhsq7U3T5M6MiySSCqWoB87mN8z3nIH5FVX15EFK6S7xJuWVdju067opQkjjGOMB459B2nvt8V6Q+pF91IFhJKCDlczNzN0qxvSI1r2cy2632yrW1rrG4+jly12DwQhJoRktyf2Cvch+pM4cZ0KgHVgpubHLhSrntEFbUVTW1695+PC2lLLNzTe2t3vIiK0VVjOrCXE6hQKlSdVvqEgIOp1gbe2yjY2rRqNka+uLFy++OT5uwPnpxZmykxpPZ1NgUhRZrzfw6tUPTZN8/nxodjbx6bCZ0jywrse2t3u+fq0dHTXevu1P22V5ijgNNB9UkZQa19K+i+8/OPo0MhxG14vgknP6Fv20eCbsd8N179x34JYfrjQHOs0xspHSofP62vYtKs5A5tkLnrmaa2XOnHD6Sw/Jz8nVHT2tP5L+VQlhHvA/sN/AGeh/YTNOlTHCEI3JFjDZgGDymas5F6c0O5oHfucw8qlht2FQEDMLgU5gKbBc0i1pVdOgMAXESaF8SD+xU+HpHjuRj4ndkjqRRiyUdDJLBd3EMpYrLpVcLDiXyA2DId8bPmLnFwByBs8DRkw6AAAAAElFTkSuQmCC'
+}
+$script:FlagBitmaps = @{}
+function Get-FlagBitmap([string]$Code) {
+    if ($script:FlagBitmaps.ContainsKey($Code)) { return $script:FlagBitmaps[$Code] }
+    if ($script:FlagB64.ContainsKey($Code)) {
+        try {
+            $bytes = [System.Convert]::FromBase64String($script:FlagB64[$Code])
+            $ms  = New-Object System.IO.MemoryStream($bytes, 0, $bytes.Length)
+            $bmp = [System.Drawing.Bitmap]::FromStream($ms)
+            $script:FlagBitmaps[$Code] = $bmp
+            return $bmp
+        } catch { }
+    }
+    return $null
+}
+
+# ===========================================================================
+# portable config.txt (next to this script)
+# ===========================================================================
+function Load-Config {
+    $gp = ''; $lang = ''
+    try {
+        if (Test-Path -LiteralPath $ConfigPath) {
+            foreach ($line in Get-Content -LiteralPath $ConfigPath) {
+                $t = ([string]$line).Trim()
+                if ($t -eq '' -or $t.StartsWith('#')) { continue }
+                $p = $t.Split('=', 2)
+                if ($p.Count -lt 2) { continue }
+                switch ($p[0].Trim().ToUpper()) {
+                    'GAMEPATH' { $gp   = $p[1].Trim() }
+                    'LANG'     { $lang = $p[1].Trim() }
+                }
+            }
+        }
+    } catch { }
+    return [PSCustomObject]@{ GamePath = $gp; Lang = $lang }
+}
+function Save-Config([string]$GamePath, [string]$Lang) {
+    if ([string]::IsNullOrWhiteSpace($Lang)) { $Lang = $script:CurLang }
+    try {
+        @(
+            '# KinectNavigator Setup - remembered settings. Safe to delete.'
+            "GAMEPATH=$GamePath"
+            "LANG=$Lang"
+        ) | Set-Content -LiteralPath $ConfigPath -Encoding UTF8
+    } catch { }   # read-only location -> just don't remember
+}
+
+# ---- theme (matches Legacy Downloader) ----
+$FontBase  = New-Object System.Drawing.Font('Segoe UI', 9)
+$FontBold  = New-Object System.Drawing.Font('Segoe UI', 9, [System.Drawing.FontStyle]::Bold)
+$FontTitle = New-Object System.Drawing.Font('Segoe UI', 13, [System.Drawing.FontStyle]::Bold)
+$FontMono  = New-Object System.Drawing.Font('Consolas', 9)
+$ColBg     = [System.Drawing.Color]::FromArgb(246, 248, 250)
+$ColCard   = [System.Drawing.Color]::White
+$ColPrim   = [System.Drawing.Color]::FromArgb(18, 98, 200)
+$ColText   = [System.Drawing.Color]::FromArgb(30, 41, 59)
+$ColBorder = [System.Drawing.Color]::FromArgb(203, 213, 225)
+$ColMuted  = [System.Drawing.Color]::FromArgb(100, 116, 139)
+$ColWarn   = [System.Drawing.Color]::FromArgb(180, 83, 9)
+$ColOk     = [System.Drawing.Color]::FromArgb(21, 128, 61)
+
+# ---- preset tables: id -> fixed set of kinectnav.ini values. Display text is
+#      T "preset.<group>.<id>"; the id is what's stored / compared. ----
+$REACH_IDS  = @('sensitive', 'normal', 'big')
+$SCROLL_IDS = @('slow', 'normal', 'fast')
+$CMD_IDS    = @('easy', 'normal', 'strict')
+$HOLD_IDS   = @('short', 'normal', 'long')
+
+$PRESET_REACH = @{
+    sensitive = [ordered]@{ dpad_park_radius = '0.26' }
+    normal    = [ordered]@{ dpad_park_radius = '0.32' }
+    big       = [ordered]@{ dpad_park_radius = '0.40' }
+}
+$PRESET_SCROLL = @{
+    slow   = [ordered]@{ dpad_repeat_dwell_ms = '750'; dpad_repeat_first_ms = '550'; dpad_repeat_min_ms = '320'; dpad_repeat_accel_ms = '16' }
+    normal = [ordered]@{ dpad_repeat_dwell_ms = '600'; dpad_repeat_first_ms = '430'; dpad_repeat_min_ms = '200'; dpad_repeat_accel_ms = '22' }
+    fast   = [ordered]@{ dpad_repeat_dwell_ms = '450'; dpad_repeat_first_ms = '320'; dpad_repeat_min_ms = '130'; dpad_repeat_accel_ms = '30' }
+}
+$PRESET_CMD = @{
+    easy   = [ordered]@{ dpad_cmd_gate_radius = '0.50' }
+    normal = [ordered]@{ dpad_cmd_gate_radius = '0.42' }
+    strict = [ordered]@{ dpad_cmd_gate_radius = '0.32' }
+}
+$PRESET_HOLD = @{
+    short  = [ordered]@{ dpad_cmd_dwell_ms = '400';  dpad_back_dwell_ms = '1500' }
+    normal = [ordered]@{ dpad_cmd_dwell_ms = '600';  dpad_back_dwell_ms = '3000' }
+    long   = [ordered]@{ dpad_cmd_dwell_ms = '1000'; dpad_back_dwell_ms = '4000' }
+}
+
+$KEY_ORDER = @('Left', 'Right', 'Up', 'Down', 'Confirm', 'Back')
+$KEY_DEFS  = @{
+    'Left'    = @('key_left', '0x25')
+    'Right'   = @('key_right', '0x27')
+    'Up'      = @('key_up', '0x26')
+    'Down'    = @('key_down', '0x28')
+    'Confirm' = @('key_confirm', '0x0D')
+    'Back'    = @('key_back', '0x1B')
+}
+$CFG_DEFAULTS = @{
+    dpad_park_radius = '0.32'
+    dpad_repeat_dwell_ms = '600'; dpad_repeat_first_ms = '430'; dpad_repeat_min_ms = '200'; dpad_repeat_accel_ms = '22'
+    dpad_cmd_gate_radius = '0.42'
+    dpad_cmd_dwell_ms = '600'; dpad_back_dwell_ms = '3000'
+}
+
+# ===========================================================================
+# version helpers
+# ===========================================================================
 function Get-DllVersion([string]$path) {
     try {
         if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
@@ -46,64 +266,9 @@ function VerShort($v) {
 }
 $ShimVer = Get-DllVersion $ShimSrc
 
-# ---- theme (matches Legacy Downloader) ----
-$FontBase  = New-Object System.Drawing.Font('Segoe UI', 9)
-$FontBold  = New-Object System.Drawing.Font('Segoe UI', 9, [System.Drawing.FontStyle]::Bold)
-$FontTitle = New-Object System.Drawing.Font('Segoe UI', 13, [System.Drawing.FontStyle]::Bold)
-$FontMono  = New-Object System.Drawing.Font('Consolas', 9)
-$ColBg     = [System.Drawing.Color]::FromArgb(246, 248, 250)
-$ColCard   = [System.Drawing.Color]::White
-$ColPrim   = [System.Drawing.Color]::FromArgb(18, 98, 200)
-$ColText   = [System.Drawing.Color]::FromArgb(30, 41, 59)
-$ColBorder = [System.Drawing.Color]::FromArgb(203, 213, 225)
-$ColMuted  = [System.Drawing.Color]::FromArgb(100, 116, 139)
-$ColWarn   = [System.Drawing.Color]::FromArgb(180, 83, 9)
-$ColOk     = [System.Drawing.Color]::FromArgb(21, 128, 61)
-
-# ---- preset tables (a preset = a fixed set of kinectnav.ini values) ----
-$REACH_NAMES    = @('More sensitive', 'Normal', 'Bigger reach')
-$SCROLL_NAMES   = @('Slower', 'Normal', 'Faster')
-$CMDREACH_NAMES = @('Easier', 'Normal', 'Stricter')
-$HOLD_NAMES     = @('Shorter', 'Normal', 'Longer')
-
-$PRESET_REACH = @{
-    'More sensitive' = [ordered]@{ dpad_park_radius = '0.26' }
-    'Normal'         = [ordered]@{ dpad_park_radius = '0.32' }
-    'Bigger reach'   = [ordered]@{ dpad_park_radius = '0.40' }
-}
-$PRESET_SCROLL = @{
-    'Slower' = [ordered]@{ dpad_repeat_dwell_ms = '750'; dpad_repeat_first_ms = '550'; dpad_repeat_min_ms = '320'; dpad_repeat_accel_ms = '16' }
-    'Normal' = [ordered]@{ dpad_repeat_dwell_ms = '600'; dpad_repeat_first_ms = '430'; dpad_repeat_min_ms = '200'; dpad_repeat_accel_ms = '22' }
-    'Faster' = [ordered]@{ dpad_repeat_dwell_ms = '450'; dpad_repeat_first_ms = '320'; dpad_repeat_min_ms = '130'; dpad_repeat_accel_ms = '30' }
-}
-$PRESET_CMDREACH = @{
-    'Easier'   = [ordered]@{ dpad_cmd_gate_radius = '0.50' }
-    'Normal'   = [ordered]@{ dpad_cmd_gate_radius = '0.42' }
-    'Stricter' = [ordered]@{ dpad_cmd_gate_radius = '0.32' }
-}
-$PRESET_HOLD = @{
-    'Shorter' = [ordered]@{ dpad_cmd_dwell_ms = '400';  dpad_back_dwell_ms = '1500' }
-    'Normal'  = [ordered]@{ dpad_cmd_dwell_ms = '600';  dpad_back_dwell_ms = '3000' }
-    'Longer'  = [ordered]@{ dpad_cmd_dwell_ms = '1000'; dpad_back_dwell_ms = '4000' }
-}
-
-$KEY_ORDER = @('Left', 'Right', 'Up', 'Down', 'Confirm', 'Back')
-$KEY_DEFS  = @{
-    'Left'    = @('key_left', '0x25')
-    'Right'   = @('key_right', '0x27')
-    'Up'      = @('key_up', '0x26')
-    'Down'    = @('key_down', '0x28')
-    'Confirm' = @('key_confirm', '0x0D')
-    'Back'    = @('key_back', '0x1B')
-}
-# compiled defaults for the keys the presets touch -- an unset key counts as this
-$CFG_DEFAULTS = @{
-    dpad_park_radius = '0.32'
-    dpad_repeat_dwell_ms = '600'; dpad_repeat_first_ms = '430'; dpad_repeat_min_ms = '200'; dpad_repeat_accel_ms = '22'
-    dpad_cmd_gate_radius = '0.42'
-    dpad_cmd_dwell_ms = '600'; dpad_back_dwell_ms = '3000'
-}
-
+# ===========================================================================
+# small helpers
+# ===========================================================================
 function New-Btn([string]$Text, [int]$X, [int]$Y, [int]$W, [int]$H = 30, [bool]$Primary = $false) {
     $b = New-Object System.Windows.Forms.Button
     $b.Text = $Text; $b.SetBounds($X, $Y, $W, $H)
@@ -119,26 +284,27 @@ function New-Btn([string]$Text, [int]$X, [int]$Y, [int]$W, [int]$H = 30, [bool]$
     return $b
 }
 function Msg([string]$Text, $Icon) {
-    [System.Windows.Forms.MessageBox]::Show($Form, $Text, 'KinectNavigator Setup',
+    [System.Windows.Forms.MessageBox]::Show($Form, $Text, (T 'app.msgbox_title'),
         [System.Windows.Forms.MessageBoxButtons]::OK, $Icon) | Out-Null
 }
 
+# ===========================================================================
+# start-up: pick language BEFORE anything is shown
+# ===========================================================================
+$script:Langs = @(Get-AvailableLanguages)
+$bootCfg   = Load-Config
+$bootLang  = if ($bootCfg.Lang) { $bootCfg.Lang } else { Resolve-DefaultLanguage }
+$null = Initialize-Language -Code $bootLang
+
 if (-not (Test-Path -LiteralPath $ShimSrc)) {
-    [System.Windows.Forms.MessageBox]::Show(
-        "Kinect10.dll (the KinectNavigator shim) isn't next to this installer." + [Environment]::NewLine +
-        "Extract the whole release together, then run it again.",
-        'KinectNavigator Setup', 'OK', 'Error') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show((T 'dlg.no_shim'),
+        (T 'app.msgbox_title'), 'OK', 'Error') | Out-Null
     exit 1
 }
 
 # ---------------------------------------------------------------------------
 # best-effort checks
 # ---------------------------------------------------------------------------
-
-# Looks for ANY "Kinect ... Runtime/SDK" entry in the installed-programs
-# registry (both native and the 32-bit view on a 64-bit OS). This is a
-# heuristic, not a guarantee -- it only tells us an installer of that shape
-# ran at some point, never gates Install, and a miss just shows a soft note.
 function Test-KinectRuntime {
     $roots = @(
         'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
@@ -154,39 +320,36 @@ function Test-KinectRuntime {
     return $false
 }
 function Test-GameRunning { return [bool](Get-Process -Name 'legacy' -ErrorAction SilentlyContinue) }
-
 $script:RuntimeDetected = Test-KinectRuntime
 
 # ---------------------------------------------------------------------------
-# game-folder inspection
+# game-folder inspection  (returns a state id + a T key + format vars, so the
+# text can be localised at display time)
 # ---------------------------------------------------------------------------
 function Get-State([string]$gf) {
-    $r = [ordered]@{ folder = $gf; state = 'none'; detail = 'Choose your game folder.'; fs = $null; instVer = $null }
+    $r = [ordered]@{ folder = $gf; state = 'none'; detailKey = 'state.none'; detailVars = $null; fs = $null; instVer = $null }
     if ([string]::IsNullOrWhiteSpace($gf)) { return $r }
-    if (-not (Test-Path -LiteralPath $gf)) {
-        $r.detail = "That folder doesn't exist - choose your game folder."; return $r
-    }
+    if (-not (Test-Path -LiteralPath $gf)) { $r.detailKey = 'state.notexist'; return $r }
     if (-not (Test-Path -LiteralPath (Join-Path $gf 'legacy.exe'))) {
-        $r.state = 'nogame'; $r.detail = 'No legacy.exe in this folder - pick the folder that has the game in it.'
-        return $r
+        $r.state = 'nogame'; $r.detailKey = 'state.nogame'; return $r
     }
     $dll     = Join-Path $gf 'Kinect10.dll'
     $backend = Join-Path $gf 'Kinect10_backend.dll'
     if (Test-Path -LiteralPath $backend) {
-        $r.state = 'installed'; $r.detail = 'KinectNavigator is installed here.'
+        $r.state = 'installed'; $r.detailKey = 'state.installed'
         $r.instVer = Get-DllVersion $dll
     }
     elseif (-not (Test-Path -LiteralPath $dll)) {
-        $r.state = 'nodll'; $r.detail = 'No Kinect10.dll here - is this the right folder?'
+        $r.state = 'nodll'; $r.detailKey = 'state.nodll'
     }
     else {
         $sz = (Get-Item -LiteralPath $dll).Length
         if ($sz -ge $MIN_GENUINE) {
-            $r.state = 'genuine'; $r.detail = ('Genuine Kinect runtime found ({0:N1} MB). Ready to install.' -f ($sz / 1MB))
+            $r.state = 'genuine'; $r.detailKey = 'state.genuine'
+            $r.detailVars = @{ mb = ('{0:N1}' -f ($sz / 1MB)) }
         } else {
-            $r.state = 'foreign'
-            $r.detail = ('The Kinect10.dll here is only {0:N0} KB - not the genuine ~15 MB runtime. ' -f ($sz / 1KB)) +
-                        'If you drive the game with a webcam emulator, KinectNavigator cannot sit on top of it.'
+            $r.state = 'foreign'; $r.detailKey = 'state.foreign'
+            $r.detailVars = @{ kb = ('{0:N0}' -f ($sz / 1KB)) }
         }
     }
     $cfg = Join-Path $gf 'config.xml'
@@ -199,11 +362,8 @@ function Get-State([string]$gf) {
 }
 
 # ---------------------------------------------------------------------------
-# kinectnav.ini read / write
+# kinectnav.ini read / write  (not user-facing text)
 # ---------------------------------------------------------------------------
-
-# Parse the ini into @{ key = value } for ACTIVE (non-comment) lines only.
-# A "# key = value" template line counts as NOT set.
 function Read-IniMap([string]$iniPath) {
     $m = @{}
     if ([string]::IsNullOrWhiteSpace($iniPath) -or -not (Test-Path -LiteralPath $iniPath)) { return $m }
@@ -220,28 +380,22 @@ function Read-IniMap([string]$iniPath) {
     }
     return $m
 }
-
 function Get-IniVal($map, [string]$key, $default) {
     $k = $key.ToLower()
     if ($map.ContainsKey($k)) { return $map[$k] }
     return $default
 }
-
 function IniBool($v) {
     $s = ([string]$v).Trim()
     $n = 0
     if ([int]::TryParse($s, [ref]$n)) { return ($n -ne 0) }
     return ($s -match '^(true|yes|on)$')
 }
-
 function NormNum($v) {
     $d = 0.0
     if ([double]::TryParse(([string]$v).Trim(), [ref]$d)) { return $d }
     return ([string]$v).Trim().ToLower()
 }
-
-# Set (or uncomment-and-set, or append) one key. Collapses any duplicates /
-# commented template lines for that key to a single active line.
 function Set-IniKey([string]$iniPath, [string]$key, [string]$value) {
     $line = "$key = $value"
     $pat  = '^\s*#?\s*' + [regex]::Escape($key) + '\s*='
@@ -262,7 +416,6 @@ function Set-IniKey([string]$iniPath, [string]$key, [string]$value) {
         ) -Encoding ASCII
     }
 }
-
 function Remove-IniKeys([string]$iniPath, [string[]]$keys) {
     if (-not (Test-Path -LiteralPath $iniPath)) { return }
     $lines = @(Get-Content -LiteralPath $iniPath)
@@ -275,21 +428,17 @@ function Remove-IniKeys([string]$iniPath, [string[]]$keys) {
     }
     Set-Content -LiteralPath $iniPath -Value $out -Encoding ASCII
 }
-
-# Return the preset name whose every value matches the ini (unset = its default),
-# or $null if none match exactly.
-function Test-PresetMatch($ini, $names, $table, $defs) {
-    foreach ($n in $names) {
+function Test-PresetMatch($ini, $ids, $table, $defs) {
+    foreach ($id in $ids) {
         $ok = $true
-        foreach ($kv in $table[$n].GetEnumerator()) {
+        foreach ($kv in $table[$id].GetEnumerator()) {
             $cur = Get-IniVal $ini $kv.Key $defs[$kv.Key]
             if ((NormNum $cur) -ne (NormNum $kv.Value)) { $ok = $false; break }
         }
-        if ($ok) { return $n }
+        if ($ok) { return $id }
     }
     return $null
 }
-
 function ConvertTo-Vk([string]$s) {
     if ($null -eq $s) { return $null }
     $s = $s.Trim()
@@ -305,9 +454,6 @@ function VkName([int]$vk) {
     if ($n) { return ('{0}   (0x{1:X2})' -f $n, $vk) }
     return ('0x{0:X2}' -f $vk)
 }
-
-# fill the six key-binding textboxes from the ini (hoisted so the dialog's
-# event handlers can call it -- $iniPath / $boxes come in as arguments)
 function Update-KeyBoxes($iniPath, $boxes) {
     $m = Read-IniMap $iniPath
     foreach ($nm in $KEY_ORDER) {
@@ -317,7 +463,6 @@ function Update-KeyBoxes($iniPath, $boxes) {
         $boxes[$nm].Text = $(if ($null -ne $vk) { VkName $vk } else { [string]$cur })
     }
 }
-
 function Set-ConfigWindowed([string]$gf) {
     $cfg = Join-Path $gf 'config.xml'
     if (-not (Test-Path -LiteralPath $cfg)) { return $false }
@@ -329,22 +474,11 @@ function Set-ConfigWindowed([string]$gf) {
     return $false
 }
 
-function Save-LastPath([string]$gf) {
-    try {
-        if (-not (Test-Path -LiteralPath $StateDir)) { New-Item -ItemType Directory -Path $StateDir -Force | Out-Null }
-        Set-Content -LiteralPath $LastPathFile -Value $gf -Encoding UTF8
-    } catch { }
-}
-function Load-LastPath {
-    try { if (Test-Path -LiteralPath $LastPathFile) { return (Get-Content -LiteralPath $LastPathFile -Raw).Trim() } } catch { }
-    return ''
-}
-
 # ---------------------------------------------------------------------------
 # form
 # ---------------------------------------------------------------------------
 $Form = New-Object System.Windows.Forms.Form
-$Form.Text = 'KinectNavigator - Setup'
+$Form.Text = (T 'app.window_title')
 $Form.ClientSize = New-Object System.Drawing.Size(600, 612)
 $Form.StartPosition = 'CenterScreen'
 $Form.FormBorderStyle = 'FixedSingle'
@@ -353,96 +487,134 @@ $Form.BackColor = $ColBg
 $Form.Font = $FontBase
 
 $lblTitle = New-Object System.Windows.Forms.Label
-$lblTitle.Text = 'KinectNavigator'; $lblTitle.Font = $FontTitle; $lblTitle.ForeColor = $ColText
-$lblTitle.SetBounds(20, 16, 400, 30); $Form.Controls.Add($lblTitle)
+$lblTitle.Text = (T 'app.title'); $lblTitle.Font = $FontTitle; $lblTitle.ForeColor = $ColText
+$lblTitle.SetBounds(20, 16, 300, 30); $Form.Controls.Add($lblTitle)
 
 $lblSub = New-Object System.Windows.Forms.Label
-$lblSub.Text = 'Hands-free Kinect menu navigation for Just Dance Legacy Offline PC'
-$lblSub.ForeColor = $ColMuted; $lblSub.SetBounds(22, 48, 460, 20); $Form.Controls.Add($lblSub)
+$lblSub.Text = (T 'app.subtitle')
+$lblSub.ForeColor = $ColMuted; $lblSub.SetBounds(22, 74, 560, 18); $Form.Controls.Add($lblSub)
 
 $lblVer = New-Object System.Windows.Forms.Label
-$lblVer.Text = $(if ($ShimVer) { 'installer  v' + (VerShort $ShimVer) } else { '' })
+$lblVer.Text = $(if ($ShimVer) { T 'app.installer_version' @{ v = (VerShort $ShimVer) } } else { '' })
 $lblVer.ForeColor = $ColMuted; $lblVer.TextAlign = 'TopRight'
-$lblVer.SetBounds(360, 22, 220, 18); $Form.Controls.Add($lblVer)
+$lblVer.SetBounds(360, 52, 220, 18); $Form.Controls.Add($lblVer)
+
+# ---- language picker (owner-draw: flag + native name), top-right ----
+$lblLang = New-Object System.Windows.Forms.Label
+$lblLang.Text = (T 'app.lang_label'); $lblLang.ForeColor = $ColMuted
+$lblLang.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight
+$lblLang.SetBounds(300, 14, 74, 26); $Form.Controls.Add($lblLang)
+
+$cmbLang = New-Object System.Windows.Forms.ComboBox
+$cmbLang.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$cmbLang.DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
+$cmbLang.ItemHeight = 22
+$cmbLang.Font = $FontBase
+$cmbLang.SetBounds(380, 12, 200, 26)
+$cmbLang.BackColor = $ColCard; $cmbLang.ForeColor = $ColText
+if ($script:Langs.Count -gt 0) {
+    $cmbLang.Add_DrawItem({
+        param($s, $e)
+        if ($e.Index -lt 0 -or $e.Index -ge $script:Langs.Count) { return }
+        $e.DrawBackground()
+        $lang = $script:Langs[$e.Index]
+        $bmp  = Get-FlagBitmap $lang.Code
+        $flagX = $e.Bounds.X + 6
+        $flagY = $e.Bounds.Y + [Math]::Max(0, [int](($e.Bounds.Height - 15) / 2))
+        if ($bmp) {
+            $e.Graphics.DrawImage($bmp, $flagX, $flagY, 20, 15)
+            $borderPen = New-Object System.Drawing.Pen($ColBorder)
+            $e.Graphics.DrawRectangle($borderPen, $flagX - 1, $flagY - 1, 21, 16)
+            $borderPen.Dispose()
+        }
+        $textX  = $flagX + 28
+        $brush  = New-Object System.Drawing.SolidBrush($e.ForeColor)
+        $sf     = New-Object System.Drawing.StringFormat
+        $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+        $tb = New-Object System.Drawing.RectangleF($textX, $e.Bounds.Y, ($e.Bounds.Width - $textX), $e.Bounds.Height)
+        $e.Graphics.DrawString($lang.NativeName, $e.Font, $brush, $tb, $sf)
+        $brush.Dispose()
+        $e.DrawFocusRectangle()
+    })
+    foreach ($l in $script:Langs) { [void]$cmbLang.Items.Add($l.NativeName) }
+    for ($i = 0; $i -lt $script:Langs.Count; $i++) {
+        if ($script:Langs[$i].Code -eq $script:CurLang) { $cmbLang.SelectedIndex = $i; break }
+    }
+    if ($cmbLang.SelectedIndex -lt 0) { $cmbLang.SelectedIndex = 0 }
+    $Form.Controls.AddRange(@($lblLang, $cmbLang))
+} else {
+    $lblLang.Visible = $false
+}
 
 $lblGF = New-Object System.Windows.Forms.Label
-$lblGF.Text = 'Game folder'; $lblGF.Font = $FontBold; $lblGF.ForeColor = $ColText
-$lblGF.SetBounds(20, 86, 120, 20); $Form.Controls.Add($lblGF)
+$lblGF.Text = (T 'gf.label'); $lblGF.Font = $FontBold; $lblGF.ForeColor = $ColText
+$lblGF.SetBounds(20, 100, 300, 20); $Form.Controls.Add($lblGF)
 
 $txtGF = New-Object System.Windows.Forms.TextBox
-$txtGF.SetBounds(20, 108, 455, 24); $txtGF.Font = $FontBase; $Form.Controls.Add($txtGF)
+$txtGF.SetBounds(20, 122, 455, 24); $txtGF.Font = $FontBase; $Form.Controls.Add($txtGF)
 
-$btnBrowse = New-Btn 'Browse...' 483 107 97 26
+$btnBrowse = New-Btn (T 'btn.browse') 483 121 97 26
 $Form.Controls.Add($btnBrowse)
 
 $pnl = New-Object System.Windows.Forms.Panel
-$pnl.SetBounds(20, 148, 560, 112); $pnl.BackColor = $ColCard; $pnl.BorderStyle = 'FixedSingle'
+$pnl.SetBounds(20, 158, 560, 112); $pnl.BackColor = $ColCard; $pnl.BorderStyle = 'FixedSingle'
 $Form.Controls.Add($pnl)
 $lblStatus = New-Object System.Windows.Forms.Label
 $lblStatus.SetBounds(14, 10, 532, 92); $lblStatus.Font = $FontBase; $lblStatus.ForeColor = $ColText
 $pnl.Controls.Add($lblStatus)
 
 $lnkRuntime = New-Object System.Windows.Forms.LinkLabel
-$lnkRuntime.SetBounds(20, 268, 560, 20); $lnkRuntime.Font = $FontBase
+$lnkRuntime.SetBounds(20, 278, 560, 20); $lnkRuntime.Font = $FontBase
 $lnkRuntime.LinkBehavior = [System.Windows.Forms.LinkBehavior]::HoverUnderline
 $Form.Controls.Add($lnkRuntime)
 $lnkRuntime.Add_LinkClicked({ Start-Process $RuntimeUrl })
-if ($script:RuntimeDetected) {
-    $lnkRuntime.Text = 'Kinect for Windows Runtime: detected'
-    $lnkRuntime.LinkColor = $ColMuted; $lnkRuntime.ActiveLinkColor = $ColMuted; $lnkRuntime.DisabledLinkColor = $ColMuted
-    $lnkRuntime.Enabled = $false
-} else {
-    $lnkRuntime.Text = 'Kinect for Windows Runtime: not detected - click to download it'
-    $lnkRuntime.LinkColor = $ColWarn
-}
 
-# ---- settings panel (live editor for kinectnav.ini in the game folder) ----
 $lblOpt = New-Object System.Windows.Forms.Label
-$lblOpt.Text = 'Settings  -  saved to kinectnav.ini in the game folder, applied next launch'
+$lblOpt.Text = (T 'opt.header')
 $lblOpt.Font = $FontBold; $lblOpt.ForeColor = $ColText
-$lblOpt.SetBounds(20, 296, 560, 20); $Form.Controls.Add($lblOpt)
+$lblOpt.SetBounds(20, 306, 560, 20); $Form.Controls.Add($lblOpt)
 
 $pnlOpt = New-Object System.Windows.Forms.Panel
-$pnlOpt.SetBounds(20, 318, 560, 112); $pnlOpt.BackColor = $ColCard; $pnlOpt.BorderStyle = 'FixedSingle'
+$pnlOpt.SetBounds(20, 328, 560, 112); $pnlOpt.BackColor = $ColCard; $pnlOpt.BorderStyle = 'FixedSingle'
 $Form.Controls.Add($pnlOpt)
 
 $lblHand = New-Object System.Windows.Forms.Label
-$lblHand.Text = 'Navigation hand:'; $lblHand.ForeColor = $ColText
+$lblHand.Text = (T 'opt.hand_label'); $lblHand.ForeColor = $ColText
 $lblHand.SetBounds(14, 15, 108, 20); $pnlOpt.Controls.Add($lblHand)
 
 $cmbHand = New-Object System.Windows.Forms.ComboBox
 $cmbHand.DropDownStyle = 'DropDownList'
 $cmbHand.SetBounds(124, 12, 170, 24)
-[void]$cmbHand.Items.Add('Right hand')
-[void]$cmbHand.Items.Add('Left hand')
+[void]$cmbHand.Items.Add((T 'opt.hand_right'))
+[void]$cmbHand.Items.Add((T 'opt.hand_left'))
 $pnlOpt.Controls.Add($cmbHand)
 
 $chkMirror = New-Object System.Windows.Forms.CheckBox
-$chkMirror.Text = 'Reverse left / right'; $chkMirror.ForeColor = $ColText
+$chkMirror.Text = (T 'opt.mirror'); $chkMirror.ForeColor = $ColText
 $chkMirror.SetBounds(320, 13, 230, 22); $pnlOpt.Controls.Add($chkMirror)
 
 $chkBack = New-Object System.Windows.Forms.CheckBox
-$chkBack.Text = 'Enable the Back gesture (Esc)'; $chkBack.ForeColor = $ColText
+$chkBack.Text = (T 'opt.back'); $chkBack.ForeColor = $ColText
 $chkBack.SetBounds(14, 44, 290, 22); $pnlOpt.Controls.Add($chkBack)
 
 $chkHud = New-Object System.Windows.Forms.CheckBox
 $chkHud.AutoSize = $false
-$chkHud.Text = 'Show the on-screen HUD  (windowed only)'; $chkHud.ForeColor = $ColText
+$chkHud.Text = (T 'opt.hud'); $chkHud.ForeColor = $ColText
 $chkHud.SetBounds(320, 44, 230, 22); $pnlOpt.Controls.Add($chkHud)
 
-$btnMore = New-Btn 'More settings...' 14 74 130 27
-$btnOpenIni = New-Btn 'Open kinectnav.ini' 152 74 160 27
-$btnResetCfg = New-Btn 'Reset to defaults' 320 74 150 27
+$btnMore     = New-Btn (T 'btn.more')       14 74 130 27
+$btnOpenIni  = New-Btn (T 'btn.open_ini')  152 74 160 27
+$btnResetCfg = New-Btn (T 'btn.reset_cfg') 320 74 150 27
 $pnlOpt.Controls.AddRange(@($btnMore, $btnOpenIni, $btnResetCfg))
 
-$btnInstall   = New-Btn 'Install'   20 444 130 34 $true
-$btnUninstall = New-Btn 'Uninstall' 160 444 130 34
-$btnHelp      = New-Btn 'Gestures'  350 444 100 34
-$btnClose     = New-Btn 'Close'     460 444 100 34
+$btnInstall   = New-Btn (T 'btn.install')    20 454 130 34 $true
+$btnUninstall = New-Btn (T 'btn.uninstall') 160 454 130 34
+$btnHelp      = New-Btn (T 'btn.gestures')  350 454 100 34
+$btnClose     = New-Btn (T 'btn.close')     460 454 100 34
 $Form.Controls.AddRange(@($btnInstall, $btnUninstall, $btnHelp, $btnClose))
 
 $txtLog = New-Object System.Windows.Forms.TextBox
-$txtLog.SetBounds(20, 488, 560, 104); $txtLog.Multiline = $true; $txtLog.ReadOnly = $true
+$txtLog.SetBounds(20, 498, 560, 96); $txtLog.Multiline = $true; $txtLog.ReadOnly = $true
 $txtLog.ScrollBars = 'Vertical'; $txtLog.BackColor = [System.Drawing.Color]::White; $txtLog.Font = $FontMono
 $Form.Controls.Add($txtLog)
 
@@ -450,6 +622,7 @@ function Write-Log([string]$s) {
     $txtLog.AppendText($s + "`r`n")
     $txtLog.SelectionStart = $txtLog.TextLength; $txtLog.ScrollToCaret()
 }
+function Log-IniSet([string]$k, [string]$v) { Write-Log (T 'log.ini_set' @{ k = $k; v = $v }) }
 
 function Get-IniPath {
     $st = $script:CurState
@@ -475,57 +648,106 @@ function Populate-Config([string]$gf) {
 function Refresh-Status {
     $st = Get-State ($txtGF.Text.Trim())
     $script:CurState = $st
+    $detail = $(if ($st.detailVars) { T $st.detailKey $st.detailVars } else { T $st.detailKey })
     $lines = @()
     switch ($st.state) {
-        'genuine'   { $lines += '[ OK ]  ' + $st.detail }
-        'installed' { $lines += '[ OK ]  ' + $st.detail }
-        'foreign'   { $lines += '[ !! ]  ' + $st.detail }
-        'nogame'    { $lines += '[ X  ]  ' + $st.detail }
-        'nodll'     { $lines += '[ X  ]  ' + $st.detail }
-        default     { $lines += '        ' + $st.detail }
+        'genuine'   { $lines += '[ OK ]  ' + $detail }
+        'installed' { $lines += '[ OK ]  ' + $detail }
+        'foreign'   { $lines += '[ !! ]  ' + $detail }
+        'nogame'    { $lines += '[ X  ]  ' + $detail }
+        'nodll'     { $lines += '[ X  ]  ' + $detail }
+        default     { $lines += '        ' + $detail }
     }
 
     $canInstall = ($st.state -eq 'genuine' -or $st.state -eq 'installed')
     $btnUninstall.Enabled = ($st.state -eq 'installed')
 
-    # Install / Update button + version line
     if ($st.state -eq 'installed') {
         $iv = $st.instVer
         if ($null -ne $ShimVer -and $null -ne $iv) {
             if ($ShimVer -gt $iv) {
-                $btnInstall.Text = 'Update'; $btnInstall.Enabled = $true
-                $lines += ('[ i  ]  Update available - installed v{0}, this download is v{1}.' -f (VerShort $iv), (VerShort $ShimVer))
+                $btnInstall.Text = (T 'btn.update'); $btnInstall.Enabled = $true
+                $lines += '[ i  ]  ' + (T 'ver.update_avail' @{ inst = (VerShort $iv); shim = (VerShort $ShimVer) })
             } elseif ($ShimVer -eq $iv) {
-                $btnInstall.Text = 'Up to date'; $btnInstall.Enabled = $false
-                $lines += ('[ OK ]  KinectNavigator v{0} is installed and up to date.' -f (VerShort $iv))
+                $btnInstall.Text = (T 'btn.uptodate'); $btnInstall.Enabled = $false
+                $lines += '[ OK ]  ' + (T 'ver.uptodate' @{ inst = (VerShort $iv) })
             } else {
-                $btnInstall.Text = 'Reinstall'; $btnInstall.Enabled = $true
-                $lines += ('[ !! ]  This download is v{0} - OLDER than the installed v{1}.' -f (VerShort $ShimVer), (VerShort $iv))
+                $btnInstall.Text = (T 'btn.reinstall'); $btnInstall.Enabled = $true
+                $lines += '[ !! ]  ' + (T 'ver.older' @{ inst = (VerShort $iv); shim = (VerShort $ShimVer) })
             }
         } else {
-            $btnInstall.Text = 'Update'; $btnInstall.Enabled = $true
-            $lines += '[ i  ]  Click Update to replace the installed DLL with this download (its version could not be read).'
+            $btnInstall.Text = (T 'btn.update'); $btnInstall.Enabled = $true
+            $lines += '[ i  ]  ' + (T 'ver.unreadable')
         }
     } else {
-        $btnInstall.Text = 'Install'; $btnInstall.Enabled = $canInstall
+        $btnInstall.Text = (T 'btn.install'); $btnInstall.Enabled = $canInstall
     }
 
-    if ($st.fs -eq 1)     { $lines += '[ i  ]  config.xml is set to fullscreen - the HUD stays hidden unless you set FullScreen="0".' }
-    elseif ($st.fs -eq 0) { $lines += '[ i  ]  config.xml is windowed - the HUD can show.' }
+    if ($st.fs -eq 1)     { $lines += '[ i  ]  ' + (T 'fs.fullscreen') }
+    elseif ($st.fs -eq 0) { $lines += '[ i  ]  ' + (T 'fs.windowed') }
     $lblStatus.Text = ($lines -join "`r`n")
 
     foreach ($c in @($cmbHand, $chkMirror, $chkBack, $chkHud, $btnMore, $btnOpenIni, $btnResetCfg)) {
         $c.Enabled = $canInstall
     }
     if ($canInstall) {
-        Save-LastPath $st.folder
+        Save-Config $st.folder $script:CurLang
         Populate-Config $st.folder
     }
 }
 
+# re-apply every static string after a language change
+function Apply-Language {
+    $Form.Text     = (T 'app.window_title')
+    $lblTitle.Text = (T 'app.title')
+    $lblSub.Text   = (T 'app.subtitle')
+    if ($ShimVer) { $lblVer.Text = (T 'app.installer_version' @{ v = (VerShort $ShimVer) }) }
+    $lblLang.Text  = (T 'app.lang_label')
+    $lblGF.Text    = (T 'gf.label')
+    $btnBrowse.Text = (T 'btn.browse')
+    if ($script:RuntimeDetected) {
+        $lnkRuntime.Text = (T 'runtime.detected')
+        $lnkRuntime.LinkColor = $ColMuted; $lnkRuntime.ActiveLinkColor = $ColMuted
+        $lnkRuntime.DisabledLinkColor = $ColMuted; $lnkRuntime.Enabled = $false
+    } else {
+        $lnkRuntime.Text = (T 'runtime.missing'); $lnkRuntime.LinkColor = $ColWarn
+    }
+    $lblOpt.Text  = (T 'opt.header')
+    $lblHand.Text = (T 'opt.hand_label')
+    $hi = $cmbHand.SelectedIndex
+    $script:Loading = $true
+    $cmbHand.Items.Clear()
+    [void]$cmbHand.Items.Add((T 'opt.hand_right'))
+    [void]$cmbHand.Items.Add((T 'opt.hand_left'))
+    $cmbHand.SelectedIndex = $(if ($hi -ge 0) { $hi } else { 0 })
+    $script:Loading = $false
+    $chkMirror.Text   = (T 'opt.mirror')
+    $chkBack.Text     = (T 'opt.back')
+    $chkHud.Text      = (T 'opt.hud')
+    $btnMore.Text     = (T 'btn.more')
+    $btnOpenIni.Text  = (T 'btn.open_ini')
+    $btnResetCfg.Text = (T 'btn.reset_cfg')
+    $btnUninstall.Text = (T 'btn.uninstall')
+    $btnHelp.Text     = (T 'btn.gestures')
+    $btnClose.Text    = (T 'btn.close')
+    Refresh-Status
+}
+
+if ($script:Langs.Count -gt 0) {
+    $cmbLang.Add_SelectedIndexChanged({
+        $i = $cmbLang.SelectedIndex
+        if ($i -lt 0 -or $i -ge $script:Langs.Count) { return }
+        $code = $script:Langs[$i].Code
+        if ($code -eq $script:CurLang) { return }
+        $null = Initialize-Language -Code $code
+        Save-Config ($txtGF.Text.Trim()) $script:CurLang
+        Apply-Language
+    })
+}
+
 $btnBrowse.Add_Click({
     $d = New-Object System.Windows.Forms.FolderBrowserDialog
-    $d.Description = 'Pick the folder that has legacy.exe in it'
+    $d.Description = (T 'gf.browse_desc')
     $d.ShowNewFolderButton = $false
     $cur = $txtGF.Text.Trim()
     if ($cur -and (Test-Path -LiteralPath $cur)) { $d.SelectedPath = $cur }
@@ -541,21 +763,21 @@ $cmbHand.Add_SelectedIndexChanged({
     $ini = Get-IniPath; if ($null -eq $ini) { return }
     $val = if ($cmbHand.SelectedIndex -eq 1) { 'left' } else { 'right' }
     Set-IniKey $ini 'handedness' $val
-    Write-Log "kinectnav.ini: handedness = $val"
+    Log-IniSet 'handedness' $val
 })
 $chkMirror.Add_CheckedChanged({
     if ($script:Loading) { return }
     $ini = Get-IniPath; if ($null -eq $ini) { return }
     $v = if ($chkMirror.Checked) { '1' } else { '0' }
     Set-IniKey $ini 'mirror' $v
-    Write-Log "kinectnav.ini: mirror = $v"
+    Log-IniSet 'mirror' $v
 })
 $chkBack.Add_CheckedChanged({
     if ($script:Loading) { return }
     $ini = Get-IniPath; if ($null -eq $ini) { return }
     $v = if ($chkBack.Checked) { '1' } else { '0' }
     Set-IniKey $ini 'enable_back' $v
-    Write-Log "kinectnav.ini: enable_back = $v"
+    Log-IniSet 'enable_back' $v
 })
 $chkHud.Add_CheckedChanged({
     if ($script:Loading) { return }
@@ -563,22 +785,19 @@ $chkHud.Add_CheckedChanged({
     $ini = Get-IniPath; if ($null -eq $ini) { return }
     if ($chkHud.Checked) {
         Set-IniKey $ini 'overlay' '1'
-        Write-Log 'kinectnav.ini: overlay = 1 (HUD on)'
+        Write-Log (T 'log.hud_on')
         if ($st.fs -eq 1) {
-            $r = [System.Windows.Forms.MessageBox]::Show($Form,
-                'The HUD only shows in windowed mode, and config.xml is set to fullscreen.' +
-                [Environment]::NewLine + [Environment]::NewLine +
-                'Set FullScreen="0" in config.xml now?',
-                'KinectNavigator Setup', 'YesNo', 'Question')
+            $r = [System.Windows.Forms.MessageBox]::Show($Form, (T 'dlg.hud_fs_body'),
+                (T 'app.msgbox_title'), 'YesNo', 'Question')
             if ($r -eq [System.Windows.Forms.DialogResult]::Yes) {
-                if (Set-ConfigWindowed $st.folder) { Write-Log 'config.xml: FullScreen="0"' }
-                else { Write-Log 'config.xml: could not change it - edit FullScreen="0" by hand.' }
+                if (Set-ConfigWindowed $st.folder) { Write-Log (T 'log.fs0_ok') }
+                else { Write-Log (T 'log.fs0_fail') }
                 Refresh-Status
             }
         }
     } else {
         Set-IniKey $ini 'overlay' '0'
-        Write-Log 'kinectnav.ini: overlay = 0 (HUD off)'
+        Write-Log (T 'log.hud_off')
     }
 })
 
@@ -587,24 +806,23 @@ $btnOpenIni.Add_Click({
     if (-not (Test-Path -LiteralPath $ini)) {
         if (Test-Path -LiteralPath $ExampleIni) {
             Copy-Item -LiteralPath $ExampleIni -Destination $ini -Force
-            Write-Log 'Created kinectnav.ini from the example template.'
+            Write-Log (T 'log.ini_created')
         } else {
             Set-IniKey $ini 'nav_model' 'extend'
         }
     }
     Start-Process notepad.exe -ArgumentList $ini
-    Write-Log 'Opened kinectnav.ini - re-pick the game folder afterward to reload these controls.'
+    Write-Log (T 'log.ini_opened')
 })
 
 $btnResetCfg.Add_Click({
     $ini = Get-IniPath; if ($null -eq $ini) { return }
-    if (-not (Test-Path -LiteralPath $ini)) { Write-Log 'No kinectnav.ini - already at defaults.'; return }
-    $r = [System.Windows.Forms.MessageBox]::Show($Form,
-        'Delete kinectnav.ini and return every setting to its default?',
-        'KinectNavigator Setup', 'YesNo', 'Warning')
+    if (-not (Test-Path -LiteralPath $ini)) { Write-Log (T 'log.ini_none'); return }
+    $r = [System.Windows.Forms.MessageBox]::Show($Form, (T 'dlg.reset_cfg_body'),
+        (T 'app.msgbox_title'), 'YesNo', 'Warning')
     if ($r -eq [System.Windows.Forms.DialogResult]::Yes) {
         Remove-Item -LiteralPath $ini -Force
-        Write-Log 'kinectnav.ini deleted - all settings back to defaults.'
+        Write-Log (T 'log.ini_deleted')
         Refresh-Status
     }
 })
@@ -614,19 +832,19 @@ $btnResetCfg.Add_Click({
 # ---------------------------------------------------------------------------
 function Capture-Key {
     $d = New-Object System.Windows.Forms.Form
-    $d.Text = 'Press a key'
+    $d.Text = (T 'capture.title')
     $d.ClientSize = New-Object System.Drawing.Size(340, 128)
     $d.FormBorderStyle = 'FixedDialog'; $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false; $d.MinimizeBox = $false; $d.KeyPreview = $true
     $d.BackColor = $ColBg; $d.Font = $FontBase
     $l = New-Object System.Windows.Forms.Label
-    $l.Text = 'Press the key you want to use for this action.'
+    $l.Text = (T 'capture.body')
     $l.SetBounds(16, 16, 308, 44); $d.Controls.Add($l)
-    $c = New-Btn 'Cancel' 232 78 92 28
+    $c = New-Btn (T 'btn.cancel') 232 78 92 28
     $c.Add_Click({ $script:capVk = $null; $d.Close() })
     $d.Controls.Add($c)
     $script:capVk = $null
-    $ignore = @(16, 17, 18, 91, 92, 20, 144, 145)   # shift/ctrl/alt/win/capslock/numlock/scroll
+    $ignore = @(16, 17, 18, 91, 92, 20, 144, 145)
     $d.Add_KeyDown({
         $vk = [int]$_.KeyCode
         if ($ignore -contains $vk) { return }
@@ -647,7 +865,7 @@ function Show-MoreSettings {
     $iniMap = Read-IniMap $ini
 
     $d = New-Object System.Windows.Forms.Form
-    $d.Text = 'KinectNavigator - more settings'
+    $d.Text = (T 'more.title')
     $d.ClientSize = New-Object System.Drawing.Size(474, 520)
     $d.FormBorderStyle = 'FixedDialog'; $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false; $d.MinimizeBox = $false
@@ -656,41 +874,42 @@ function Show-MoreSettings {
     $script:dlgLoading = $true
 
     $lf = New-Object System.Windows.Forms.Label
-    $lf.Text = 'Feel  -  each row picks a preset, saved to kinectnav.ini'
+    $lf.Text = (T 'more.feel_header')
     $lf.Font = $FontBold; $lf.SetBounds(16, 14, 444, 20); $d.Controls.Add($lf)
 
-    function New-PresetRow([string]$text, [int]$y, [string[]]$items) {
+    function New-PresetRow([string]$text, [int]$y, [string]$prefix, [string[]]$ids) {
         $lbl = New-Object System.Windows.Forms.Label
         $lbl.Text = $text; $lbl.SetBounds(16, ($y + 3), 210, 20); $d.Controls.Add($lbl)
         $cb = New-Object System.Windows.Forms.ComboBox
         $cb.DropDownStyle = 'DropDownList'; $cb.SetBounds(232, $y, 226, 24)
-        foreach ($it in $items) { [void]$cb.Items.Add($it) }
+        $cb.Tag = @{ prefix = $prefix; ids = $ids }
+        foreach ($id in $ids) { [void]$cb.Items.Add((T "$prefix.$id")) }
         $d.Controls.Add($cb)
         return $cb
     }
 
-    $cbReach  = New-PresetRow 'Reach to navigate'         40  $REACH_NAMES
-    $cbScroll = New-PresetRow 'Scroll speed when held'    72  $SCROLL_NAMES
-    $cbCmd    = New-PresetRow 'Command-mode reach'       104  $CMDREACH_NAMES
-    $cbHold   = New-PresetRow 'Hold time for Enter/Esc'  136  $HOLD_NAMES
+    $cbReach  = New-PresetRow (T 'more.reach')    40  'preset.reach'  $REACH_IDS
+    $cbScroll = New-PresetRow (T 'more.scroll')   72  'preset.scroll' $SCROLL_IDS
+    $cbCmd    = New-PresetRow (T 'more.cmdreach') 104 'preset.cmd'    $CMD_IDS
+    $cbHold   = New-PresetRow (T 'more.hold')     136 'preset.hold'   $HOLD_IDS
 
     $chkClutch = New-Object System.Windows.Forms.CheckBox
-    $chkClutch.Text = 'Require waking it up first  (park hand at the shoulder to arm)'
+    $chkClutch.Text = (T 'more.clutch')
     $chkClutch.SetBounds(16, 174, 444, 22); $d.Controls.Add($chkClutch)
 
     $lk = New-Object System.Windows.Forms.Label
-    $lk.Text = 'Key bindings'; $lk.Font = $FontBold; $lk.SetBounds(16, 210, 444, 20); $d.Controls.Add($lk)
+    $lk.Text = (T 'more.keys_header'); $lk.Font = $FontBold; $lk.SetBounds(16, 210, 444, 20); $d.Controls.Add($lk)
 
     $keyBoxes = @{}
     $ri = 0
     foreach ($nm in $KEY_ORDER) {
         $ky = 236 + $ri * 30
         $lb = New-Object System.Windows.Forms.Label
-        $lb.Text = $nm; $lb.SetBounds(16, ($ky + 4), 84, 20); $d.Controls.Add($lb)
+        $lb.Text = (T ('key.' + $nm.ToLower())); $lb.SetBounds(16, ($ky + 4), 84, 20); $d.Controls.Add($lb)
         $tb = New-Object System.Windows.Forms.TextBox
         $tb.ReadOnly = $true; $tb.SetBounds(104, $ky, 226, 24); $tb.Font = $FontMono
         $d.Controls.Add($tb); $keyBoxes[$nm] = $tb
-        $bc = New-Btn 'Change...' 338 ($ky - 1) 120 26
+        $bc = New-Btn (T 'btn.change') 338 ($ky - 1) 120 26
         $bc.Tag = $nm
         $bc.Add_Click({
             $name = $this.Tag
@@ -698,58 +917,62 @@ function Show-MoreSettings {
             if ($null -ne $vk) {
                 Set-IniKey $ini $KEY_DEFS[$name][0] ('0x{0:X2}' -f $vk)
                 $keyBoxes[$name].Text = (VkName $vk)
-                Write-Log ('kinectnav.ini: {0} = 0x{1:X2}' -f $KEY_DEFS[$name][0], $vk)
+                Log-IniSet $KEY_DEFS[$name][0] ('0x{0:X2}' -f $vk)
             }
         }.GetNewClosure())
         $d.Controls.Add($bc)
         $ri++
     }
 
-    $bResetKeys = New-Btn 'Reset keys' 16 430 110 28
+    $bResetKeys = New-Btn (T 'btn.reset_keys') 16 430 110 28
     $bResetKeys.Add_Click({
         Remove-IniKeys $ini @('key_left', 'key_right', 'key_up', 'key_down', 'key_confirm', 'key_back')
         Update-KeyBoxes $ini $keyBoxes
-        Write-Log 'kinectnav.ini: key bindings reset to defaults'
+        Write-Log (T 'log.keys_reset')
     }.GetNewClosure())
 
-    $bOk = New-Btn 'Close' 384 472 74 28 $true
+    $bOk = New-Btn (T 'btn.close') 384 472 74 28 $true
     $bOk.Add_Click({ $d.Close() })
     $d.Controls.AddRange(@($bResetKeys, $bOk))
 
-    # --- populate ---
-    function Fill-Preset($cb, $names, $table) {
+    function Fill-Preset($cb, $table) {
+        $meta = $cb.Tag
+        $ids  = $meta.ids
         $cb.Items.Clear()
-        foreach ($n in $names) { [void]$cb.Items.Add($n) }
-        $m = Test-PresetMatch $iniMap $names $table $CFG_DEFAULTS
-        if ($m) { $cb.SelectedItem = $m }
-        else { [void]$cb.Items.Add('(custom)'); $cb.SelectedItem = '(custom)' }
+        foreach ($id in $ids) { [void]$cb.Items.Add((T "$($meta.prefix).$id")) }
+        $m = Test-PresetMatch $iniMap $ids $table $CFG_DEFAULTS
+        if ($m) { $cb.SelectedIndex = [array]::IndexOf($ids, $m) }
+        else { [void]$cb.Items.Add((T 'preset.custom')); $cb.SelectedIndex = $cb.Items.Count - 1 }
     }
-    Fill-Preset $cbReach  $REACH_NAMES    $PRESET_REACH
-    Fill-Preset $cbScroll $SCROLL_NAMES   $PRESET_SCROLL
-    Fill-Preset $cbCmd    $CMDREACH_NAMES $PRESET_CMDREACH
-    Fill-Preset $cbHold   $HOLD_NAMES     $PRESET_HOLD
+    Fill-Preset $cbReach  $PRESET_REACH
+    Fill-Preset $cbScroll $PRESET_SCROLL
+    Fill-Preset $cbCmd    $PRESET_CMD
+    Fill-Preset $cbHold   $PRESET_HOLD
     $chkClutch.Checked = (IniBool (Get-IniVal $iniMap 'dpad_arm' '1'))
     Update-KeyBoxes $ini $keyBoxes
 
-    function Make-PresetHandler($cb, $table, $label) {
+    function Make-PresetHandler($cb, $table, $labelKey) {
         return {
             if ($script:dlgLoading) { return }
-            $sel = [string]$cb.SelectedItem
-            if ($sel -eq '' -or $sel -eq '(custom)') { return }
-            foreach ($kv in $table[$sel].GetEnumerator()) { Set-IniKey $ini $kv.Key ([string]$kv.Value) }
-            if ($cb.Items.Contains('(custom)')) { $cb.Items.Remove('(custom)') }
-            Write-Log ('kinectnav.ini: {0} preset = {1}' -f $label, $sel)
+            $meta = $cb.Tag
+            $ids  = $meta.ids
+            $i = $cb.SelectedIndex
+            if ($i -lt 0 -or $i -ge $ids.Count) { return }   # "(custom)" row -> ignore
+            $id = $ids[$i]
+            foreach ($kv in $table[$id].GetEnumerator()) { Set-IniKey $ini $kv.Key ([string]$kv.Value) }
+            while ($cb.Items.Count -gt $ids.Count) { $cb.Items.RemoveAt($cb.Items.Count - 1) }
+            Write-Log (T 'log.preset_set' @{ label = (T $labelKey); name = (T "$($meta.prefix).$id") })
         }.GetNewClosure()
     }
-    $cbReach.Add_SelectedIndexChanged( (Make-PresetHandler $cbReach  $PRESET_REACH    'reach') )
-    $cbScroll.Add_SelectedIndexChanged((Make-PresetHandler $cbScroll $PRESET_SCROLL   'scroll speed') )
-    $cbCmd.Add_SelectedIndexChanged(   (Make-PresetHandler $cbCmd    $PRESET_CMDREACH 'command reach') )
-    $cbHold.Add_SelectedIndexChanged(  (Make-PresetHandler $cbHold   $PRESET_HOLD     'hold time') )
+    $cbReach.Add_SelectedIndexChanged( (Make-PresetHandler $cbReach  $PRESET_REACH  'more.reach') )
+    $cbScroll.Add_SelectedIndexChanged((Make-PresetHandler $cbScroll $PRESET_SCROLL 'more.scroll') )
+    $cbCmd.Add_SelectedIndexChanged(   (Make-PresetHandler $cbCmd    $PRESET_CMD    'more.cmdreach') )
+    $cbHold.Add_SelectedIndexChanged(  (Make-PresetHandler $cbHold   $PRESET_HOLD   'more.hold') )
     $chkClutch.Add_CheckedChanged({
         if ($script:dlgLoading) { return }
         $v = if ($chkClutch.Checked) { '1' } else { '0' }
         Set-IniKey $ini 'dpad_arm' $v
-        Write-Log "kinectnav.ini: dpad_arm = $v"
+        Log-IniSet 'dpad_arm' $v
     }.GetNewClosure())
 
     $script:dlgLoading = $false
@@ -766,39 +989,31 @@ $btnInstall.Add_Click({
     $gf  = $st.folder
     $dll = Join-Path $gf 'Kinect10.dll'
 
-    if (Test-GameRunning) {
-        Msg 'Legacy is currently running. Close the game first, then try again.' 'Warning'
-        return
-    }
+    if (Test-GameRunning) { Msg (T 'dlg.game_running') 'Warning'; return }
     try {
         $isUpdate = ($st.state -eq 'installed')
         if (-not $isUpdate) {
             Copy-Item -LiteralPath $dll -Destination (Join-Path $gf 'Kinect10.dll.orig-backup') -Force
             Rename-Item -LiteralPath $dll -NewName 'Kinect10_backend.dll'
-            Write-Log 'Renamed the genuine runtime to Kinect10_backend.dll (backup: Kinect10.dll.orig-backup).'
+            Write-Log (T 'log.renamed_backend')
         }
         Copy-Item -LiteralPath $ShimSrc -Destination $dll -Force
 
         $srcLen = (Get-Item -LiteralPath $ShimSrc).Length
         $dstLen = (Get-Item -LiteralPath $dll).Length
         if ($dstLen -ne $srcLen) {
-            throw "Kinect10.dll copied but landed at $dstLen bytes, not $srcLen -- antivirus may have altered it. Check your antivirus quarantine / add a folder exclusion, then try again."
+            throw (T 'log.av_altered' @{ got = $dstLen; want = $srcLen })
         }
-        Write-Log $(if ($isUpdate) { 'Updated the installed Kinect10.dll.' } else { 'Installed KinectNavigator as Kinect10.dll.' })
+        Write-Log $(if ($isUpdate) { T 'log.installed_upd' } else { T 'log.installed_new' })
         Refresh-Status
 
         $extra = ''
-        if ($script:CurState.fs -eq 1 -and $chkHud.Checked) {
-            $extra = [Environment]::NewLine + [Environment]::NewLine +
-                     'Note: set FullScreen="0" in config.xml if you want to see the HUD.'
-        }
-        $head = if ($isUpdate) { 'KinectNavigator is updated.' } else { 'KinectNavigator is installed.' }
-        Msg ($head + [Environment]::NewLine + [Environment]::NewLine +
-             'Launch the game normally. Stand about 2.5 m back and rest a hand near your shoulder to wake it. ' +
-             "Click 'Gestures' above any time for the how-to." + $extra) 'Information'
+        if ($script:CurState.fs -eq 1 -and $chkHud.Checked) { $extra = (T 'dlg.install_ok_hud_note') }
+        $head = if ($isUpdate) { T 'dlg.install_ok_upd' } else { T 'dlg.install_ok_new' }
+        Msg ($head + [Environment]::NewLine + [Environment]::NewLine + (T 'dlg.install_ok_body') + $extra) 'Information'
     } catch {
-        Write-Log ('ERROR: ' + $_.Exception.Message)
-        Msg ('Install failed:' + [Environment]::NewLine + $_.Exception.Message) 'Error'
+        Write-Log (T 'log.error' @{ err = $_.Exception.Message })
+        Msg (T 'dlg.install_fail' @{ err = $_.Exception.Message }) 'Error'
         Refresh-Status
     }
 })
@@ -807,27 +1022,24 @@ $btnUninstall.Add_Click({
     $st = $script:CurState
     if ($null -eq $st -or $st.state -ne 'installed') { return }
     $gf = $st.folder
-    if (Test-GameRunning) {
-        Msg 'Legacy is currently running. Close the game first, then try again.' 'Warning'
-        return
-    }
+    if (Test-GameRunning) { Msg (T 'dlg.game_running') 'Warning'; return }
     try {
         $dll     = Join-Path $gf 'Kinect10.dll'
         $backend = Join-Path $gf 'Kinect10_backend.dll'
         if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force }
         Rename-Item -LiteralPath $backend -NewName 'Kinect10.dll'
         if ((Get-Item -LiteralPath (Join-Path $gf 'Kinect10.dll')).Length -lt $MIN_GENUINE) {
-            throw 'Kinect10.dll is back but looks too small -- something is wrong. Check the game folder by hand.'
+            throw (T 'log.dll_small')
         }
         $bak = Join-Path $gf 'Kinect10.dll.orig-backup'
         if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
-        Write-Log 'Removed the shim and restored the genuine Kinect10.dll.'
-        Write-Log 'Left kinectnav.ini / KinectNavigator.log / skcap-*.skcap in place.'
+        Write-Log (T 'log.uninstalled')
+        Write-Log (T 'log.uninstalled_kept')
         Refresh-Status
-        Msg 'KinectNavigator removed. The original Kinect10.dll is back.' 'Information'
+        Msg (T 'dlg.uninstall_ok') 'Information'
     } catch {
-        Write-Log ('ERROR: ' + $_.Exception.Message)
-        Msg ('Uninstall failed:' + [Environment]::NewLine + $_.Exception.Message) 'Error'
+        Write-Log (T 'log.error' @{ err = $_.Exception.Message })
+        Msg (T 'dlg.uninstall_fail' @{ err = $_.Exception.Message }) 'Error'
         Refresh-Status
     }
 })
@@ -837,57 +1049,48 @@ $btnUninstall.Add_Click({
 # ---------------------------------------------------------------------------
 $GesturesImg = Join-Path $ScriptDir 'gestures.png'
 
-function Show-GesturesText {
-    Msg (
-        "WAKING IT UP" + [Environment]::NewLine +
-        "Rest your dominant hand near your shoulder for a moment. It sleeps again if your" + [Environment]::NewLine +
-        "arm just hangs or you dance, so it won't fire mid-routine." + [Environment]::NewLine + [Environment]::NewLine +
-        "NAVIGATING - a small + centred on your dominant shoulder" + [Environment]::NewLine +
-        "  reach out to the side ......... Left / Right" + [Environment]::NewLine +
-        "  reach up ....................... Up" + [Environment]::NewLine +
-        "  reach down-and-out ............. Down" + [Environment]::NewLine +
-        "  hold the reach ................. repeats (speeds up)" + [Environment]::NewLine +
-        "  bend the elbow / pull back ..... stops" + [Environment]::NewLine + [Environment]::NewLine +
-        "CONFIRM / BACK" + [Environment]::NewLine +
-        "  put your OTHER hand on your OTHER shoulder, then:" + [Environment]::NewLine +
-        "  reach up or right and hold ..... Enter" + [Environment]::NewLine +
-        "  reach down or left and hold .... Esc" + [Environment]::NewLine + [Environment]::NewLine +
-        "Stand about 2.5 m back, centred, facing the sensor." + [Environment]::NewLine +
-        "Full details and troubleshooting are in SETUP.md."
-    ) 'Information'
-}
+function Show-GesturesText { Msg (T 'gestures.body') 'Information' }
 
 $btnHelp.Add_Click({
     if (-not (Test-Path -LiteralPath $GesturesImg)) { Show-GesturesText; return }
     try {
         $img = [System.Drawing.Image]::FromFile($GesturesImg)
     } catch { Show-GesturesText; return }
-    $gf = New-Object System.Windows.Forms.Form
-    $gf.Text = 'KinectNavigator - gestures'
-    $gf.StartPosition = 'CenterParent'
-    $gf.FormBorderStyle = 'FixedSingle'
-    $gf.MaximizeBox = $false
-    $gf.BackColor = $ColBg
+    $gfm = New-Object System.Windows.Forms.Form
+    $gfm.Text = (T 'gestures.title')
+    $gfm.StartPosition = 'CenterParent'
+    $gfm.FormBorderStyle = 'FixedSingle'
+    $gfm.MaximizeBox = $false
+    $gfm.BackColor = $ColBg
     $maxW = 900
     $sc = [Math]::Min(1.0, $maxW / $img.Width)
     $iw = [int]($img.Width * $sc); $ih = [int]($img.Height * $sc)
-    $gf.ClientSize = New-Object System.Drawing.Size ($iw + 24), ($ih + 60)
+    $gfm.ClientSize = New-Object System.Drawing.Size ($iw + 24), ($ih + 60)
     $pb2 = New-Object System.Windows.Forms.PictureBox
     $pb2.SetBounds(12, 12, $iw, $ih)
     $pb2.SizeMode = 'Zoom'
     $pb2.Image = $img
-    $gf.Controls.Add($pb2)
-    $ok = New-Btn 'Close' ($iw + 24 - 112) ($ih + 20) 100 30
-    $ok.Add_Click({ $gf.Close() })
-    $gf.Controls.Add($ok)
-    $gf.Add_FormClosed({ $img.Dispose() })
-    $gf.ShowDialog($Form) | Out-Null
+    $gfm.Controls.Add($pb2)
+    $ok = New-Btn (T 'btn.close') ($iw + 24 - 112) ($ih + 20) 100 30
+    $ok.Add_Click({ $gfm.Close() })
+    $gfm.Controls.Add($ok)
+    $gfm.Add_FormClosed({ $img.Dispose() })
+    $gfm.ShowDialog($Form) | Out-Null
 })
 
 $btnClose.Add_Click({ $Form.Close() })
 $Form.Add_Shown({ $Form.Activate(); $Form.TopMost = $true; $Form.TopMost = $false })
 
-$seed = Load-LastPath
+# runtime link text (set here so Apply-Language can re-do it)
+if ($script:RuntimeDetected) {
+    $lnkRuntime.Text = (T 'runtime.detected')
+    $lnkRuntime.LinkColor = $ColMuted; $lnkRuntime.ActiveLinkColor = $ColMuted
+    $lnkRuntime.DisabledLinkColor = $ColMuted; $lnkRuntime.Enabled = $false
+} else {
+    $lnkRuntime.Text = (T 'runtime.missing'); $lnkRuntime.LinkColor = $ColWarn
+}
+
+$seed = $bootCfg.GamePath
 if ([string]::IsNullOrWhiteSpace($seed)) {
     foreach ($g in @($ScriptDir, (Split-Path -Parent $ScriptDir))) {
         if ($g -and (Test-Path -LiteralPath (Join-Path $g 'legacy.exe'))) { $seed = $g; break }

@@ -34,18 +34,26 @@ on GitHub if you'd rather build it yourself.
 3. Double-click **`KinectNavigator-Setup`** — that's the `.vbs`; `.bat` also works, both open the
    same window. (Don't double-click `KinectNavigator-Setup.ps1` directly — Windows opens `.ps1`
    files for editing, not running.) A small window opens:
+   - Pick your **language** from the flag menu, top-right. It starts in your Windows language if
+     that one is available.
    - It tries to find your game folder; if it can't, click **Browse…** and pick the folder
      with `legacy.exe` in it.
-   - The status line confirms it sees the genuine ~15 MB Kinect runtime, and notes whether the
-     Kinect for Windows Runtime looks installed (best-effort check — a miss doesn't block you).
-   - Optionally tick **Also enable the on-screen HUD** (writes `overlay = 1`; only shows when
-     the game runs windowed — see section 4).
+   - The status line confirms it sees the genuine ~15 MB Kinect runtime, notes whether the
+     Kinect for Windows Runtime looks installed (best-effort check — a miss doesn't block you),
+     and — if KinectNavigator is already installed there — whether this download is newer.
+   - Adjust anything in **Settings** (navigation hand, reverse left/right, Back gesture, HUD)
+     and **More settings…** (feel presets, key bindings). These write to `kinectnav.ini` in the
+     game folder as you change them, and take effect next launch — no need to click Install.
    - Click **Install**. A **Gestures** button in the same window has the how-to-play
      cheat-sheet if you don't want to come back to this doc.
 
 Under the hood it copies the real `Kinect10.dll` to `Kinect10.dll.orig-backup`, renames the
 real one to `Kinect10_backend.dll`, and drops KinectNavigator's `Kinect10.dll` in its place. It
 won't run over an existing install or over anything that isn't the genuine runtime.
+
+The setup tool is fully portable — it keeps its own settings in a `config.txt` next to itself
+and touches nothing else on your PC. Delete the extracted folder and nothing is left behind
+(the game-folder install is removed with **Uninstall**).
 
 Launch the game normally. A log is written to `KinectNavigator.log` in the game folder.
 
@@ -122,13 +130,16 @@ To turn it on:
 | **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game without KinectNavigator. Turn on the HUD (section 4) to see whether you're being tracked. |
 | Want to see the HUD and can't | It's off by default *and* hidden by exclusive fullscreen — do both parts of section 4. |
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
-| **Left / right reversed** | Put `mirror = 1` in `kinectnav.ini`. |
-| Wrong arm drives it | Put `handedness = left` (or `right`) in `kinectnav.ini`. |
+| **Left / right reversed** | Tick **Reverse left / right** in `KinectNavigator-Setup` (or set `mirror = 1` in `kinectnav.ini`). |
+| Wrong arm drives it | Set **Navigation hand** in `KinectNavigator-Setup` (or `handedness = left` / `right` in `kinectnav.ini`). |
 | It fires while I dance | Let your arm hang for ~1.5 s and it disarms. If it's still too eager, raise `dpad_disarm_ms`. |
 | **Game crashes** | That's the game itself (it does this without KinectNavigator too). Restart it. |
 
 ## 6. Tweaking
 
-Everything is adjustable without reinstalling: copy `kinectnav.example.ini` to `kinectnav.ini`
-in the game folder and uncomment what you want to change. Every setting is explained in that
-file. Changes take effect next launch.
+The easiest way is `KinectNavigator-Setup` itself — the **Settings** panel and **More settings…**
+dialog write `kinectnav.ini` in the game folder as you change them, no reinstall needed.
+
+To edit by hand instead: copy `kinectnav.example.ini` to `kinectnav.ini` in the game folder and
+uncomment what you want to change. Every setting is explained in that file. Either way, changes
+take effect next launch.

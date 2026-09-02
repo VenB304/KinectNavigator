@@ -41,6 +41,14 @@ copy /y "%HERE%record.bat"              "%STAGE%\" >nul
 copy /y "%HERE%kinectnav.example.ini"   "%STAGE%\" >nul
 copy /y "%ROOT%\SETUP.md"              "%STAGE%\" >nul
 
+if not exist "%HERE%lang\en.json" (
+    echo [X] dist\lang\en.json not found -- the language files are missing.
+    rmdir /s /q "%STAGE%"
+    exit /b 1
+)
+mkdir "%STAGE%\lang"
+copy /y "%HERE%lang\*.json"             "%STAGE%\lang\" >nul
+
 if exist "%OUT%" del "%OUT%"
 powershell -NoProfile -Command "Compress-Archive -Path '%STAGE%\*' -DestinationPath '%OUT%' -Force"
 if errorlevel 1 (
@@ -55,5 +63,5 @@ echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
 echo Contents: Kinect10.dll, KinectNavigator-Setup.ps1/.vbs/.bat, gestures.png,
 echo           install.bat, uninstall.bat, record.bat,
-echo           kinectnav.example.ini, SETUP.md
+echo           kinectnav.example.ini, SETUP.md, lang\ (12 languages)
 endlocal

@@ -89,7 +89,11 @@ imports `KERNEL32 + USER32 + GDI32 + SHELL32` only, no self-import of `Kinect10.
 
 For players, follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the
 release, and run **`KinectNavigator-Setup`** — a small window that finds the game folder, checks
-it, and installs on one click. (`install.bat` / `uninstall.bat` do the same from a terminal.)
+it, and installs on one click. It also doubles as a live editor for `kinectnav.ini` (navigation
+hand, mirror, Back gesture, HUD, feel presets, key bindings), is localised (12 languages, flag
+picker — English/French/Spanish translated, the rest awaiting a translation pass), and is fully
+portable (its own `config.txt` beside the exe, nothing else touched). `install.bat` /
+`uninstall.bat` do the same swap from a terminal.
 
 Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
 and copies the shim into its place; uninstalling reverses it. Neither runs unless it sees the
@@ -120,7 +124,7 @@ a zero-keystroke capture session crashed too). So don't tune live:
 src/KinectNavigator/        the shim DLL
 src/KinectNavigatorReplay/  offline replay tool
 src/KinectNavigatorLab/     live-Kinect recogniser tool (no game)
-dist/                   install / uninstall / record / package scripts, example config
+dist/                   installer (GUI + .bat), record / package scripts, example config, lang/
 docs/                   design doc, field notes (docs/notes/), research digests (docs/research/)
 tools/                  replay-harness docs + the synthetic-capture regression suite
 build/                  build output (git-ignored)
