@@ -23,7 +23,7 @@
   "btn.reset_keys": "Restablecer teclas",
   "btn.more": "Más ajustes...",
   "btn.open_ini": "Abrir kinectnav.ini",
-  "btn.reset_cfg": "Restablecer valores predeterminados",
+  "btn.reset_cfg": "Restaurar valores",
 
   "gf.label": "Carpeta del juego",
   "gf.browse_desc": "Elige la carpeta que contiene legacy.exe",
@@ -56,9 +56,9 @@
   "opt.hud": "Mostrar el HUD en pantalla  (solo en modo ventana)",
 
   "more.title": "KinectNavigator - más ajustes",
-  "more.feel_header": "Sensación  -  cada fila elige un preajuste, guardado en kinectnav.ini",
+  "more.feel_header": "Respuesta  -  cada fila elige un preajuste, guardado en kinectnav.ini",
   "more.reach": "Alcance para navegar",
-  "more.scroll": "Velocidad de desplazamiento (manteniendo)",
+  "more.scroll": "Velocidad al mantener pulsado",
   "more.cmdreach": "Alcance del modo comando",
   "more.hold": "Tiempo de mantener para Enter / Esc",
   "more.clutch": "Requerir despertarlo primero  (poner la mano en el hombro para activarlo)",

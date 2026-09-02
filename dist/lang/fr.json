@@ -23,7 +23,7 @@
   "btn.reset_keys": "Réinitialiser les touches",
   "btn.more": "Plus de réglages...",
   "btn.open_ini": "Ouvrir kinectnav.ini",
-  "btn.reset_cfg": "Rétablir les valeurs par défaut",
+  "btn.reset_cfg": "Rétablir par défaut",
 
   "gf.label": "Dossier du jeu",
   "gf.browse_desc": "Choisissez le dossier qui contient legacy.exe",
@@ -52,7 +52,7 @@
   "opt.hand_right": "Main droite",
   "opt.hand_left": "Main gauche",
   "opt.mirror": "Inverser gauche / droite",
-  "opt.back": "Activer le geste Retour (Échap)",
+  "opt.back": "Activer le geste Retour (Esc)",
   "opt.hud": "Afficher le HUD à l'écran  (mode fenêtré uniquement)",
 
   "more.title": "KinectNavigator - plus de réglages",
@@ -60,7 +60,7 @@
   "more.reach": "Amplitude pour naviguer",
   "more.scroll": "Vitesse de défilement (maintien)",
   "more.cmdreach": "Amplitude du mode commande",
-  "more.hold": "Durée de maintien pour Entrée / Échap",
+  "more.hold": "Durée de maintien pour Entrée / Esc",
   "more.clutch": "Exiger un réveil préalable  (poser la main sur l'épaule pour armer)",
   "more.keys_header": "Raccourcis clavier",
 
@@ -104,7 +104,7 @@
   "log.hud_on": "kinectnav.ini : overlay = 1 (HUD activé)",
   "log.hud_off": "kinectnav.ini : overlay = 0 (HUD désactivé)",
   "log.fs0_ok": "config.xml : FullScreen=\"0\"",
-  "log.fs0_fail": "config.xml : modification impossible - mettez FullScreen=\"0\" à la main.",
+  "log.fs0_fail": "config.xml : modification impossible - mettez FullScreen=\"0\" manuellement.",
   "log.ini_created": "kinectnav.ini créé à partir du modèle d'exemple.",
   "log.ini_opened": "kinectnav.ini ouvert - re-sélectionnez ensuite le dossier du jeu pour recharger ces contrôles.",
   "log.ini_none": "Aucun kinectnav.ini - déjà aux valeurs par défaut.",
@@ -118,8 +118,8 @@
   "log.uninstalled_kept": "kinectnav.ini / KinectNavigator.log / skcap-*.skcap laissés en place.",
   "log.error": "ERREUR : {err}",
   "log.av_altered": "Kinect10.dll copié mais il fait {got} octets au lieu de {want} - un antivirus l'a peut-être modifié. Vérifiez la quarantaine de votre antivirus / ajoutez une exclusion de dossier, puis réessayez.",
-  "log.dll_small": "Kinect10.dll est de retour mais il paraît trop petit - quelque chose ne va pas. Vérifiez le dossier du jeu à la main.",
+  "log.dll_small": "Kinect10.dll est de retour mais il paraît trop petit - quelque chose ne va pas. Vérifiez le dossier du jeu manuellement.",
 
   "gestures.title": "KinectNavigator - gestes",
-  "gestures.body": "LE RÉVEILLER\nPosez votre main dominante près de votre épaule un instant. Il se rendort si votre bras pend simplement ou si vous dansez, pour ne pas se déclencher pendant une chorégraphie.\n\nNAVIGUER - un petit + centré sur votre épaule dominante\n  tendre le bras sur le côté ...... Gauche / Droite\n  tendre vers le haut ............. Haut\n  tendre en bas et sur le côté .... Bas\n  maintenir le geste .............. répète (accélère)\n  plier le coude / ramener ........ arrête\n\nVALIDER / RETOUR\n  posez votre AUTRE main sur votre AUTRE épaule, puis :\n  tendre en haut ou à droite et maintenir .... Entrée\n  tendre en bas ou à gauche et maintenir ..... Échap\n\nPlacez-vous à environ 2,5 m de recul, centré, face au capteur.\nTous les détails et le dépannage sont dans SETUP.md."
+  "gestures.body": "LE RÉVEILLER\nPosez votre main dominante près de votre épaule un instant. Il se rendort si votre bras pend simplement ou si vous dansez, pour ne pas se déclencher pendant une chorégraphie.\n\nNAVIGUER - un petit + centré sur votre épaule dominante\n  tendre le bras sur le côté ...... Gauche / Droite\n  tendre vers le haut ............. Haut\n  tendre en bas et sur le côté .... Bas\n  maintenir le geste .............. répète (accélère)\n  plier le coude / ramener ........ arrête\n\nVALIDER / RETOUR\n  posez votre AUTRE main sur votre AUTRE épaule, puis :\n  tendre en haut ou à droite et maintenir .... Entrée\n  tendre en bas ou à gauche et maintenir ..... Esc\n\nPlacez-vous à environ 2,5 m de recul, centré, face au capteur.\nTous les détails et le dépannage sont dans SETUP.md."
 }
