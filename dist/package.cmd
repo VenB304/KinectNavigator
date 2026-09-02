@@ -9,7 +9,7 @@ rem  GitHub Release. Build first (build.cmd) so dist\Kinect10.dll exists.
 rem
 rem  Layout in the zip: the four things a user runs at the root
 rem  (KinectNavigator.vbs/.bat and KinectNavigator-CLI-install/uninstall.bat) plus
-rem  SETUP.md / USAGE.md; everything else goes in a HIDDEN "app\" folder.
+rem  SETUP.md / USAGE.md; everything else goes in an "app\" subfolder.
 
 set "VER=%~1"
 if "%VER%"=="" set "VER=dev"
@@ -53,9 +53,9 @@ copy /y "%HERE%kinectnav.example.ini"  "%STAGE%\app\" >nul
 copy /y "%HERE%lang\*.json"            "%STAGE%\app\lang\" >nul
 
 if exist "%OUT%" del "%OUT%"
-powershell -NoProfile -Command "$s='%STAGE%';$o='%OUT%';Add-Type -AssemblyName System.IO.Compression.FileSystem;$z=[System.IO.Compression.ZipFile]::Open($o,'Create');try{$d=$z.CreateEntry('app/');$d.ExternalAttributes=18;foreach($f in (Get-ChildItem -LiteralPath $s -Recurse -File)){$r=$f.FullName.Substring($s.Length+1).Replace('\','/');$e=[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($z,$f.FullName,$r);if($r -like 'app/*'){$e.ExternalAttributes=($e.ExternalAttributes -bor 2)}}}finally{$z.Dispose()}"
+powershell -NoProfile -Command "Compress-Archive -Path '%STAGE%\*' -DestinationPath '%OUT%' -Force"
 if errorlevel 1 (
-    echo [X] zip build failed.
+    echo [X] Compress-Archive failed.
     rmdir /s /q "%STAGE%"
     exit /b 1
 )
@@ -67,5 +67,5 @@ for %%A in ("%OUT%") do echo   %%~zA bytes
 echo Root:  KinectNavigator.vbs / .bat, KinectNavigator-CLI-install.bat,
 echo        KinectNavigator-CLI-uninstall.bat, SETUP.md, USAGE.md
 echo app\:  KinectNavigator.ps1, Kinect10.dll, gestures.png,
-echo        kinectnav.example.ini, lang\ (12 languages)   [hidden]
+echo        kinectnav.example.ini, lang\ (12 languages)
 endlocal
