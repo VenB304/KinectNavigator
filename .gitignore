@@ -35,13 +35,16 @@ dist/config.txt
 __pycache__/
 *.pyc
 
-# --- dev-only: kept on disk, not published. The public repo is just the shim
-#     source + the installer. Build/tune tooling and process docs live locally. ---
+# --- dev-only: kept on disk, not published. The public repo is the shim source,
+#     the installer, and docs/{setup,usage}.md. Everything else in docs/ and the
+#     build/tune tooling lives locally only. ---
 src/KinectNavigatorLab/
 src/KinectNavigatorReplay/
 src/KinectNavigator.dev.sln
 tools/
 dist/record.bat
 CHANGELOG.md
-docs/
+docs/*
+!docs/setup.md
+!docs/usage.md
 

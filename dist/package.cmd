@@ -38,8 +38,14 @@ copy /y "%HERE%KinectNavigator-Setup.bat"   "%STAGE%\" >nul
 copy /y "%HERE%install.bat"             "%STAGE%\" >nul
 copy /y "%HERE%uninstall.bat"           "%STAGE%\" >nul
 copy /y "%HERE%kinectnav.example.ini"   "%STAGE%\" >nul
-copy /y "%ROOT%\SETUP.md"              "%STAGE%\" >nul
+copy /y "%ROOT%\docs\setup.md"        "%STAGE%\SETUP.md" >nul
+copy /y "%ROOT%\docs\usage.md"        "%STAGE%\USAGE.md" >nul
 
+if not exist "%ROOT%\docs\setup.md" (
+    echo [X] docs\setup.md not found.
+    rmdir /s /q "%STAGE%"
+    exit /b 1
+)
 if not exist "%HERE%lang\en.json" (
     echo [X] dist\lang\en.json not found -- the language files are missing.
     rmdir /s /q "%STAGE%"
@@ -61,6 +67,6 @@ echo.
 echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
 echo Contents: Kinect10.dll, KinectNavigator-Setup.ps1/.vbs/.bat, gestures.png,
-echo           install.bat, uninstall.bat, kinectnav.example.ini, SETUP.md,
-echo           lang\ (12 languages)
+echo           install.bat, uninstall.bat, kinectnav.example.ini,
+echo           SETUP.md, USAGE.md, lang\ (12 languages)
 endlocal
