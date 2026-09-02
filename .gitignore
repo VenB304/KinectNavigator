@@ -47,4 +47,13 @@ CHANGELOG.md
 docs/*
 !docs/setup.md
 !docs/usage.md
+!docs/pictos/
+docs/pictos/*
+!docs/pictos/ready.png
+!docs/pictos/left.png
+!docs/pictos/right.png
+!docs/pictos/up.png
+!docs/pictos/down.png
+!docs/pictos/confirm.png
+!docs/pictos/back.png
 

@@ -99,5 +99,5 @@ just replace the shim `Kinect10.dll`.
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
 | **Left / right reversed** | Tick **Reverse left / right** in `KinectNavigator-Setup` (or `mirror = 1` in `kinectnav.ini`). |
 | Wrong arm drives it | Set **Navigation hand** in `KinectNavigator-Setup` (or `handedness = left` / `right`). |
-| It fires while you dance | It isn't dance-aware — lower your dominant arm for ~1.5 s to disarm it *before* you start. Arrow keys are inert during a routine anyway, and Back/Esc is off by default. |
+| It fires while you dance | It isn't dance-aware — lower your dominant arm for ~1.5 s to disarm it *before* you start. Arrow keys are inert during a routine anyway, and command-mode Esc needs a deliberate two-hand pose held ~3 s, so it won't fire by accident. |
 | **Game crashes** | That's `legacy.exe` itself — it does this with or without KinectNavigator. Restart it. |

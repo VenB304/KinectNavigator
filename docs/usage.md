@@ -15,11 +15,17 @@ position.
 
 ---
 
+> The figures below mirror you, the way Just Dance's own pictograms do. Do each gesture with
+> whichever hand you've set as your **navigation hand** (right by default); the other hand is
+> only used for Confirm / Back.
+
 ## Waking it up (the clutch)
+
+<img src="pictos/ready.png" alt="rest pose: dominant hand at the shoulder" width="150" align="right">
 
 KinectNavigator starts **asleep** and ignores everything. To wake it, **rest your dominant
 hand near your dominant shoulder** for a moment. The diagnostic HUD (if on) shows
-`ASLEEP → READY`.
+`ASLEEP → READY`. This is also the neutral "ready" pose to come back to between moves.
 
 It **disarms itself** once your dominant hand spends about **1.5 seconds continuously out of
 play** — that is, not in the park box and not reaching into any direction. In practice that
@@ -45,20 +51,32 @@ The default model (`nav_model = extend`). Picture a small **`+`** centred on you
 
 A small dead circle around your shoulder. While your hand is inside it, nothing happens —
 this is "home". Reaching your hand **out past the park box** into a direction is what triggers
-a key.
+a key. Each direction is a **wedge** — a cone of angles — and the **gaps between the wedges are
+dead**, so you don't need to aim precisely, but a diagonal that lands between two wedges does
+nothing.
 
-### The four directions
+### Left / Right
 
-| Reach your hand… | Key |
-|---|---|
-| **out to the side** (left or right of the shoulder) | ◀ / ▶ |
-| **up** | ▲ |
-| **down *and* out to the side** | ▼ |
+<img src="pictos/left.png" alt="reach out to the side" width="150" align="right">
 
-Each direction is a **wedge** — a cone of angles around straight-left / straight-right /
-straight-up. The **gaps between the wedges are dead**, and so is **straight down** — a hand
-hanging at your side sits in the dead straight-down zone and is ignored. "Down" deliberately
-requires *down and outward* so a resting arm never triggers it.
+Reach your hand **straight out to the side**, past the park box — left of your shoulder for
+`←`, right for `→`. Elbow roughly at shoulder height; you don't need to fully extend, just
+clear the park box into the side wedge.
+
+### Up
+
+<img src="pictos/up.png" alt="reach straight up" width="150" align="right">
+
+Reach **straight up** above your shoulder for `↑`. Keep it vertical — drifting outward turns
+it into a side reach, drifting down-and-out turns it into `↓`.
+
+### Down
+
+<img src="pictos/down.png" alt="reach down and out to the side" width="150" align="right">
+
+Reach **down *and* out to the side** for `↓` — not straight down. **Straight down is a dead
+zone**: an arm hanging at your side is deliberately ignored, so "down" needs that outward
+angle to tell it apart from resting.
 
 ### One press vs. hold-to-repeat
 
@@ -72,21 +90,29 @@ requires *down and outward* so a resting arm never triggers it.
 
 ## Command mode — Confirm and Back
 
-Navigation only sends the arrow keys. For **Enter** and **Esc**:
+Navigation only sends the arrow keys. **Enter** and **Esc** need *command mode*: put your
+**non-dominant** hand on your **non-dominant** shoulder and keep it there. The HUD's
+command-gate bar fills as your hand nears the shoulder and latches when it's close enough.
+While it's latched, the dominant-hand reaches become Enter / Esc instead of arrows. Take the
+hand off the shoulder to go back to plain navigation.
 
-1. Put your **non-dominant** hand on your **non-dominant** shoulder and keep it there.
-   (The HUD's command-gate bar fills as your hand nears the shoulder; it latches when close
-   enough.)
-2. Now, with your **dominant** hand:
+### Confirm — Enter
 
-| Reach… and **hold** | Key |
-|---|---|
-| **up or right** | Enter — start the song / confirm |
-| **down or left** | Esc — back out |
+<img src="pictos/confirm.png" alt="off-hand on shoulder, dominant hand reached up" width="150" align="right">
 
-The hold is deliberate — a brief pause up/right for Enter, a longer one down/left for Esc
-(Esc is the consequential one). Take the non-dominant hand off the shoulder to go back to
-plain navigation.
+With the gate held: reach the dominant hand **up or right** and **hold** it briefly. Sends
+**Enter** — pick the highlighted song, start the routine, confirm a dialog.
+
+### Back — Esc
+
+<img src="pictos/back.png" alt="off-hand on shoulder, dominant hand down and out" width="150" align="right">
+
+With the gate held: reach the dominant hand **down or left** and **hold** it for about
+**3 seconds** — longer than Confirm, because Esc is the consequential one (it opens the pause
+menu / backs out). The two-hand pose plus the long hold make it hard to trigger by accident.
+
+If you never want Esc reachable, untick **Enable the Back gesture** in `KinectNavigator-Setup`
+(or `enable_back = 0` in `kinectnav.ini`).
 
 ---
 
