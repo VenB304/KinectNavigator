@@ -6,7 +6,8 @@
 #include "config.h"
 #include "log.h"
 
-// v0.8 -- swipe model. See gestures.h. All positions are body-relative to
+// Both recognisers (see gestures.h): ExtendUpdate() is the default air d-pad,
+// the swipe model is the fallback. All positions are body-relative to
 // SHOULDER_CENTER, in torso lengths (torso = |SHOULDER_CENTER - HIP_CENTER|).
 // "ex" is effective X: + = the user's right, with `mirror` flipping it.
 

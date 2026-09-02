@@ -61,17 +61,19 @@ the same either way.
 
 ## Install
 
-Follow [`SETUP.md`](SETUP.md). In short: back up the game folder, extract the release, and run
-**`KinectNavigator-Setup`** — a small window that finds the game folder, checks it, and installs
-on one click. It also doubles as a live editor for `kinectnav.ini` (navigation hand, mirror,
-Back gesture, HUD, feel presets, key bindings), ships in 12 languages with a flag picker, and is
-fully portable (its own `config.txt` beside the exe, nothing else touched). `install.bat` /
-`uninstall.bat` do the same swap from a terminal.
+Follow [`SETUP.md`](SETUP.md). Three ways, all doing the same swap:
 
-Installing renames the genuine `Kinect10.dll` → `Kinect10_backend.dll` (plus a `.orig-backup`)
-and copies the shim into its place; uninstalling reverses it. Neither runs unless it sees the
-real ~15 MB runtime. The shim runs on compiled-in defaults; `kinectnav.ini` next to it
-overrides thresholds with no rebuild.
+1. **`KinectNavigator-Setup`** — a small window: pick a language, point it at the game folder,
+   Install. Doubles as a live editor for `kinectnav.ini` (navigation hand, mirror, Back
+   gesture, HUD, feel presets, key bindings), ships in 12 languages with a flag picker, shows
+   when an update is available, and is fully portable (its own `config.txt` beside the exe).
+2. **`install.bat` / `uninstall.bat`** — the same swap from a terminal.
+3. **By hand** — rename the game's `Kinect10.dll` → `Kinect10_backend.dll`, drop the release's
+   `Kinect10.dll` in its place, launch.
+
+The swap: the genuine `Kinect10.dll` becomes `Kinect10_backend.dll`, the shim takes its name;
+the shim forwards every call to the renamed runtime. It runs on compiled-in defaults —
+`kinectnav.ini` next to it overrides thresholds with no rebuild, and is entirely optional.
 
 Players also need the **Kinect for Windows Runtime v1.8** installed (see `SETUP.md`).
 

@@ -26,54 +26,80 @@ This guide is for players. It assumes you already play Legacy with a working Kin
 keystrokes and hooking the game's imports — the same things malware does. SmartScreen may say
 "Windows protected your PC" (click *More info → Run anyway*) and some antivirus may quarantine
 the file (restore it / add a folder exclusion). This is a false positive; the full source is
-on GitHub if you'd rather build it yourself.
+on GitHub if you'd rather build it yourself. If you'd rather not run any script at all, use
+the **by hand** method (2c) — it's three file operations.
 
-1. **Back up the game folder** first. `legacy.exe` is a large, unstable modded build.
+First, for every method:
+
+1. **Back up the game folder.** `legacy.exe` is a large, unstable modded build.
 2. Extract this release anywhere — keep all the files together, and *not* inside the game
    folder.
-3. Double-click **`KinectNavigator-Setup`** — that's the `.vbs`; `.bat` also works, both open the
-   same window. (Don't double-click `KinectNavigator-Setup.ps1` directly — Windows opens `.ps1`
-   files for editing, not running.) A small window opens:
-   - Pick your **language** from the flag menu, top-right. It starts in your Windows language if
-     that one is available.
-   - It tries to find your game folder; if it can't, click **Browse…** and pick the folder
-     with `legacy.exe` in it.
-   - The status line confirms it sees the genuine ~15 MB Kinect runtime, notes whether the
-     Kinect for Windows Runtime looks installed (best-effort check — a miss doesn't block you),
-     and — if KinectNavigator is already installed there — whether this download is newer.
-   - Adjust anything in **Settings** (navigation hand, reverse left/right, Back gesture, HUD)
-     and **More settings…** (feel presets, key bindings). These write to `kinectnav.ini` in the
-     game folder as you change them, and take effect next launch — no need to click Install.
-   - Click **Install**. A **Gestures** button in the same window has the how-to-play
-     cheat-sheet if you don't want to come back to this doc.
 
-Under the hood it copies the real `Kinect10.dll` to `Kinect10.dll.orig-backup`, renames the
-real one to `Kinect10_backend.dll`, and drops KinectNavigator's `Kinect10.dll` in its place. It
-won't run over an existing install or over anything that isn't the genuine runtime.
+All three methods do the same thing: rename the game's real `Kinect10.dll` to
+`Kinect10_backend.dll` and drop KinectNavigator's `Kinect10.dll` in its place. The shim
+forwards every call to that renamed runtime and taps the skeleton data on the way past. It
+runs on built-in defaults — **no config file is required**.
 
-The setup tool is fully portable — it keeps its own settings in a `config.txt` next to itself
-and touches nothing else on your PC. Delete the extracted folder and nothing is left behind
-(the game-folder install is removed with **Uninstall**).
+### 2a. The setup window (recommended)
+
+Double-click **`KinectNavigator-Setup`** — that's the `.vbs`; `.bat` also works, both open the
+same window. (Don't double-click `KinectNavigator-Setup.ps1` directly — Windows opens `.ps1`
+files for editing, not running.)
+
+- Pick your **language** from the flag menu, top-right. It starts in your Windows language if
+  that one is available.
+- It tries to find your game folder; if it can't, click **Browse…** and pick the folder with
+  `legacy.exe` in it.
+- The status line confirms it sees the genuine ~15 MB Kinect runtime, notes whether the Kinect
+  for Windows Runtime looks installed (best-effort — a miss doesn't block you), and — if
+  KinectNavigator is already installed there — whether this download is newer.
+- Optionally adjust **Settings** (navigation hand, reverse left/right, Back gesture, HUD) and
+  **More settings…** (feel presets, key bindings). These write to `kinectnav.ini` in the game
+  folder as you change them and take effect next launch — no need to click Install.
+- Click **Install**. The **Gestures** button has the how-to-play cheat-sheet.
+
+The window is fully portable — it keeps its own settings in a `config.txt` next to itself and
+touches nothing else on your PC. Delete the extracted folder afterward and nothing is left
+behind (the game-folder install is removed with **Uninstall**).
+
+### 2b. Command line
+
+Prefer a terminal? `install.bat` / `uninstall.bat` do the same swap — double-click and they
+prompt for the game folder, or pass it as an argument:
+`install.bat "C:\path\to\game folder"`. They add a size check and keep a
+`Kinect10.dll.orig-backup`.
+
+### 2c. By hand
+
+In your game folder (the one with `legacy.exe`):
+
+1. Rename **`Kinect10.dll`** → **`Kinect10_backend.dll`**.
+2. Copy this release's **`Kinect10.dll`** into the folder.
+3. *(optional)* Copy **`kinectnav.example.ini`** in as **`kinectnav.ini`** and edit it. Skip
+   this and it runs on defaults.
+
+That's it. To undo: delete the shim `Kinect10.dll`, rename `Kinect10_backend.dll` back.
+
+---
 
 Launch the game normally. A log is written to `KinectNavigator.log` in the game folder.
 
 ### Uninstall
 
-Open **`KinectNavigator-Setup`** again, point it at the game folder, and click **Uninstall** — it
-restores the original `Kinect10.dll`. Your `kinectnav.ini`, `KinectNavigator.log`, and any
-`skcap-*.skcap` are left in place.
+- **Setup window:** open `KinectNavigator-Setup`, point it at the game folder, click
+  **Uninstall**.
+- **Terminal:** `uninstall.bat "C:\path\to\game folder"`.
+- **By hand:** delete the shim `Kinect10.dll`, rename `Kinect10_backend.dll` → `Kinect10.dll`.
+
+Any of these restores the original runtime. Your `kinectnav.ini` and `KinectNavigator.log` are
+left in place.
 
 ### Updating to a new version
 
-Extract the new release, run its `KinectNavigator-Setup`, point it at the game folder — if
-KinectNavigator is already installed there the button reads **Update** instead of Install and
-just swaps in the new `Kinect10.dll`. No need to uninstall first.
-
-### Command line
-
-Prefer a terminal? `install.bat` / `uninstall.bat` do the same thing — double-click and they
-prompt for the game folder, or pass it as an argument:
-`install.bat "C:\path\to\game folder"`.
+Extract the new release and run its `KinectNavigator-Setup` — if KinectNavigator is already
+installed the button reads **Update** and just swaps in the new `Kinect10.dll` (no need to
+uninstall first). It reads the version out of both DLLs, so it only offers Update when the
+download is actually newer. By hand: just replace the shim `Kinect10.dll`.
 
 ## 3. Playing
 

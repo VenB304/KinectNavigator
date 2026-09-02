@@ -1,11 +1,11 @@
 #pragma once
 #include "nui_types.h"
 
-// v0.8 SWIPE model. No engage state.
-//   Left/Right : horizontal hand swipe. Repeat by holding the arm fully extended.
-//   Up/Down    : vertical hand swipe. One step.
-//   Confirm    : dominant hand raised + still, held.
-//   Back       : non-dominant arm pointing down-and-out (~45 deg), held.
+// Two recognisers behind Gestures::Update, selected by cfg.navModel:
+//   extend (default) : ExtendUpdate() -- an air d-pad on the dominant shoulder.
+//   swipe (fallback) : the older motion model -- L/R + U/D hand swipes, an
+//                      overhead-raise for Confirm, an arm-down-and-out for Back.
+// Both emit the same GestureAction set below.
 
 enum class GestureAction
 {

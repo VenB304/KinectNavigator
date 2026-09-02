@@ -5,16 +5,18 @@
 // module (key = value, '#' or ';' comments -- see dist/kinectnav.example.ini).
 // The .ini key names are the snake_case of these fields (see config.cpp).
 //
-// v0.8 -- SWIPE model. No engage state. Distances are torso units
-// (torso = |SHOULDER_CENTER - HIP_CENTER|, ~0.41 m); speeds torso/second; times
-// in ms of the sensor frame-clock.
+// Distances are torso units (torso = |SHOULDER_CENTER - HIP_CENTER|, ~0.41 m);
+// speeds torso/second; times in ms of the sensor frame-clock.
 //
-//   Left/Right   : horizontal hand swipe. Repeat: swipe, then hold the arm
-//                  fully EXTENDED -- accelerating auto-repeat until it relaxes.
-//   Up/Down      : vertical hand swipe. One step, no repeat.
-//   Confirm(Ent) : dominant hand raised + still, held confirmDwellMs.
-//   Back  (Esc)  : NON-dominant arm pointing down-and-out to the side (~45 deg),
-//                  held backDwellMs.
+// Two recognisers, pick with `nav_model`:
+//   extend (default) : an air d-pad centred on the dominant SHOULDER -- reach the
+//                      arm into a direction wedge past a park box, hold for
+//                      auto-repeat. Non-dominant hand on its shoulder = command
+//                      mode (reach = Enter/Esc). The `dpad_*` fields.
+//   swipe (fallback) : the older motion model -- L/R + U/D hand swipes, an
+//                      overhead-raise for Confirm, an arm-down-and-out for Back.
+//                      Runs on the 1 Euro + Savitzky-Golay signal. The swipe_* /
+//                      arm_* / confirm_* / back_* fields.
 
 struct Config
 {

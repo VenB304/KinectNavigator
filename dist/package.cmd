@@ -3,7 +3,7 @@ setlocal EnableExtensions
 
 rem  Assemble a player-facing release zip.
 rem  Usage:  package.cmd  [version]
-rem     e.g. package.cmd 0.9
+rem     e.g. package.cmd 1.0.0   (match src\KinectNavigator\version.h)
 rem  Produces  dist\KinectNavigator-<version>.zip  (git-ignored) -- attach it to a
 rem  GitHub Release. Build first (build.cmd) so dist\Kinect10.dll exists.
 
