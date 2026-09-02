@@ -36,7 +36,8 @@ namespace Backend
                     GetLastError());
             MessageBoxW(nullptr,
                         L"KinectNavigator could not load Kinect10_backend.dll.\n\n"
-                        L"Run dist\\install.bat in the game folder so the genuine "
+                        L"Install it properly: run KinectNavigator (or "
+                        L"KinectNavigator-CLI-install.bat) so the game's genuine "
                         L"Kinect10.dll is renamed to Kinect10_backend.dll.",
                         L"KinectNavigator", MB_ICONERROR | MB_OK);
             return TRUE;

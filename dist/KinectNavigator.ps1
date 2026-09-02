@@ -1,9 +1,10 @@
-# KinectNavigator-Setup.ps1 - windowed installer + config editor for KinectNavigator.
+# KinectNavigator.ps1 - windowed installer + config editor for KinectNavigator.
 #
 # Swaps the game's Kinect10.dll for the KinectNavigator shim (and back), and edits
-# kinectnav.ini in the game folder live. Launched flash-free by
-# KinectNavigator-Setup.vbs / .bat. Anything fatal here must surface as a MessageBox,
-# not Write-Host.
+# kinectnav.ini in the game folder live. Launched flash-free by KinectNavigator.vbs
+# / .bat. In a release it lives in a hidden "app" folder next to those launchers;
+# it finds Kinect10.dll / lang / kinectnav.example.ini beside itself either way.
+# Anything fatal here must surface as a MessageBox, not Write-Host.
 #
 # Fully portable: everything it needs sits next to it (Kinect10.dll, lang\, the
 # batch helpers). The only thing it remembers is a config.txt written beside this

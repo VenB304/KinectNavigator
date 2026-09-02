@@ -4,6 +4,8 @@ dist/Kinect10.dll
 dist/Kinect10.pdb
 dist/KinectNavigatorReplay.exe
 dist/KinectNavigatorLab.exe
+dist/_pkg/
+dist/KinectNavigator-*/
 
 # captured skeleton sessions
 *.skcap

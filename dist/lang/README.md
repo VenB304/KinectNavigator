@@ -1,6 +1,6 @@
 # Interface languages
 
-One flat JSON file per language for `KinectNavigator-Setup`. `en.json` is the source of
+One flat JSON file per language for `KinectNavigator`. `en.json` is the source of
 truth; missing keys in any other file fall back to English at runtime. The setup tool lists
 every `*.json` here in its language menu (flag + `_meta.nativeName`).
 

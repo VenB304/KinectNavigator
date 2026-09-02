@@ -115,7 +115,7 @@ With the gate held: reach the dominant hand **down or left** and **hold** it for
 **3 seconds** — longer than Confirm, because Esc is the consequential one (it opens the pause
 menu / backs out). The two-hand pose plus the long hold make it hard to trigger by accident.
 
-If you never want Esc reachable, untick **Enable the Back gesture** in `KinectNavigator-Setup`
+If you never want Esc reachable, untick **Enable the Back gesture** in `KinectNavigator`
 (or `enable_back = 0` in `kinectnav.ini`).
 
 ---
@@ -141,14 +141,14 @@ It shows:
 1. Run Legacy **windowed or borderless** — a layered overlay can't draw over exclusive
    fullscreen DirectX. Set `<Screen FullScreen="0" />` in the game's `config.xml`.
    (Navigation itself works the same either way; this is only so the HUD is visible.)
-2. Either tick **Show the on-screen HUD** in `KinectNavigator-Setup`, or put `overlay = 1` in
+2. Either tick **Show the on-screen HUD** in `KinectNavigator`, or put `overlay = 1` in
    `kinectnav.ini` (copy `kinectnav.example.ini` if you don't have one).
 
 ---
 
 ## Tuning it
 
-The easiest way is **`KinectNavigator-Setup`** — the **Settings** panel and the
+The easiest way is **`KinectNavigator`** — the **Settings** panel and the
 **More settings…** dialog write `kinectnav.ini` in the game folder as you change them. No
 reinstall; changes take effect next game launch.
 
@@ -175,7 +175,8 @@ reinstall; changes take effect next game launch.
 ### Editing kinectnav.ini by hand
 
 `kinectnav.ini` sits next to `Kinect10.dll` in the game folder. Copy `kinectnav.example.ini`
-to `kinectnav.ini` and uncomment what you want — **every setting is documented in that file**,
+(in the release's `app` folder) to `kinectnav.ini` and uncomment what you want — **every
+setting is documented in that file**,
 with its default and its units (distances are torso-lengths, times in milliseconds). The DLL
 re-reads it on each launch and runs fine with no file at all.
 

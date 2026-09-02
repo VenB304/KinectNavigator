@@ -5,8 +5,7 @@ skeleton poses — so a dancer can browse the song list and start a routine with
 keyboard or phone.
 
 **Get it:** grab the latest [release](../../releases), unzip it anywhere, run
-`KinectNavigator-Setup`, pick your language, point it at your game folder, click Install,
-close.
+`KinectNavigator.vbs`, pick your language, point it at your game folder, click Install, close.
 
 **Guides:** [`docs/setup.md`](docs/setup.md) — install & troubleshooting ·
 [`docs/usage.md`](docs/usage.md) — gestures, the diagnostic HUD, and tuning, in depth.
@@ -38,11 +37,11 @@ Full walkthrough, positioning tips, and every setting: [`docs/usage.md`](docs/us
 
 Three ways, all doing the same swap (details in [`docs/setup.md`](docs/setup.md)):
 
-1. **`KinectNavigator-Setup`** — a small window: pick a language, point it at the game folder,
-   Install. Doubles as a live editor for the common settings (navigation hand, mirror, Back
-   gesture, HUD, feel presets, key bindings), ships in 12 languages, shows when an update is
-   available, and is fully portable (its own `config.txt` beside the exe).
-2. **`install.bat` / `uninstall.bat`** — the same swap from a terminal.
+1. **`KinectNavigator.vbs`** (or `.bat`) — a small window: pick a language, point it at the
+   game folder, Install. Doubles as a live editor for the common settings (navigation hand,
+   mirror, Back gesture, HUD, feel presets, key bindings), ships in 12 languages, shows when an
+   update is available, and is fully portable (its own `config.txt` in the release folder).
+2. **`KinectNavigator-CLI-install.bat` / `-uninstall.bat`** — the same swap from a terminal.
 3. **By hand** — rename the game's `Kinect10.dll` → `Kinect10_backend.dll`, drop the release's
    `Kinect10.dll` in its place, launch.
 

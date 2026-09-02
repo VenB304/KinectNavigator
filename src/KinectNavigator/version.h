@@ -3,8 +3,8 @@
 // KinectNavigator version -- single source of truth.
 // Bump this in lockstep with the GitHub release tag / notes; pass the same
 // X.Y.Z to  dist\package.cmd  when building the release zip. The installer
-// (dist\KinectNavigator-Setup.ps1) reads FILEVERSION out of the built DLL to
-// decide whether the copy in a game folder is older than the one it ships.
+// (dist\KinectNavigator.ps1) reads FILEVERSION out of the built DLL to decide
+// whether the copy in a game folder is older than the one it ships.
 
 #define KN_VER_MAJOR 1
 #define KN_VER_MINOR 0

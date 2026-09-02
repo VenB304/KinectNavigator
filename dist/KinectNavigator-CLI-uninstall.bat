@@ -1,9 +1,10 @@
 @echo off
 setlocal EnableExtensions
 
-rem  KinectNavigator uninstaller -- reverses install.bat.
+rem  KinectNavigator uninstaller (command line) -- reverses
+rem  KinectNavigator-CLI-install.bat.
 rem    - double-click it, or
-rem    - uninstall.bat "C:\path\to\your game folder"
+rem    - KinectNavigator-CLI-uninstall.bat "C:\path\to\your game folder"
 
 set "GAME=%~1"
 if "%GAME%"=="" if exist "%CD%\legacy.exe" set "GAME=%CD%"
