@@ -12,9 +12,10 @@ keyboard or phone.
 
 ## Gestures at a glance
 
-Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep after that
-hand sits out of play — not reaching in any direction — for a moment, i.e. when you lower your
-arm.
+Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep two ways:
+when that hand sits out of play — not reaching in any direction — for a moment, i.e. when you
+lower your arm; or **on its own once you start dancing**, so a routine beginning while it is
+still awake drops it out without you having to do anything.
 
 Then picture a small `+` centred on that shoulder:
 
@@ -28,6 +29,11 @@ Then picture a small `+` centred on that shoulder:
 
 For **Enter / Esc**: put your *other* hand on your *other* shoulder, then reach **up or right
 and hold** (Enter) / **down or left and hold** (Esc).
+
+**Two players?** Kinect v1 tracks two people at once and either can drive. Whoever does the
+wake gesture **last** takes control, and only that person's reaches send keys — so the other
+one can move freely without stealing the menu. Details in
+[`docs/usage.md`](docs/usage.md#more-than-one-player).
 
 ![KinectNavigator gestures](dist/gestures.png)
 

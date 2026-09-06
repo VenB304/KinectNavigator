@@ -38,7 +38,9 @@ It **disarms itself** two ways:
   (lower = more eager to call it "dancing") or turn it off with `dpad_dance_disarm = 0`.
 
 You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
-so it's always live — only sensible if you're navigating menus and never dancing with it on.
+so it's always live. Both of those auto-sleeps are clutch behaviour, so with it off **neither
+applies** — including the dance one. Only sensible if you're navigating menus and never dancing
+with it on.
 
 ---
 
