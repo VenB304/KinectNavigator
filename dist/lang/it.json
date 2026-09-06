@@ -60,8 +60,9 @@
   "more.reach": "Estensione per navigare",
   "more.scroll": "Velocità di scorrimento prolungato",
   "more.cmdreach": "Estensione in modalità comando",
-  "more.hold": "Tempo di mantenimento per Invio / Esc",
+  "more.hold": "Tempo di pressione per Invio / Esc",
   "more.clutch": "Richiedi attivazione preventiva  (appoggia la mano sulla spalla per attivare)",
+  "more.dance": "Sospendi mentre balli  (il movimento del corpo lo disattiva)",
   "more.keys_header": "Mappatura tasti",
 
   "preset.custom": "(personalizzato)",

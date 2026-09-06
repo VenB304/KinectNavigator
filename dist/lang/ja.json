@@ -62,6 +62,7 @@
   "more.cmdreach": "コマンドモード時の腕の伸ばし量",
   "more.hold": "Enter / Esc の長押し時間",
   "more.clutch": "事前に起こす動作を必須にする  (肩に手を置いて認識を有効化)",
+  "more.dance": "ダンス中は自動でスリープ  (全身の動きで解除されます)",
   "more.keys_header": "キー割り当て",
 
   "preset.custom": "(カスタム)",

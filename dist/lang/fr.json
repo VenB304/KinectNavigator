@@ -62,6 +62,7 @@
   "more.cmdreach": "Amplitude du mode commande",
   "more.hold": "Durée de maintien pour Entrée / Esc",
   "more.clutch": "Exiger un réveil préalable  (poser la main sur l'épaule pour armer)",
+  "more.dance": "Veille automatique en dansant  (le mouvement de tout le corps le désarme)",
   "more.keys_header": "Raccourcis clavier",
 
   "preset.custom": "(personnalisé)",

@@ -61,7 +61,8 @@
   "more.scroll": "Scrollgeschwindigkeit beim Halten",
   "more.cmdreach": "Reichweite im Befehlsmodus",
   "more.hold": "Haltedauer für Enter / Esc",
-  "more.clutch": "Vorheriges Aufwecken erforderlich  (Hand an die Schulter legen zum Aktivieren)",
+  "more.clutch": "Erst aufwecken  (Hand an die Schulter legen zum Aktivieren)",
+  "more.dance": "Automatisch schlafen beim Tanzen  (Ganzkörperbewegung deaktiviert es)",
   "more.keys_header": "Tastenbelegung",
 
   "preset.custom": "(benutzerdefiniert)",

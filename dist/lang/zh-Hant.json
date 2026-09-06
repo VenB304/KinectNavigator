@@ -62,6 +62,7 @@
   "more.cmdreach": "指令模式伸手幅度",
   "more.hold": "Enter / Esc 按住時間",
   "more.clutch": "需要先喚醒  (將手放在肩膀處以啟用)",
+  "more.dance": "跳舞時自動休眠  (全身動作會將其解除)",
   "more.keys_header": "按鍵綁定",
 
   "preset.custom": "(自訂)",

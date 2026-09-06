@@ -62,6 +62,7 @@
   "more.cmdreach": "Alcance do modo de comando",
   "more.hold": "Tempo para segurar Enter / Esc",
   "more.clutch": "Exigir despertar primeiro  (apoiar a mão no ombro para ativar)",
+  "more.dance": "Suspender ao dançar  (o movimento do corpo o desativa)",
   "more.keys_header": "Mapeamento de teclas",
 
   "preset.custom": "(personalizado)",
