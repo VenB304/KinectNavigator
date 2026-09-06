@@ -157,6 +157,7 @@ namespace
         unsigned long long seq = 0;
         DWORD      navId    = 0;
         LONGLONG   navSeen  = 0;         // in frame-clock ms
+        LONGLONG   lastTrk  = 0;         // last frame-clock ms with >=1 tracked skeleton (extend path)
         LONGLONG   lastLog  = 0;
         bool       hadBody  = false;
         unsigned long long ticks = 0;
@@ -172,6 +173,66 @@ namespace
             // All recognizer timing runs off the sensor's own clock so replay at
             // any speed behaves like live. liTimeStamp is milliseconds.
             const LONGLONG now = f.liTimeStamp.QuadPart;
+
+            // ---- extend (air d-pad): multi-body hand-off. Every tracked skeleton is fed
+            // to the gesture layer, which runs a per-body clutch and picks one driver.
+            // No PickNavigator / per-id Reset here -- the gesture layer owns body lifetime. ----
+            if (Cfg::Get().navModel != 0)
+            {
+                int nTrk = 0;
+                for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
+                    if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_TRACKED) ++nTrk;
+
+                if (nTrk == 0)
+                {
+                    // ride out a brief full dropout (Kinect v1 flickers a skeleton to NOT_TRACKED
+                    // for isolated frames). 400ms == the gesture layer's kDropoutGraceMs, so the
+                    // slot prune and this reset fire on the same boundary.
+                    if (hadBody && now - lastTrk > 400)
+                    {
+                        LogLine("Recognizer: body LOST (frame=%lu)", f.dwFrameNumber);
+                        hadBody = false;
+                        navId = 0;
+                        Gestures::Reset();
+                    }
+                    GestureDebug gd; Gestures::GetDebug(gd);
+                    Overlay::Update(gd, hadBody, 0.f, now);
+                    continue;
+                }
+                lastTrk = now;
+                if (!hadBody) { LogLine("Recognizer: bodies ACQUIRED (n=%d)", nTrk); hadBody = true; }
+
+                switch (Gestures::UpdateExtend(f, now))
+                {
+                case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
+                case GestureAction::Left:    Output::TapKey(Cfg::Get().keyLeft);    break;
+                case GestureAction::Up:      Output::TapKey(Cfg::Get().keyUp);      break;
+                case GestureAction::Down:    Output::TapKey(Cfg::Get().keyDown);    break;
+                case GestureAction::Confirm: Output::TapKey(Cfg::Get().keyConfirm); break;
+                case GestureAction::Back:    Output::TapKey(Cfg::Get().keyBack);    break;
+                default: break;
+                }
+
+                GestureDebug gd; Gestures::GetDebug(gd);
+                float z = 0.f; bool zset = false;                 // overlay distance = the driver's Z
+                for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
+                {
+                    const NUI_SKELETON_DATA& s = f.SkeletonData[i];
+                    if (s.eTrackingState != NUI_SKELETON_TRACKED) continue;
+                    if (gd.dpadDriverId && s.dwTrackingID == gd.dpadDriverId) { z = s.Position.z; zset = true; break; }
+                    if (!zset) { z = s.Position.z; zset = true; }
+                }
+                Overlay::Update(gd, true, z, now);
+
+                if (now - lastLog >= 1000)
+                {
+                    lastLog = now;
+                    LogLine("Recognizer: extend nbody=%d driver=%lu frame=%lu",
+                            gd.dpadNumBodies, gd.dpadDriverId, f.dwFrameNumber);
+                }
+                continue;
+            }
+
             const int idx = PickNavigator(f, navId);
 
             if (idx < 0)

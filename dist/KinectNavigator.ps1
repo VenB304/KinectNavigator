@@ -227,9 +227,9 @@ $PRESET_CMD = @{
     strict = [ordered]@{ dpad_cmd_gate_radius = '0.32' }
 }
 $PRESET_HOLD = @{
-    short  = [ordered]@{ dpad_cmd_dwell_ms = '400';  dpad_back_dwell_ms = '1500' }
-    normal = [ordered]@{ dpad_cmd_dwell_ms = '600';  dpad_back_dwell_ms = '3000' }
-    long   = [ordered]@{ dpad_cmd_dwell_ms = '1000'; dpad_back_dwell_ms = '4000' }
+    short  = [ordered]@{ dpad_cmd_dwell_ms = '400'; dpad_back_dwell_ms = '1000' }
+    normal = [ordered]@{ dpad_cmd_dwell_ms = '600'; dpad_back_dwell_ms = '1500' }
+    long   = [ordered]@{ dpad_cmd_dwell_ms = '900'; dpad_back_dwell_ms = '2500' }
 }
 
 $KEY_ORDER = @('Left', 'Right', 'Up', 'Down', 'Confirm', 'Back')
@@ -245,7 +245,7 @@ $CFG_DEFAULTS = @{
     dpad_park_radius = '0.32'
     dpad_repeat_dwell_ms = '600'; dpad_repeat_first_ms = '430'; dpad_repeat_min_ms = '200'; dpad_repeat_accel_ms = '22'
     dpad_cmd_gate_radius = '0.42'
-    dpad_cmd_dwell_ms = '600'; dpad_back_dwell_ms = '3000'
+    dpad_cmd_dwell_ms = '600'; dpad_back_dwell_ms = '1500'
 }
 
 # ===========================================================================
@@ -867,7 +867,7 @@ function Show-MoreSettings {
 
     $d = New-Object System.Windows.Forms.Form
     $d.Text = (T 'more.title')
-    $d.ClientSize = New-Object System.Drawing.Size(474, 520)
+    $d.ClientSize = New-Object System.Drawing.Size(474, 544)
     $d.FormBorderStyle = 'FixedDialog'; $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false; $d.MinimizeBox = $false
     $d.BackColor = $ColBg; $d.Font = $FontBase
@@ -898,13 +898,17 @@ function Show-MoreSettings {
     $chkClutch.Text = (T 'more.clutch')
     $chkClutch.SetBounds(16, 174, 444, 22); $d.Controls.Add($chkClutch)
 
+    $chkDance = New-Object System.Windows.Forms.CheckBox
+    $chkDance.Text = (T 'more.dance')
+    $chkDance.SetBounds(16, 198, 444, 22); $d.Controls.Add($chkDance)
+
     $lk = New-Object System.Windows.Forms.Label
-    $lk.Text = (T 'more.keys_header'); $lk.Font = $FontBold; $lk.SetBounds(16, 210, 444, 20); $d.Controls.Add($lk)
+    $lk.Text = (T 'more.keys_header'); $lk.Font = $FontBold; $lk.SetBounds(16, 234, 444, 20); $d.Controls.Add($lk)
 
     $keyBoxes = @{}
     $ri = 0
     foreach ($nm in $KEY_ORDER) {
-        $ky = 236 + $ri * 30
+        $ky = 260 + $ri * 30
         $lb = New-Object System.Windows.Forms.Label
         $lb.Text = (T ('key.' + $nm.ToLower())); $lb.SetBounds(16, ($ky + 4), 84, 20); $d.Controls.Add($lb)
         $tb = New-Object System.Windows.Forms.TextBox
@@ -925,14 +929,14 @@ function Show-MoreSettings {
         $ri++
     }
 
-    $bResetKeys = New-Btn (T 'btn.reset_keys') 16 430 110 28
+    $bResetKeys = New-Btn (T 'btn.reset_keys') 16 454 110 28
     $bResetKeys.Add_Click({
         Remove-IniKeys $ini @('key_left', 'key_right', 'key_up', 'key_down', 'key_confirm', 'key_back')
         Update-KeyBoxes $ini $keyBoxes
         Write-Log (T 'log.keys_reset')
     }.GetNewClosure())
 
-    $bOk = New-Btn (T 'btn.close') 384 472 74 28 $true
+    $bOk = New-Btn (T 'btn.close') 384 496 74 28 $true
     $bOk.Add_Click({ $d.Close() })
     $d.Controls.AddRange(@($bResetKeys, $bOk))
 
@@ -950,6 +954,7 @@ function Show-MoreSettings {
     Fill-Preset $cbCmd    $PRESET_CMD
     Fill-Preset $cbHold   $PRESET_HOLD
     $chkClutch.Checked = (IniBool (Get-IniVal $iniMap 'dpad_arm' '1'))
+    $chkDance.Checked  = (IniBool (Get-IniVal $iniMap 'dpad_dance_disarm' '1'))
     Update-KeyBoxes $ini $keyBoxes
 
     function Make-PresetHandler($cb, $table, $labelKey) {
@@ -974,6 +979,12 @@ function Show-MoreSettings {
         $v = if ($chkClutch.Checked) { '1' } else { '0' }
         Set-IniKey $ini 'dpad_arm' $v
         Log-IniSet 'dpad_arm' $v
+    }.GetNewClosure())
+    $chkDance.Add_CheckedChanged({
+        if ($script:dlgLoading) { return }
+        $v = if ($chkDance.Checked) { '1' } else { '0' }
+        Set-IniKey $ini 'dpad_dance_disarm' $v
+        Log-IniSet 'dpad_dance_disarm' $v
     }.GetNewClosure())
 
     $script:dlgLoading = $false

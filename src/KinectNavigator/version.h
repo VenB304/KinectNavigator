@@ -7,7 +7,7 @@
 // whether the copy in a game folder is older than the one it ships.
 
 #define KN_VER_MAJOR 1
-#define KN_VER_MINOR 0
+#define KN_VER_MINOR 1
 #define KN_VER_PATCH 0
 #define KN_VER_BUILD 0
 

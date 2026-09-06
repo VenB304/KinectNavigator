@@ -27,16 +27,15 @@ KinectNavigator starts **asleep** and ignores everything. To wake it, **rest you
 hand near your dominant shoulder** for a moment. The diagnostic HUD (if on) shows
 `ASLEEP → READY`. This is also the neutral "ready" pose to come back to between moves.
 
-It **disarms itself** once your dominant hand spends about **1.5 seconds continuously out of
-play** — that is, not in the park box and not reaching into any direction. In practice that
-means it sleeps when you **lower your arm**. Any time your hand touches a direction or the
-park box, that timer resets.
+It **disarms itself** two ways:
 
-It is **not dance-aware.** If you leave it armed and dance with that hand up and moving, it
-stays awake and can send arrow keys. Those do nothing during a routine (the game only takes
-the arrows in menus), and command-mode Esc needs the deliberate two-hand pose held ~3 s — but
-if you want it fully quiet while dancing, just **drop your arm for a second first** to disarm
-it.
+- **Lower your arm** — once your dominant hand is out of the park box, out of every direction,
+  and below shoulder height for about **half a second**, it sleeps. Touching a direction or
+  the park box resets that timer.
+- **Start dancing** — if your whole body (not just the navigating hand) is moving a lot for
+  about half a second while it's armed, it decides you've stopped navigating and sleeps. So if
+  a routine starts while it's still awake, it drops out on its own. Tune with `dpad_dance_energy`
+  (lower = more eager to call it "dancing") or turn it off with `dpad_dance_disarm = 0`.
 
 You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
 so it's always live — only sensible if you're navigating menus and never dancing with it on.
@@ -92,6 +91,24 @@ that down-and-out angle to tell it apart from both.
 
 ---
 
+## More than one player
+
+Kinect v1 fully tracks **two** people at once (the two nearest the sensor). Either of those
+two can take control: whoever **wakes up last** — brings their hand to their shoulder and
+parks it — becomes the driver, and only the driver's reaches send keys. The previous driver
+goes back to **ASLEEP**.
+
+To take a turn back after you've lost control, do the wake gesture again — **hand away from
+your shoulder, then back to it**. Just leaving your hand resting at your shoulder won't do it
+(that stops two people from trading control back and forth). There's also a brief moment right
+after a hand-off where control won't change again, so a stray movement can't bounce it.
+
+If the person who wants to navigate is a third or fourth player the sensor isn't joint-tracking,
+they should **step to the front** first — the sensor tracks the two closest bodies, so stepping
+forward is what puts you in line to drive.
+
+---
+
 ## Command mode — Confirm and Back
 
 Navigation only sends the arrow keys. **Enter** and **Esc** need *command mode*: put your
@@ -112,8 +129,8 @@ second. Sends **Enter** — pick the highlighted song, start the routine, confir
 <img src="pictos/back.png" alt="off-hand on shoulder, dominant hand down and out" width="150" align="right">
 
 With the gate held: reach the dominant hand **down or left** and **hold** it for about
-**3 seconds** — longer than Confirm, because Esc is the consequential one (it opens the pause
-menu / backs out). The two-hand pose plus the long hold make it hard to trigger by accident.
+**1.5 seconds** — longer than Confirm, because Esc is the consequential one (it opens the pause
+menu / backs out). The two-hand pose plus the hold make it hard to trigger by accident.
 
 If you never want Esc reachable, untick **Enable the Back gesture** in `KinectNavigator`
 (or `enable_back = 0` in `kinectnav.ini`).

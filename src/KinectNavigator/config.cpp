@@ -1,4 +1,5 @@
 #include "framework.h"
+#include <math.h>
 #include "config.h"
 #include "globals.h"
 #include "log.h"
@@ -32,8 +33,14 @@ namespace
         else if (KeyIs(key, "dpad_arm"))            g_cfg.dpadArm           = atoi(val) != 0;
         else if (KeyIs(key, "dpad_arm_dwell_ms"))   g_cfg.dpadArmDwellMs    = atoi(val);
         else if (KeyIs(key, "dpad_disarm_ms"))      g_cfg.dpadDisarmMs      = atoi(val);
+        else if (KeyIs(key, "dpad_sleep_below_y"))  g_cfg.dpadSleepBelowY   = (float)atof(val);
+        else if (KeyIs(key, "dpad_dance_disarm"))   g_cfg.dpadDanceDisarm   = atoi(val) != 0;
+        else if (KeyIs(key, "dpad_dance_energy"))   g_cfg.dpadDanceEnergy   = (float)atof(val);
+        else if (KeyIs(key, "dpad_dance_hold_ms"))  g_cfg.dpadDanceHoldMs   = atoi(val);
         else if (KeyIs(key, "dpad_park_radius"))    g_cfg.dpadParkRadius    = (float)atof(val);
         else if (KeyIs(key, "dpad_park_exit_k"))    g_cfg.dpadParkExitK     = (float)atof(val);
+        else if (KeyIs(key, "dpad_up_reach_k"))     g_cfg.dpadUpReachK      = (float)atof(val);
+        else if (KeyIs(key, "dpad_cross_reach_k"))  g_cfg.dpadCrossReachK   = (float)atof(val);
         else if (KeyIs(key, "dpad_wedge_half_deg")) g_cfg.dpadWedgeHalfDeg  = (float)atof(val);
         else if (KeyIs(key, "dpad_down_min_drop"))  g_cfg.dpadDownMinDrop   = (float)atof(val);
         else if (KeyIs(key, "dpad_down_min_out"))   g_cfg.dpadDownMinOut    = (float)atof(val);
@@ -48,6 +55,7 @@ namespace
         else if (KeyIs(key, "dpad_cmd_dwell_ms"))   g_cfg.dpadCmdDwellMs    = atoi(val);
         else if (KeyIs(key, "dpad_back_dwell_ms"))  g_cfg.dpadBackDwellMs   = atoi(val);
         else if (KeyIs(key, "dpad_cmd_repeat_ms"))  g_cfg.dpadCmdRepeatMs   = atoi(val);
+        else if (KeyIs(key, "dpad_handoff_grace_ms")) g_cfg.dpadHandoffGraceMs = atoi(val);
         else if (KeyIs(key, "suppress_in_game"))    g_cfg.suppressInGame    = atoi(val) != 0;
         else if (KeyIs(key, "song_burst_count"))    g_cfg.songBurstCount    = atoi(val);
         else if (KeyIs(key, "song_burst_ms"))       g_cfg.songBurstMs       = atoi(val);
@@ -174,6 +182,16 @@ const Config& Cfg::Load()
         if (saved == '\0') break;
         p = eol + 1;
     }
+
+    // Guard the anisotropic park-exit scalers away from 0 / negative (would divide-by-zero or
+    // invert the axis). Clamp to a sane band; 1.0 is symmetric / off.
+    if (g_cfg.dpadUpReachK    < 0.25f) g_cfg.dpadUpReachK    = 0.25f;
+    if (g_cfg.dpadUpReachK    > 4.0f)  g_cfg.dpadUpReachK    = 4.0f;
+    if (g_cfg.dpadCrossReachK < 0.25f) g_cfg.dpadCrossReachK = 0.25f;
+    if (g_cfg.dpadCrossReachK > 4.0f)  g_cfg.dpadCrossReachK = 4.0f;
+
+    // precompute the wedge half-angle tangent so the recogniser isn't calling tanf per body per frame
+    g_cfg.dpadWedgeTanHalf = tanf(g_cfg.dpadWedgeHalfDeg * 0.01745329f);
 
     LogLine("Config: loaded kinectnav.ini (%d settings)  hand=%s mirror=%d confirm=%d back=%d  swipe v=%.2f d=%.2f  extend=%.2f  confirm/back dwell=%d/%d ms",
             applied, g_cfg.leftHanded ? "L" : "R", g_cfg.mirror, g_cfg.enableConfirm, g_cfg.enableBack,

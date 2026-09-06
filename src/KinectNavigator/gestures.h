@@ -44,7 +44,7 @@ struct GestureDebug
     // nav_model = extend (air d-pad). domEx/domEy = hand vs dominant shoulder (torso),
     // armExtend = radial distance r.
     bool     dpadMode   = false;      // the extend recogniser is the active one
-    bool     dpadArmed  = false;      // clutch engaged (park to arm; idle to disarm)
+    bool     dpadArmed  = false;      // clutch engaged (park to arm; idle to disarm) -- the DRIVER
     bool     dpadParked = false;      // hand in the park box
     bool     dpadCmd    = false;      // non-dominant hand on the non-dom shoulder (command mode)
     int      dpadWedge  = 0;          // 0 none, 1 RIGHT, 2 LEFT, 3 UP, 4 DOWN
@@ -52,14 +52,23 @@ struct GestureDebug
     int      dpadCmdPct = 0;          // command-mode dwell progress 0..100 (before Enter/Esc fires)
     float    dpadNdDist = 9.9f;       // non-dom hand -> non-dom shoulder (torso); < dpadCmdGateR => command mode
     float    dpadCmdGateR = 0.42f;    // the gate radius, for the overlay
+    unsigned long dpadDriverId = 0;   // tracking-id of the body currently driving (0 = nobody armed)
+    int      dpadNumBodies = 0;       // tracked skeletons the d-pad is watching this frame (0..2 on v1)
+    float    dpadEnergy = 0.f;        // driver's whole-body motion (trunk+head, torso/s EMA) -- dance-disarm
 };
 
 namespace Gestures
 {
-    // Called once per navigator frame by the recognizer thread (single thread).
+    // swipe model: one navigator body, picked by the recognizer.
     GestureAction Update(const NUI_SKELETON_DATA& nav, LONGLONG frameMs);
 
-    // Clear all state -- on body lost or navigator change.
+    // extend model (air d-pad): every tracked body runs its own clutch; the last
+    // one to arm (park its hand at its shoulder) becomes the driver and the only
+    // one whose reaches emit keys. Old driver must re-arm. Called once per frame
+    // with the whole skeleton frame.
+    GestureAction UpdateExtend(const NUI_SKELETON_FRAME& frame, LONGLONG frameMs);
+
+    // Clear all state -- on body lost (no tracked skeletons at all).
     void Reset();
 
     void GetDebug(GestureDebug& out);
