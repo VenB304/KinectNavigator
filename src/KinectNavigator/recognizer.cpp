@@ -157,7 +157,6 @@ namespace
         unsigned long long seq = 0;
         DWORD      navId    = 0;
         LONGLONG   navSeen  = 0;         // in frame-clock ms
-        LONGLONG   lastTrk  = 0;         // last frame-clock ms with >=1 tracked skeleton (extend path)
         LONGLONG   lastLog  = 0;
         bool       hadBody  = false;
         unsigned long long ticks = 0;
@@ -179,29 +178,10 @@ namespace
             // No PickNavigator / per-id Reset here -- the gesture layer owns body lifetime. ----
             if (Cfg::Get().navModel != 0)
             {
-                int nTrk = 0;
-                for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-                    if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_TRACKED) ++nTrk;
-
-                if (nTrk == 0)
-                {
-                    // ride out a brief full dropout (Kinect v1 flickers a skeleton to NOT_TRACKED
-                    // for isolated frames). 400ms == the gesture layer's kDropoutGraceMs, so the
-                    // slot prune and this reset fire on the same boundary.
-                    if (hadBody && now - lastTrk > 400)
-                    {
-                        LogLine("Recognizer: body LOST (frame=%lu)", f.dwFrameNumber);
-                        hadBody = false;
-                        navId = 0;
-                        Gestures::Reset();
-                    }
-                    GestureDebug gd; Gestures::GetDebug(gd);
-                    Overlay::Update(gd, hadBody, 0.f, now);
-                    continue;
-                }
-                lastTrk = now;
-                if (!hadBody) { LogLine("Recognizer: bodies ACQUIRED (n=%d)", nTrk); hadBody = true; }
-
+                // UpdateExtend is called on EVERY frame, including ones with no tracked
+                // skeleton: the gesture layer owns body lifetime, so the slot prune, the dropout
+                // window, ACQUIRED/LOST and the epoch reset all run off one clock in one place.
+                // There is deliberately no second dropout grace here any more.
                 switch (Gestures::UpdateExtend(f, now))
                 {
                 case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
@@ -222,7 +202,7 @@ namespace
                     if (gd.dpadDriverId && s.dwTrackingID == gd.dpadDriverId) { z = s.Position.z; zset = true; break; }
                     if (!zset) { z = s.Position.z; zset = true; }
                 }
-                Overlay::Update(gd, true, z, now);
+                Overlay::Update(gd, gd.dpadNumBodies > 0, z, now);
 
                 if (now - lastLog >= 1000)
                 {

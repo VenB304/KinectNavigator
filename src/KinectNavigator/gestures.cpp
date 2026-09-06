@@ -134,7 +134,6 @@ namespace
         // this-frame geometry (filled by ProcessBody)
         float    ex = 0, ey = 0, r = 0;
         float    torso = 0.40f;         // last good |SC-HIP| -- reused across a brief trunk glitch
-        int      geomMiss = 0;          // consecutive frames SC/HIP unusable (bounds the ride-through)
         int      wedge  = 0;
         bool     parked = true;         // sticky (hysteresis)
         bool     handOk = false;
@@ -153,8 +152,13 @@ namespace
         Vector4  pHip{}, pSc{}, pHead{};
         float    bodyEnergy = 0.f;      // EMA of weighted trunk/head speed (torso/s)
         LONGLONG danceSinceMs = 0;
+    };
 
-        // nav-machine (only run for the driver; cleared on disarm / hand-off)
+    // The nav-machine. Only ever run for the driver, so it lives ONCE next to the driver pointer
+    // instead of lying dormant in all four body slots. It travels with control: every driver
+    // change and every driver disarm resets it.
+    struct NavMachine
+    {
         int      occKey = 0, occFrames = 0, grace = 0;
         bool     fired = false, suppressed = false, cmdOn = false;
         LONGLONG occStartMs = 0, firedMs = 0, nextRepeat = 0;
@@ -168,6 +172,8 @@ namespace
         LONGLONG handoffMs = -1000000;
         LONGLONG lastTraceMs = -1;
         LONGLONG lastFrameMs = 0;       // detect a backward sensor-clock jump (replay --loop wrap)
+        bool     hadBodies   = false;   // ACQUIRED / LOST edge (this layer owns body lifetime)
+        NavMachine nav;                 // the driver's occupancy / fire / repeat state
     };
 
     // shared dropout-tolerance window: how long a body can be absent from the candidate set (or
@@ -187,11 +193,41 @@ namespace
         }
     }
 
-    void ResetDpadNav(DpadBody& b)   // clear just the nav-machine (on disarm / driver change)
+    void ResetNav()   // clear the driver's nav-machine (on disarm / driver change)
     {
-        b.occKey = 0; b.occFrames = 0; b.grace = 0;
-        b.fired = false; b.suppressed = false; b.cmdOn = false;
-        b.occStartMs = 0; b.firedMs = 0; b.nextRepeat = 0; b.repeats = 0;
+        NavMachine& n = em.nav;
+        n.occKey = 0; n.occFrames = 0; n.grace = 0;
+        n.fired = false; n.suppressed = false; n.cmdOn = false;
+        n.occStartMs = 0; n.firedMs = 0; n.nextRepeat = 0; n.repeats = 0;
+    }
+
+    DpadBody* FindDpadSlot(DWORD id);   // fwd
+
+    // The ONE place a body's state is transcribed into the overlay debug block. b == nullptr means
+    // "no body to show" -> blank the live readouts. Callers that go on to run the nav-machine
+    // overwrite wedge / cmd / ndDist with their own richer values afterwards.
+    void PopulateDpadDebug(const DpadBody* b, const Config& c)
+    {
+        g_dbg.dpadMode      = true;
+        g_dbg.dpadParkR     = c.dpadParkRadius;
+        g_dbg.dpadCmdGateR  = c.dpadCmdGateRadius;
+        g_dbg.domVx         = g_dbg.domVy = 0.f;
+        g_dbg.confirmHeldMs = g_dbg.backHeldMs = 0;
+        g_dbg.inGameplay    = false;
+        g_dbg.dpadNdDist    = 9.9f;
+        g_dbg.dpadCmd       = false;
+        g_dbg.dpadWedge     = 0;
+        g_dbg.dpadCmdPct    = 0;
+        g_dbg.swipeAxis     = 0;
+        g_dbg.dpadDriverId  = em.driverId;
+        g_dbg.repeatState   = em.nav.repeats > 0 ? 2 : (em.nav.fired ? 1 : 0);
+        g_dbg.haveHand      = b ? b->handOk     : false;
+        g_dbg.domEx         = b ? b->ex         : 0.f;
+        g_dbg.domEy         = b ? b->ey         : 0.f;
+        g_dbg.armExtend     = b ? b->r          : 0.f;
+        g_dbg.dpadParked    = b ? b->parked     : true;
+        g_dbg.dpadArmed     = b ? b->armed      : false;
+        g_dbg.dpadEnergy    = b ? b->bodyEnergy : 0.f;
     }
 
     DpadBody* FindDpadSlot(DWORD id)   // existing slot for this id, or nullptr (no allocation)
@@ -213,23 +249,12 @@ namespace
 
     // Per-body signal + park box + wedge + clutch. Fills b.ex/ey/r/wedge/parked, and
     // stamps b.armedAtMs whenever the body completes arming (used to pick the driver).
-    // geomOk == false: the skeleton is still TRACKED but SHOULDER_CENTER/HIP_CENTER glitched
-    // out this frame -- hold every timer and filter, don't advance the clock, so a 1-frame
-    // trunk dropout doesn't wipe the driver.
+    // geomOk == false: the skeleton is still TRACKED but SHOULDER_CENTER/HIP_CENTER glitched out
+    // this frame. The hand signal is shoulder-relative and scaled by the CACHED torso, so it keeps
+    // working normally; only the dance-energy metric (which reads SC/HIP) sits that frame out.
     void ProcessBody(DpadBody& b, const NUI_SKELETON_DATA& nav, float torso,
                      LONGLONG frameMs, const Config& c, bool geomOk)
     {
-        if (!geomOk)
-        {
-            // SC/HIP glitched this frame but the skeleton is still TRACKED. Ride it out: hold all
-            // timers/filter and keep the sensor clock advancing (so the recovery frame sees a
-            // one-frame dt, not a resync) -- but only up to kDropoutGraceMs; a longer gap resyncs.
-            b.handOk = false; b.wedge = 0;
-            if ((++b.geomMiss) * 33 <= kDropoutGraceMs) b.prevMs = frameMs;
-            return;
-        }
-        b.geomMiss = 0;
-
         const auto st = [&](int j) { return nav.eSkeletonPositionTrackingState[j]; };
         const int shJ = c.leftHanded ? NUI_SKELETON_POSITION_SHOULDER_LEFT : NUI_SKELETON_POSITION_SHOULDER_RIGHT;
         const int hJ0 = c.leftHanded ? NUI_SKELETON_POSITION_HAND_LEFT     : NUI_SKELETON_POSITION_HAND_RIGHT;
@@ -237,7 +262,10 @@ namespace
 
         const double dt = (b.prevMs >= 0) ? (frameMs - b.prevMs) / 1000.0 : 0.0;
         b.prevMs = frameMs;
-        const bool resync = (!b.have || dt <= 0.0 || dt > 0.25);
+        // ONE dropout window: the 1 Euro resync bound IS kDropoutGraceMs, so any gap the slot
+        // prune rides through, the filter rides through too. These used to disagree (250 ms here
+        // vs a 400 ms grace), silently disarming the driver on a 264-396 ms dropout.
+        const bool resync = (!b.have || dt <= 0.0 || dt > kDropoutGraceMs / 1000.0);
 
         int hJ = Usable(st(hJ0)) ? hJ0 : wJ0;
         const bool handOk = Usable(st(shJ)) && Usable(st(hJ));
@@ -260,7 +288,7 @@ namespace
             // that suffers a glitch must still leave the box before it can re-bid for control.
             b.parked = true; b.armed = false; b.parkSinceMs = 0; b.restSinceMs = 0;
             b.motInit = false; b.headWasOk = false; b.bodyEnergy = 0.f; b.danceSinceMs = 0;
-            ResetDpadNav(b);
+            if (b.id == em.driverId) ResetNav();
             b.have = true; b.frames = 1; b.handOk = handOk;
             b.ex = b.ey = b.r = 0.f; b.wedge = 0;
             return;
@@ -275,7 +303,8 @@ namespace
         // for navigation). Weighted speed, torso/s, EMA-smoothed -> b.bodyEnergy for the dance disarm.
         // Only computed when the feature is on. HEAD is optional -- it is NOT gated in the candidate
         // filter, so a HEAD dropout would otherwise feed a stale position and spike the energy.
-        if (c.dpadDanceDisarm)
+        if (!geomOk) b.motInit = false;   // SC/HIP glitched -> re-seed, never diff across the gap
+        if (c.dpadDanceDisarm && geomOk)
         {
             const bool headOk = Usable(st(NUI_SKELETON_POSITION_HEAD));
             const Vector4& hip = nav.SkeletonPositions[NUI_SKELETON_POSITION_HIP_CENTER];
@@ -295,16 +324,29 @@ namespace
             b.headWasOk = headOk;
         }
 
-        if (b.frames < c.armAfterFrames || !handOk) { b.wedge = 0; return; }
+        if (b.frames < c.armAfterFrames) { b.wedge = 0; return; }
 
-        // "dancing" = whole-body motion sustained past a short window. One timer feeds both the
-        // arm quiescence gate (short) and the dance auto-disarm (longer, dpadDanceHoldMs), so a
-        // single jittery INFERRED-joint spike can't block arming with no explanation.
+        // "dancing" = whole-body motion sustained past a short window. ONE predicate
+        // (bodyEnergy > dpadDanceEnergy) drives both the arm quiescence gate (short sustain) and
+        // the auto-disarm (dpadDanceHoldMs), so the two can never disagree about the threshold.
         if (c.dpadDanceDisarm && b.bodyEnergy > c.dpadDanceEnergy)
         { if (b.danceSinceMs == 0) b.danceSinceMs = frameMs; }
         else b.danceSinceMs = 0;
         const LONGLONG danceMs = b.danceSinceMs ? (frameMs - b.danceSinceMs) : 0;
         const bool dancing = b.danceSinceMs != 0 && danceMs >= 150;   // ~5 sustained frames
+
+        // Dance auto-disarm. Deliberately ABOVE the !handOk return: it needs no hand signal, so an
+        // armed body whose wrist has dropped out still goes to sleep once the user starts dancing
+        // (nothing below here could disarm it -- it would stay armed indefinitely). Clutch-only:
+        // with dpad_arm = 0 the user asked for "always live", and the unconditional re-arm would
+        // fight this every single frame (disarm -> re-arm -> disarm, one log line per frame).
+        if (c.dpadArm && b.armed && b.danceSinceMs != 0 && danceMs >= c.dpadDanceHoldMs)
+        {
+            b.armed = false; if (b.id == em.driverId) ResetNav(); b.mustLeavePark = b.parked;
+            LogLine("Gesture[t=%.1f]: dpad disarmed id=%lu (dancing, en=%.1f)", T(frameMs), b.id, b.bodyEnergy);
+        }
+
+        if (!handOk) { b.wedge = 0; return; }   // no hand signal -> no park box, no wedge, no arming
 
         // park box (asymmetric hysteresis + anisotropic reach -- Batch 1). The park-exit /
         // re-park test scales one axis so UP needs more raise (less eager) and cross-body
@@ -359,19 +401,11 @@ namespace
                 if (b.restSinceMs == 0) b.restSinceMs = frameMs;
                 if (b.armed && frameMs - b.restSinceMs >= c.dpadDisarmMs)
                 {
-                    b.armed = false; ResetDpadNav(b);
+                    b.armed = false; if (b.id == em.driverId) ResetNav();
                     LogLine("Gesture[t=%.1f]: dpad disarmed id=%lu (idle %dms)", T(frameMs), b.id, c.dpadDisarmMs);
                 }
             }
             else b.restSinceMs = 0;
-        }
-
-        // dance auto-disarm: the same sustained-motion timer, held longer -> the user is dancing,
-        // not navigating. Runs regardless of hand position. Demoting while parked sets mustLeavePark.
-        if (b.armed && b.danceSinceMs != 0 && danceMs >= c.dpadDanceHoldMs)
-        {
-            b.armed = false; ResetDpadNav(b); b.mustLeavePark = b.parked;
-            LogLine("Gesture[t=%.1f]: dpad disarmed id=%lu (dancing, en=%.1f)", T(frameMs), b.id, b.bodyEnergy);
         }
     }
 
@@ -386,25 +420,19 @@ namespace
         const int nHJ0 = c.leftHanded ? NUI_SKELETON_POSITION_HAND_RIGHT     : NUI_SKELETON_POSITION_HAND_LEFT;
         const int nWJ0 = c.leftHanded ? NUI_SKELETON_POSITION_WRIST_RIGHT    : NUI_SKELETON_POSITION_WRIST_LEFT;
 
+        NavMachine& nv = em.nav;
         const float ex = b.ex, ey = b.ey, r = b.r;
         const int wedge = b.wedge;
         float ndDist = 9.9f;
 
-        g_dbg.haveHand = b.handOk; g_dbg.dpadMode = true;
-        g_dbg.domEx = ex; g_dbg.domEy = ey; g_dbg.domVx = 0; g_dbg.domVy = 0;
-        g_dbg.armExtend = r; g_dbg.confirmHeldMs = g_dbg.backHeldMs = 0;
-        g_dbg.inGameplay = false;
-        g_dbg.dpadParked = b.parked; g_dbg.dpadArmed = b.armed;
-        g_dbg.dpadParkR = c.dpadParkRadius; g_dbg.dpadCmdGateR = c.dpadCmdGateRadius;
-        g_dbg.dpadCmd = false; g_dbg.dpadWedge = 0; g_dbg.dpadCmdPct = 0;
-        g_dbg.dpadEnergy = b.bodyEnergy;
+        PopulateDpadDebug(&b, c);
 
         auto trace = [&](const char* tag) {
-            if (c.trace && (b.lastTraceMs < 0 || frameMs - b.lastTraceMs >= 66)) {
-                b.lastTraceMs = frameMs;
+            if (c.trace && (nv.lastTraceMs < 0 || frameMs - nv.lastTraceMs >= 66)) {
+                nv.lastTraceMs = frameMs;
                 LogLine("dpad[t=%.1f] drv=%lu ex=%+.2f ey=%+.2f r=%.2f arm=%d park=%d w=%d cmd=%d nd=%.2f cdw=%d occf=%d fired=%d rep=%d en=%.1f %s",
-                        T(frameMs), b.id, ex, ey, r, (int)b.armed, (int)b.parked, b.occKey & 7, (int)b.cmdOn, ndDist,
-                        g_dbg.dpadCmdPct, b.occFrames, (int)b.fired, b.repeats, b.bodyEnergy, tag);
+                        T(frameMs), b.id, ex, ey, r, (int)b.armed, (int)b.parked, nv.occKey & 7, (int)nv.cmdOn, ndDist,
+                        g_dbg.dpadCmdPct, nv.occFrames, (int)nv.fired, nv.repeats, b.bodyEnergy, tag);
             }
         };
 
@@ -412,14 +440,14 @@ namespace
         // state and emit nothing, rather than running the machine on zeroed coordinates.
         if (!b.handOk)
         {
-            g_dbg.swipeAxis = 0; g_dbg.repeatState = b.repeats > 0 ? 2 : (b.fired ? 1 : 0);
+            g_dbg.swipeAxis = 0; g_dbg.repeatState = nv.repeats > 0 ? 2 : (nv.fired ? 1 : 0);
             trace("nohand");
             return GestureAction::None;
         }
 
         if (b.parked)
         {
-            ResetDpadNav(b);
+            ResetNav();
             g_dbg.swipeAxis = 0; g_dbg.repeatState = 0; g_dbg.dpadWedge = 0;
             trace("ready");
             return GestureAction::None;
@@ -432,9 +460,9 @@ namespace
             if (Usable(st(nHJ)))
                 ndDist = Len3(nav.SkeletonPositions[nShJ], nav.SkeletonPositions[nHJ]) / torso;
         }
-        b.cmdOn = b.cmdOn ? (ndDist < c.dpadCmdGateRadius * c.dpadCmdGateExitK)
+        nv.cmdOn = nv.cmdOn ? (ndDist < c.dpadCmdGateRadius * c.dpadCmdGateExitK)
                           : (ndDist < c.dpadCmdGateRadius);
-        const bool cmd = b.cmdOn;
+        const bool cmd = nv.cmdOn;
         g_dbg.dpadCmd = cmd; g_dbg.dpadWedge = wedge;
         g_dbg.dpadNdDist = ndDist;
 
@@ -442,38 +470,38 @@ namespace
         int occ = wedge ? ((cmd ? 8 : 0) | wedge) : 0;
         if (occ == 0)
         {
-            if (b.occKey != 0 && ++b.grace <= c.dpadWedgeGraceFr) occ = b.occKey;
+            if (nv.occKey != 0 && ++nv.grace <= c.dpadWedgeGraceFr) occ = nv.occKey;
             else
             {
-                ResetDpadNav(b);
+                ResetNav();
                 g_dbg.swipeAxis = 0; g_dbg.repeatState = 0;
                 trace("gap");
                 return GestureAction::None;
             }
         }
-        else b.grace = 0;
+        else nv.grace = 0;
 
-        if (occ != b.occKey)
+        if (occ != nv.occKey)
         {
-            const bool sameWedge = ((occ & 7) == (b.occKey & 7) && (b.occKey & 7) != 0);
-            b.occKey = occ; b.occFrames = 1; b.repeats = 0; b.occStartMs = frameMs;
-            b.fired = b.suppressed = sameWedge;
+            const bool sameWedge = ((occ & 7) == (nv.occKey & 7) && (nv.occKey & 7) != 0);
+            nv.occKey = occ; nv.occFrames = 1; nv.repeats = 0; nv.occStartMs = frameMs;
+            nv.fired = nv.suppressed = sameWedge;
         }
-        else ++b.occFrames;
+        else ++nv.occFrames;
 
-        const int  w     = b.occKey & 7;
-        const bool isCmd = (b.occKey & 8) != 0;
+        const int  w     = nv.occKey & 7;
+        const bool isCmd = (nv.occKey & 8) != 0;
         const bool isBack = isCmd && (w == 2 || w == 4);          // down/left in command mode -> Esc
         const int  cmdDwell = isBack ? c.dpadBackDwellMs : c.dpadCmdDwellMs;
 
         g_dbg.dpadCmdPct = 0;
-        if (isCmd && !b.fired && !b.suppressed && cmdDwell > 0)
+        if (isCmd && !nv.fired && !nv.suppressed && cmdDwell > 0)
         {
-            int pct = (int)((frameMs - b.occStartMs) * 100 / cmdDwell);
+            int pct = (int)((frameMs - nv.occStartMs) * 100 / cmdDwell);
             g_dbg.dpadCmdPct = pct < 0 ? 0 : pct > 100 ? 100 : pct;
         }
 
-        if (b.suppressed) { g_dbg.swipeAxis = (w == 1 || w == 2) ? 1 : 2; g_dbg.repeatState = 0; trace("mode-flip"); return GestureAction::None; }
+        if (nv.suppressed) { g_dbg.swipeAxis = (w == 1 || w == 2) ? 1 : 2; g_dbg.repeatState = 0; trace("mode-flip"); return GestureAction::None; }
 
         auto keyFor = [&]() -> GestureAction {
             if (isCmd)
@@ -487,37 +515,37 @@ namespace
         };
 
         GestureAction out = GestureAction::None;
-        if (!b.fired)
+        if (!nv.fired)
         {
-            const bool ready = isCmd ? (frameMs - b.occStartMs >= cmdDwell)
-                                     : (b.occFrames >= c.dpadEntryDebounce);
+            const bool ready = isCmd ? (frameMs - nv.occStartMs >= cmdDwell)
+                                     : (nv.occFrames >= c.dpadEntryDebounce);
             if (ready)
             {
                 out = keyFor();
-                b.fired = true; b.firedMs = frameMs;
-                b.nextRepeat = frameMs + (isCmd ? c.dpadCmdRepeatMs : c.dpadRepeatFirstMs);
+                nv.fired = true; nv.firedMs = frameMs;
+                nv.nextRepeat = frameMs + (isCmd ? c.dpadCmdRepeatMs : c.dpadRepeatFirstMs);
                 if (out != GestureAction::None)
                     LogLine("Gesture[t=%.1f]: dpad %s%s", T(frameMs), DpadName(out), isCmd ? " [cmd]" : "");
             }
         }
-        else if (frameMs - b.firedMs >= c.dpadRepeatDwellMs && frameMs >= b.nextRepeat)
+        else if (frameMs - nv.firedMs >= c.dpadRepeatDwellMs && frameMs >= nv.nextRepeat)
         {
             out = keyFor();
-            ++b.repeats;
+            ++nv.repeats;
             int iv = c.dpadCmdRepeatMs;
             if (!isCmd)
             {
-                iv = c.dpadRepeatFirstMs - (b.repeats - 1) * c.dpadRepeatAccelMs;
+                iv = c.dpadRepeatFirstMs - (nv.repeats - 1) * c.dpadRepeatAccelMs;
                 if (iv < c.dpadRepeatMinMs) iv = c.dpadRepeatMinMs;
             }
-            b.nextRepeat = frameMs + iv;
+            nv.nextRepeat = frameMs + iv;
             if (out != GestureAction::None)
-                LogLine("Gesture[t=%.1f]: dpad %s%s (repeat %d)", T(frameMs), DpadName(out), isCmd ? " [cmd]" : "", b.repeats);
+                LogLine("Gesture[t=%.1f]: dpad %s%s (repeat %d)", T(frameMs), DpadName(out), isCmd ? " [cmd]" : "", nv.repeats);
         }
 
         if (out != GestureAction::None) { g_dbg.lastAction = (unsigned)out; g_dbg.lastActionMs = frameMs; }
         g_dbg.swipeAxis   = (w == 1 || w == 2) ? 1 : 2;
-        g_dbg.repeatState = b.repeats > 0 ? 2 : (b.fired ? 1 : 0);
+        g_dbg.repeatState = nv.repeats > 0 ? 2 : (nv.fired ? 1 : 0);
         trace(out != GestureAction::None ? "FIRE" : "");
         return out;
     }
@@ -537,8 +565,22 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     }
     em.lastFrameMs = frameMs;
 
-    // prune stale slots FIRST (before any DpadSlotFor call) so an eviction can never hit a body
-    // that just went briefly absent. Grace = kDropoutGraceMs.
+    // Body lifetime lives here, not in the recogniser: UpdateExtend is called on every frame,
+    // including ones with no tracked skeleton. If every live slot has now been absent for the whole
+    // dropout window this is a real body-LOST -- wipe everything. (Reset() is called while the
+    // slots are still inUse so it still reports itself.)
+    bool anyLive = false, anyFresh = false;
+    for (const auto& b : g_db)
+        if (b.inUse) { anyLive = true; if (frameMs - b.lastSeenMs <= kDropoutGraceMs) anyFresh = true; }
+    if (anyLive && !anyFresh)
+    {
+        LogLine("Recognizer: body LOST");
+        Gestures::Reset();                       // clears g_db / em (incl. hadBodies) / g_epoch
+        g_dbg.dpadMode = true; g_dbg.dpadNumBodies = 0; g_dbg.haveHand = false;
+        return GestureAction::None;
+    }
+    // prune individually stale slots (before any DpadSlotFor call) so an eviction can never hit a
+    // body that just went briefly absent. Same window.
     for (auto& b : g_db) if (b.inUse && frameMs - b.lastSeenMs > kDropoutGraceMs) b.inUse = false;
 
     // ---- gather tracked bodies ----
@@ -576,12 +618,14 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
 
     if (nc == 0)
     {
-        em.driverId = 0; g_dbg.dpadDriverId = 0; g_dbg.haveHand = false;
-        g_dbg.dpadArmed = false; g_dbg.swipeAxis = 0; g_dbg.repeatState = 0;
-        g_dbg.domEx = g_dbg.domEy = g_dbg.armExtend = 0.f; g_dbg.dpadEnergy = 0.f;
-        g_dbg.dpadParked = true; g_dbg.dpadWedge = 0; g_dbg.dpadCmd = false; g_dbg.dpadCmdPct = 0;
+        // No visible body, but a real loss already returned above -- so we are inside the dropout
+        // window. Hold the driver and its clutch; just stop emitting and blank the live readouts.
+        PopulateDpadDebug(em.driverId ? FindDpadSlot(em.driverId) : nullptr, c);
+        g_dbg.haveHand = false;               // nothing fresh this frame
         return GestureAction::None;
     }
+
+    if (!em.hadBodies) { LogLine("Recognizer: bodies ACQUIRED (n=%d)", nc); em.hadBodies = true; }
 
     // ---- per-body signal + clutch ----
     for (int i = 0; i < nc; ++i)
@@ -592,7 +636,7 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     int driverIdx = -1;
     for (int i = 0; i < nc; ++i) if (cand[i].b->id == em.driverId) { driverIdx = i; break; }
     DpadBody* driver = (driverIdx >= 0) ? cand[driverIdx].b : nullptr;
-    if (driver && !driver->armed) { ResetDpadNav(*driver); driver = nullptr; driverIdx = -1; }
+    if (driver && !driver->armed) { ResetNav(); driver = nullptr; driverIdx = -1; }
 
     // Driver not in this frame's candidates but its slot is still alive (kDropoutGraceMs window):
     // hold its seat and emit nothing -- it's a brief full dropout, not a real hand-off.
@@ -601,9 +645,8 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
         DpadBody* held = FindDpadSlot(em.driverId);
         if (held && (held->armed || !c.dpadArm))
         {
-            g_dbg.dpadDriverId = em.driverId; g_dbg.dpadArmed = true; g_dbg.haveHand = false;
-            g_dbg.swipeAxis = 0; g_dbg.repeatState = held->repeats > 0 ? 2 : (held->fired ? 1 : 0);
-            g_dbg.dpadWedge = 0; g_dbg.dpadCmd = false; g_dbg.dpadCmdPct = 0;
+            PopulateDpadDebug(held, c);
+            g_dbg.haveHand = false;           // still ours, just not visible this frame
             return GestureAction::None;
         }
     }
@@ -632,12 +675,12 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
         if (wasHandoff && driverIdx >= 0)           // demote the outgoing driver -> re-park to drive
         {
             DpadBody* o = cand[driverIdx].b;
-            o->armed = false; o->parkSinceMs = 0; ResetDpadNav(*o);
+            o->armed = false; o->parkSinceMs = 0; ResetNav();
             o->mustLeavePark = o->parked;           // demoted with the hand still parked -> must
                                                     // leave the box once before it can re-bid
         }
         em.driverId = challenger->id; em.handoffMs = frameMs;
-        ResetDpadNav(*challenger);
+        ResetNav();
         driver = challenger;
         for (int i = 0; i < nc; ++i) if (cand[i].b == challenger) { driverIdx = i; break; }
         // worth a line for an actual hand-off between people, or whenever 2+ bodies are present;
@@ -663,13 +706,8 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     {
         // nobody armed: keep the HUD tracking a body's hand so the "ASLEEP" screen still shows
         // the dot moving toward the shoulder as the user goes to wake it.
-        const DpadBody& hb = *cand[0].b;
-        g_dbg.haveHand = hb.handOk; g_dbg.dpadArmed = false;
-        g_dbg.domEx = hb.ex; g_dbg.domEy = hb.ey; g_dbg.armExtend = hb.r;
-        g_dbg.dpadParked = hb.parked; g_dbg.dpadEnergy = hb.bodyEnergy;
-        g_dbg.dpadParkR = c.dpadParkRadius; g_dbg.dpadCmdGateR = c.dpadCmdGateRadius;
-        g_dbg.dpadCmd = false; g_dbg.dpadNdDist = 9.9f;
-        g_dbg.swipeAxis = 0; g_dbg.repeatState = 0; g_dbg.dpadWedge = 0; g_dbg.dpadCmdPct = 0;
+        PopulateDpadDebug(cand[0].b, c);
+        g_dbg.dpadArmed = false;              // nobody holds the wheel, whatever this body's clutch says
         return GestureAction::None;
     }
 
