@@ -12,10 +12,10 @@ keyboard or phone.
 
 ## Gestures at a glance
 
-Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep two ways:
-when that hand sits out of play — not reaching in any direction — for a moment, i.e. when you
-lower your arm; or **on its own once you start dancing**, so a routine beginning while it is
-still awake drops it out without you having to do anything.
+Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep when that
+hand sits out of play — not reaching in any direction — for a moment, i.e. when you lower your
+arm. There's also an optional **sleep-when-dancing** trigger (off by default — it false-trips
+on vigorous navigation more than it helps).
 
 Then picture a small `+` centred on that shoulder:
 

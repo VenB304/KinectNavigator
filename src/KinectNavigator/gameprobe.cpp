@@ -1,7 +1,6 @@
 #include "framework.h"
 #include "gameprobe.h"
 #include "globals.h"
-#include "config.h"
 #include "log.h"
 
 // Menu-vs-gameplay probes, all observe-only (nothing gates on them yet).
@@ -111,20 +110,6 @@ namespace
         return true;
     }
 
-    bool IsSongBundle(const wchar_t* p, const wchar_t*& baseOut)
-    {
-        const wchar_t* b = wcsrchr(p, L'\\'); b = b ? b + 1 : p;
-        baseOut = b;
-        size_t n = wcslen(b);
-        if (n < 8) return false;
-        if (_wcsicmp(b + n - 7, L"_pc.ipk") != 0) return false;
-        // must sit under a \maps\ directory (per-song bundle, not the root bundle_pc.ipk)
-        wchar_t low[MAX_PATH]; int i = 0;
-        for (; p[i] && i < MAX_PATH - 1; ++i) low[i] = (wchar_t)towlower(p[i]);
-        low[i] = 0;
-        return wcsstr(low, L"\\maps\\") != nullptr || wcsncmp(low, L"maps\\", 5) == 0;
-    }
-
     void Note(const wchar_t* name)
     {
         if (!name || !Interesting(name)) return;
@@ -132,29 +117,10 @@ namespace
         InterlockedIncrement64((volatile LONGLONG*)&g_fileOpens);
         const LONGLONG now = (LONGLONG)GetTickCount64();
         InterlockedExchange64((volatile LONGLONG*)&g_lastOpenTick, now);
+        // While a song plays the game opens no maps\ bundles (all preloaded), so a long
+        // gap since this last fired -- with the game window up front -- reads as "in a song".
+        // (See gestures.cpp: it swaps the arm dwell, it no longer mutes keys.)
 
-        // "song is loading" = the SAME maps\<yr>\<song>_pc.ipk opened in a rapid burst
-        // (the game reopens it several times when you press play). A carousel scroll
-        // opens each bundle once, so browsing never trips this.
-        // "song is loading" = the SAME maps\<yr>\<song>_pc.ipk opened songBurstCount times
-        // in a row with NOTHING else opened between. Coach-select etc. reopen a bundle a
-        // few times but interspersed with other assets, so they never accumulate a run.
-        const wchar_t* base = nullptr;
-        static wchar_t  s_song[64] = L"";
-        static int      s_count = 0;
-        static LONGLONG s_first = 0;
-        if (IsSongBundle(name, base))
-        {
-            const Config& c = Cfg::Get();
-            if (_wcsicmp(base, s_song) != 0 || now - s_first > c.songBurstMs)
-            { wcsncpy_s(s_song, 64, base, _TRUNCATE); s_count = 1; s_first = now; }
-            else if (++s_count >= c.songBurstCount)
-            {
-                InterlockedExchange64((volatile LONGLONG*)&g_songLoadTick, now);
-                s_count = 0;
-            }
-        }
-        else { s_count = 0; s_song[0] = 0; }   // any other file breaks the run
         static volatile LONG guard = 0;
         if (InterlockedCompareExchange(&guard, 1, 0) == 0)
         {

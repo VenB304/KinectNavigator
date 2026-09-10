@@ -1,5 +1,4 @@
 #include "framework.h"
-#include <math.h>
 #include "recognizer.h"
 
 // SHQueryUserNotificationState (shell32) -- not surfaced under WIN32_LEAN_AND_MEAN,
@@ -20,46 +19,6 @@ namespace
 {
     HANDLE       g_thread = nullptr;
     volatile LONG g_stop  = 0;
-
-    const char* StateTag(NUI_SKELETON_POSITION_TRACKING_STATE s)
-    {
-        return s == NUI_SKELETON_POSITION_TRACKED  ? "T"
-             : s == NUI_SKELETON_POSITION_INFERRED ? "i"
-             : ".";
-    }
-
-    // Pick the navigator: prefer the sticky id if it is still tracked, else the
-    // closest tracked body, tie-broken by how centred it is. Returns index into
-    // frame.SkeletonData or -1 if nobody is tracked.
-    int PickNavigator(const NUI_SKELETON_FRAME& f, DWORD stickyId)
-    {
-        int   best = -1;
-        float bestScore = 1e9f;
-        int   sticky = -1;
-
-        for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-        {
-            const NUI_SKELETON_DATA& s = f.SkeletonData[i];
-            if (s.eTrackingState != NUI_SKELETON_TRACKED)
-                continue;
-            if (stickyId != 0 && s.dwTrackingID == stickyId)
-                sticky = i;
-            const float score = s.Position.z + 0.001f * fabsf(s.Position.x);
-            if (score < bestScore) { bestScore = score; best = i; }
-        }
-        return sticky >= 0 ? sticky : best;
-    }
-
-    void AppendJoint(char* buf, size_t cap, int& len,
-                     const NUI_SKELETON_DATA& s, int j, const char* name)
-    {
-        if (len < 0 || (size_t)len >= cap) return;
-        const Vector4& p = s.SkeletonPositions[j];
-        int n = sprintf_s(buf + len, cap - len, " %s(%s)%.2f,%.2f,%.2f",
-                          name, StateTag(s.eSkeletonPositionTrackingState[j]),
-                          p.x, p.y, p.z);
-        if (n > 0) len += n;
-    }
 
     // --- menu-vs-gameplay probe: one line ~1/s, whatever the body state -------
     BOOL CALLBACK PickOwnWnd(HWND h, LPARAM lp)
@@ -117,9 +76,9 @@ namespace
             RECT wr; if (GetWindowRect(gw, &wr)) { rw = wr.right - wr.left; rh = wr.bottom - wr.top; }
             wstyle = (DWORD)GetWindowLongW(gw, GWL_STYLE);
         }
-        // "the game is actually up front and full-sized" -- the gameplay-mute needs
-        // this so a stale song-load arm can't mute while the window is minimised or
-        // alt-tabbed away (open/s drops to 0 there and the idle timer would fire).
+        // "the game is actually up front and full-sized" -- the "in a song" test needs
+        // this so file-quiet while the window is minimised or alt-tabbed away (open/s
+        // drops to 0 there too) doesn't read as gameplay.
         const bool wndActive = gw && !IsIconic(gw) && GetForegroundWindow() == gw
                                && rw >= 640 && rh >= 400;
         InterlockedExchange(&g_gameWndActive, wndActive ? 1 : 0);
@@ -155,10 +114,7 @@ namespace
 
         NUI_SKELETON_FRAME f;
         unsigned long long seq = 0;
-        DWORD      navId    = 0;
-        LONGLONG   navSeen  = 0;         // in frame-clock ms
         LONGLONG   lastLog  = 0;
-        bool       hadBody  = false;
         unsigned long long ticks = 0;
 
         while (!g_stop)
@@ -173,79 +129,12 @@ namespace
             // any speed behaves like live. liTimeStamp is milliseconds.
             const LONGLONG now = f.liTimeStamp.QuadPart;
 
-            // ---- extend (air d-pad): multi-body hand-off. Every tracked skeleton is fed
-            // to the gesture layer, which runs a per-body clutch and picks one driver.
-            // No PickNavigator / per-id Reset here -- the gesture layer owns body lifetime. ----
-            if (Cfg::Get().navModel != 0)
-            {
-                // UpdateExtend is called on EVERY frame, including ones with no tracked
-                // skeleton: the gesture layer owns body lifetime, so the slot prune, the dropout
-                // window, ACQUIRED/LOST and the epoch reset all run off one clock in one place.
-                // There is deliberately no second dropout grace here any more.
-                switch (Gestures::UpdateExtend(f, now))
-                {
-                case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
-                case GestureAction::Left:    Output::TapKey(Cfg::Get().keyLeft);    break;
-                case GestureAction::Up:      Output::TapKey(Cfg::Get().keyUp);      break;
-                case GestureAction::Down:    Output::TapKey(Cfg::Get().keyDown);    break;
-                case GestureAction::Confirm: Output::TapKey(Cfg::Get().keyConfirm); break;
-                case GestureAction::Back:    Output::TapKey(Cfg::Get().keyBack);    break;
-                default: break;
-                }
-
-                GestureDebug gd; Gestures::GetDebug(gd);
-                float z = 0.f; bool zset = false;                 // overlay distance = the driver's Z
-                for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-                {
-                    const NUI_SKELETON_DATA& s = f.SkeletonData[i];
-                    if (s.eTrackingState != NUI_SKELETON_TRACKED) continue;
-                    if (gd.dpadDriverId && s.dwTrackingID == gd.dpadDriverId) { z = s.Position.z; zset = true; break; }
-                    if (!zset) { z = s.Position.z; zset = true; }
-                }
-                Overlay::Update(gd, gd.dpadNumBodies > 0, z, now);
-
-                if (now - lastLog >= 1000)
-                {
-                    lastLog = now;
-                    LogLine("Recognizer: extend nbody=%d driver=%lu frame=%lu",
-                            gd.dpadNumBodies, gd.dpadDriverId, f.dwFrameNumber);
-                }
-                continue;
-            }
-
-            const int idx = PickNavigator(f, navId);
-
-            if (idx < 0)
-            {
-                if (hadBody)
-                {
-                    LogLine("Recognizer: body LOST (frame=%lu)", f.dwFrameNumber);
-                    hadBody = false;
-                    Gestures::Reset();
-                }
-                if (navId != 0 && now - navSeen > 500) { navId = 0; }
-                GestureDebug gd; Gestures::GetDebug(gd);
-                Overlay::Update(gd, false, 0.f, now);
-                continue;
-            }
-
-            const NUI_SKELETON_DATA& nav = f.SkeletonData[idx];
-            navSeen = now;
-
-            if (!hadBody)
-            {
-                LogLine("Recognizer: body ACQUIRED id=%lu pos=%.2f,%.2f,%.2f",
-                        nav.dwTrackingID, nav.Position.x, nav.Position.y, nav.Position.z);
-                hadBody = true;
-            }
-            if (nav.dwTrackingID != navId)
-            {
-                LogLine("Recognizer: navigator -> id=%lu", nav.dwTrackingID);
-                navId = nav.dwTrackingID;
-                Gestures::Reset();
-            }
-
-            switch (Gestures::Update(nav, now))
+            // ---- air d-pad: multi-body hand-off. Every tracked skeleton is fed to the gesture
+            // layer, which runs a per-body clutch and picks one driver. UpdateExtend is called on
+            // EVERY frame, including ones with no tracked skeleton: the gesture layer owns body
+            // lifetime, so the slot prune, the dropout window, ACQUIRED/LOST and the epoch reset
+            // all run off one clock in one place. ----
+            switch (Gestures::UpdateExtend(f, now))
             {
             case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
             case GestureAction::Left:    Output::TapKey(Cfg::Get().keyLeft);    break;
@@ -257,36 +146,21 @@ namespace
             }
 
             GestureDebug gd; Gestures::GetDebug(gd);
-            Overlay::Update(gd, true, nav.Position.z, now);
+            float z = 0.f; bool zset = false;                 // overlay distance = the driver's Z
+            for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
+            {
+                const NUI_SKELETON_DATA& s = f.SkeletonData[i];
+                if (s.eTrackingState != NUI_SKELETON_TRACKED) continue;
+                if (gd.dpadDriverId && s.dwTrackingID == gd.dpadDriverId) { z = s.Position.z; zset = true; break; }
+                if (!zset) { z = s.Position.z; zset = true; }
+            }
+            Overlay::Update(gd, gd.dpadNumBodies > 0, z, now);
 
-            if (now - lastLog >= 1000)          // ~1 detail line per second
+            if (now - lastLog >= 1000)
             {
                 lastLog = now;
-
-                int bodies = 0;
-                for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-                    if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_TRACKED) ++bodies;
-
-                int t = 0, in = 0, no = 0;
-                for (int j = 0; j < NUI_SKELETON_POSITION_COUNT; ++j)
-                {
-                    switch (nav.eSkeletonPositionTrackingState[j])
-                    {
-                    case NUI_SKELETON_POSITION_TRACKED:  ++t;  break;
-                    case NUI_SKELETON_POSITION_INFERRED: ++in; break;
-                    default:                             ++no; break;
-                    }
-                }
-
-                char d[1024]; int len = 0; d[0] = '\0';
-                AppendJoint(d, sizeof(d), len, nav, NUI_SKELETON_POSITION_HEAD,            "HEAD");
-                AppendJoint(d, sizeof(d), len, nav, NUI_SKELETON_POSITION_SHOULDER_CENTER, "SC");
-                AppendJoint(d, sizeof(d), len, nav, NUI_SKELETON_POSITION_HAND_LEFT,       "HANDL");
-                AppendJoint(d, sizeof(d), len, nav, NUI_SKELETON_POSITION_HAND_RIGHT,      "HANDR");
-                AppendJoint(d, sizeof(d), len, nav, NUI_SKELETON_POSITION_HIP_CENTER,      "HIPC");
-
-                LogLine("Recognizer: id=%lu frame=%lu bodies=%d joints T/i/.=%d/%d/%d%s",
-                        nav.dwTrackingID, f.dwFrameNumber, bodies, t, in, no, d);
+                LogLine("Recognizer: extend nbody=%d driver=%lu frame=%lu",
+                        gd.dpadNumBodies, gd.dpadDriverId, f.dwFrameNumber);
             }
         }
 

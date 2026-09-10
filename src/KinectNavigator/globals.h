@@ -21,18 +21,16 @@ extern volatile LONGLONG g_colorCalls;
 extern volatile LONGLONG g_menuPollTick;   // last GetAsyncKeyState poll of a nav key
 extern volatile long     g_menuPollVk;     // ...which VK
 extern volatile LONGLONG g_fileOpens;      // count of "interesting" game-file opens
-extern volatile LONGLONG g_lastOpenTick;    // GetTickCount64() of the last game-file open
-extern volatile LONGLONG g_songLoadTick;   // ...of the last "song bundle load" burst (the game
-                                            // reopens maps\<yr>\<song>_pc.ipk when you hit play).
-                                            // idle + this recent => in a song, not just a static menu.
+extern volatile LONGLONG g_lastOpenTick;    // GetTickCount64() of the last game-file open. While a
+                                            // song plays the game opens no maps\ bundles, so
+                                            // "not set recently" + window up front => in a song.
 extern wchar_t           g_lastFile[260];  // last such path (racy telemetry copy)
 extern volatile DWORD    g_trkId0, g_trkId1;  // args to the last NuiSkeletonSetTrackedSkeletons
 
 // 1 when the game window is foreground, not minimised, and a normal (gameplay-
-// sized) rect; 0 otherwise. Set ~1/s by the recognizer. The gameplay-mute gates
-// on this so a stale song-load arm can't mute while the game is minimised /
-// alt-tabbed (a song only plays when the game is actually up front). Defaults 1
-// so the offline tools are unaffected.
+// sized) rect; 0 otherwise. Set ~1/s by the recognizer. The "in a song" test
+// gates on this so file-quiet while the game is minimised / alt-tabbed doesn't
+// read as gameplay. Defaults 1 so the offline tools are unaffected.
 extern volatile long     g_gameWndActive;
 
 // Writes the directory containing this DLL (with trailing backslash) into `out`.

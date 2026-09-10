@@ -40,7 +40,7 @@ if exist "%GAME%\Kinect10_backend.dll" (
     goto done
 )
 if not exist "%SHIM%" (
-    echo [X] KinectNavigator's Kinect10.dll is not next to this script (or in app\).
+    echo [X] KinectNavigator's Kinect10.dll is not next to this script or in the app folder.
     goto done
 )
 
@@ -67,14 +67,12 @@ echo   a log will be written to KinectNavigator.log in the game folder
 echo   optional tuning: copy app\kinectnav.example.ini to "%GAME%\kinectnav.ini" and edit it
 
 rem  Friendly reminder: the optional on-screen HUD can't draw over exclusive fullscreen.
-if exist "%GAME%\config.xml" (
-    findstr /i /c:"FullScreen=\"1\"" "%GAME%\config.xml" >nul 2>&1 && (
-        echo.
-        echo   NOTE: config.xml has FullScreen="1". Navigation works regardless, but the
-        echo         optional HUD ^(overlay = 1^) only shows when the game runs windowed
-        echo         -- set FullScreen="0" if you want it.
-    )
-)
+if not exist "%GAME%\config.xml" goto done
+findstr /i /c:"FullScreen=\"1\"" "%GAME%\config.xml" >nul 2>&1 || goto done
+echo.
+echo   NOTE: config.xml has FullScreen="1". Navigation works regardless, but
+echo         the optional HUD ^(overlay = 1^) only shows when the game is
+echo         windowed -- set FullScreen="0" if you want it.
 
 :done
 echo.

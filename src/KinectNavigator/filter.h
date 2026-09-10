@@ -1,11 +1,8 @@
 #pragma once
 #include <math.h>
 
-// Phase 1 signal-conditioning primitives. Run in PARALLEL with the legacy
-// dual-rate EMA + central-difference velocity so the two streams can be
-// compared on replay -- see docs/notes/recognition-architecture-research.md.
-// Nothing in the recogniser consumes these yet.
-//
+// Signal-conditioning primitive: a 1 Euro filter (Casiez et al., CHI 2012) that
+// smooths the dominant hand's shoulder-relative position for the air d-pad.
 // Header-only (small, hot, one translation unit uses it).
 
 // --- one first-order low-pass stage --------------------------------------
@@ -61,33 +58,4 @@ private:
     }
     float    m_minCutoff = 1.0f, m_beta = 0.05f, m_dCutoff = 1.0f;
     LowPass1 m_x, m_dx;
-};
-
-// --- 5-point Savitzky-Golay first derivative ---------------------------
-// Fits a quadratic to the last 5 samples (least-squares) and differentiates
-// it: a low-pass differentiator. Coefficients (-2,-1,0,1,2)/10. Centred, so
-// the reported velocity trails the newest sample by 2 frames (~66 ms at
-// 30 Hz) -- inside the 150-250 ms budget for discrete commands. A 1-2 frame
-// "inferred" position spike can't produce a 9 m/s artifact here because the
-// polynomial fit doesn't chase it.
-class SavGol5
-{
-public:
-    void Reset() { m_n = 0; for (float& v : m_buf) v = 0.0f; }
-
-    // Push the newest sample; writes units/sec into `vel`. Returns false until
-    // 5 samples have accumulated (vel = 0 until then).
-    bool Push(float x, float dt, float& vel)
-    {
-        for (int i = 0; i < 4; ++i) m_buf[i] = m_buf[i + 1];
-        m_buf[4] = x;
-        if (m_n < 5) ++m_n;
-        if (m_n < 5 || dt <= 0.0f) { vel = 0.0f; return false; }
-        const float d = (-2.0f * m_buf[0] - m_buf[1] + m_buf[3] + 2.0f * m_buf[4]) / 10.0f;
-        vel = d / dt;   // assumes ~uniform dt (true at 30 Hz; big gaps trigger a resync anyway)
-        return true;
-    }
-private:
-    float m_buf[5] = { 0, 0, 0, 0, 0 };
-    int   m_n = 0;
 };

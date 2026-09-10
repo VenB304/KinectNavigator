@@ -809,7 +809,7 @@ $btnOpenIni.Add_Click({
             Copy-Item -LiteralPath $ExampleIni -Destination $ini -Force
             Write-Log (T 'log.ini_created')
         } else {
-            Set-IniKey $ini 'nav_model' 'extend'
+            Set-IniKey $ini 'enable_back' '1'
         }
     }
     Start-Process notepad.exe -ArgumentList $ini
@@ -954,7 +954,7 @@ function Show-MoreSettings {
     Fill-Preset $cbCmd    $PRESET_CMD
     Fill-Preset $cbHold   $PRESET_HOLD
     $chkClutch.Checked = (IniBool (Get-IniVal $iniMap 'dpad_arm' '1'))
-    $chkDance.Checked  = (IniBool (Get-IniVal $iniMap 'dpad_dance_disarm' '1'))
+    $chkDance.Checked  = (IniBool (Get-IniVal $iniMap 'dpad_dance_disarm' '0'))
     Update-KeyBoxes $ini $keyBoxes
 
     function Make-PresetHandler($cb, $table, $labelKey) {

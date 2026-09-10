@@ -122,29 +122,19 @@ namespace
         FillRect(mem, &rc, bg); DeleteObject(bg);
         SetBkMode(mem, TRANSPARENT);
 
-        const COLORREF grey = RGB(170, 180, 190), white = RGB(240, 244, 248);
-        const COLORREF green = RGB(90, 225, 130), amber = RGB(240, 195, 70), red = RGB(245, 105, 95);
-
-        HFONT fBig   = MakeFont(H / 8,  true);      // action flash
-        HFONT fState = MakeFont(H / 20, true);      // engage state
-        HFONT fSmall = MakeFont(H / 40, false);     // corner info + bar labels
+        HFONT fBig = MakeFont(H / 8, true);         // action flash
 
         auto blitAndDone = [&]() {
             BitBlt(hdc, 0, 0, W, H, mem, 0, 0, SRCCOPY);
-            DeleteObject(fBig); DeleteObject(fState); DeleteObject(fSmall);
+            DeleteObject(fBig);
             SelectObject(mem, oldBmp); DeleteObject(bmp);
             DeleteDC(mem); ReleaseDC(hwnd, hdc);
         };
 
-        if (d.inGameplay)
-        {
-            SelectObject(mem, fState);
-            TextOut2(mem, W / 2, 24, L"GAMEPLAY \x2013 muted", grey, TA_CENTER | TA_TOP);
-            blitAndDone();
-            return;
-        }
-
-        // ============ nav_model = extend : air d-pad HUD (player-facing) ============
+        // ============ air d-pad HUD (player-facing) ============
+        // `d.inGameplay` ("in a song") no longer suppresses navigation -- the d-pad stays
+        // fully live -- so the HUD renders as normal, with just a small "IN A SONG" marker
+        // to explain the firmer wake hold (dpadArmDwellGameplayMs).
         // Clean dark panel, top-left. Same info as the old dev viz -- big legible
         // state, live d-pad, distance, command gate -- with the raw numbers kept
         // but demoted to one dim line at the bottom. Action fires flash centre-screen.
@@ -214,6 +204,8 @@ namespace
                 Ellipse(mem, dcx - dr, dcy - dr, dcx + dr, dcy + dr);
                 SelectObject(mem, odp); SelectObject(mem, odb); DeleteObject(db);
                 pT(fSt, X0 + padX + PX(17), y, stT, stC, TA_LEFT | TA_TOP);
+                if (d.inGameplay)
+                    pT(fDg, X0 + PW - padX, y + PX(4), L"IN A SONG", cAmb, TA_RIGHT | TA_TOP);
                 y += PX(25);
                 if (stS) { pT(fDg, X0 + padX + PX(17), y, stS, cDim, TA_LEFT | TA_TOP); y += PX(15); }
                 y += PX(6);
@@ -340,88 +332,7 @@ namespace
             return;
         }
 
-        // --- corner: body + dominant hand ---
-        SelectObject(mem, fSmall);
-        {
-            wchar_t b[128];
-            if (!s.body)              swprintf_s(b, L"NO BODY");
-            else if (s.bodyZ < 1.2f)  swprintf_s(b, L"z %.2f m  TOO CLOSE", s.bodyZ);
-            else                      swprintf_s(b, L"z %.2f m", s.bodyZ);
-            TextOut2(mem, 24, 20, b, s.body && s.bodyZ >= 1.2f ? grey : amber, TA_LEFT | TA_TOP);
-
-            swprintf_s(b, L"hand  x %+.2f  y %+.2f   v %+.2f,%+.2f", d.domEx, d.domEy, d.domVx, d.domVy);
-            TextOut2(mem, 24, 20 + H / 34, b, grey, TA_LEFT | TA_TOP);
-            swprintf_s(b, L"arm extend  %d%%   %s (lvl %.1f)",
-                       (int)(d.armExtend * 100), d.armLevelOk ? L"level" : L"off-horizontal", d.armLevel);
-            TextOut2(mem, 24, 20 + 2 * H / 34, b,
-                     (d.armExtend > 0.9f && d.armLevelOk) ? green : grey, TA_LEFT | TA_TOP);
-
-            // Phase 1 parallel signal-conditioning readout (1 Euro pos, SavGol vel)
-            swprintf_s(b, L"1\x20ac  x %+.2f  y %+.2f    sg v %+.2f, %+.2f",
-                       d.f1eEx, d.f1eEy, d.sgVx, d.sgVy);
-            TextOut2(mem, 24, 20 + 3 * H / 34, b, grey, TA_LEFT | TA_TOP);
-        }
-
-        // --- status, top centre ---
-        SelectObject(mem, fState);
-        if (d.repeatState == 2)
-            TextOut2(mem, W / 2, 24, L"HOLD-REPEAT  (arm extended)", green, TA_CENTER | TA_TOP);
-        else if (d.repeatState == 1)
-            TextOut2(mem, W / 2, 24, L"extend arm fully to repeat", amber, TA_CENTER | TA_TOP);
-        else if (d.swipeAxis == 1)
-            TextOut2(mem, W / 2, 24, L"swiping  \x2190 / \x2192", amber, TA_CENTER | TA_TOP);
-        else if (d.swipeAxis == 2)
-            TextOut2(mem, W / 2, 24, L"swiping  \x2191 / \x2193", amber, TA_CENTER | TA_TOP);
-        else if (d.confirmHeldMs > 0)
-        {
-            int pct = d.confirmNeedMs > 0 ? d.confirmHeldMs * 100 / d.confirmNeedMs : 0;
-            wchar_t b[48]; swprintf_s(b, L"CONFIRM  %d%%", pct > 100 ? 100 : pct);
-            TextOut2(mem, W / 2, 24, b, pct >= 100 ? green : amber, TA_CENTER | TA_TOP);
-        }
-        else if (d.backHeldMs > 0)
-        {
-            int pct = d.backNeedMs > 0 ? d.backHeldMs * 100 / d.backNeedMs : 0;
-            wchar_t b[48]; swprintf_s(b, L"BACK  %d%%", pct > 100 ? 100 : pct);
-            TextOut2(mem, W / 2, 24, b, pct >= 100 ? green : amber, TA_CENTER | TA_TOP);
-        }
-        else
-            TextOut2(mem, W / 2, 24, L"ready  \x2013  swipe to navigate", grey, TA_CENTER | TA_TOP);
-
-        // --- action flash, screen centre ---
-        LONGLONG age = (d.lastActionMs >= 0) ? (s.nowMs - d.lastActionMs) : -1;
-        if (age >= 0 && age < 700)
-        {
-            SelectObject(mem, fBig);
-            COLORREF c = (d.lastAction == 5) ? green : (d.lastAction == 6) ? amber : white;
-            TextOut2(mem, W / 2, (int)(H * 0.34f), ActName(d.lastAction), c, TA_CENTER | TA_TOP);
-        }
-
-        // --- arm-extend meter, lower third (the repeat trigger) ---
-        SelectObject(mem, fSmall);
-        {
-            int barW = (int)(W * 0.5f), barH = H / 24, barX = (W - barW) / 2, barY = (int)(H * 0.7f);
-            HPEN fr = CreatePen(PS_SOLID, 2, RGB(70, 80, 92));
-            HGDIOBJ of = SelectObject(mem, fr), ob = SelectObject(mem, GetStockObject(NULL_BRUSH));
-            Rectangle(mem, barX, barY, barX + barW, barY + barH);
-            SelectObject(mem, of); SelectObject(mem, ob); DeleteObject(fr);
-            // extend threshold tick at 90%
-            const int tickX = barX + (int)(0.90f * barW);
-            HPEN tk = CreatePen(PS_SOLID, 3, RGB(80, 200, 110)); HGDIOBJ ot = SelectObject(mem, tk);
-            MoveToEx(mem, tickX, barY, nullptr); LineTo(mem, tickX, barY + barH);
-            SelectObject(mem, ot); DeleteObject(tk);
-            int fillW = (int)(d.armExtend * barW); if (fillW < 0) fillW = 0; if (fillW > barW) fillW = barW;
-            RECT fillR = { barX + 2, barY + 2, barX + fillW - 2, barY + barH - 2 };
-            HBRUSH fb = CreateSolidBrush(d.armExtend > 0.9f ? RGB(80, 200, 110) : RGB(120, 130, 145));
-            FillRect(mem, &fillR, fb); DeleteObject(fb);
-            TextOut2(mem, barX, barY - H / 34, L"ARM EXTENSION  (past the green tick = repeat)", grey, TA_LEFT | TA_TOP);
-        }
-
-        BitBlt(hdc, 0, 0, W, H, mem, 0, 0, SRCCOPY);
-
-        DeleteObject(fBig); DeleteObject(fState); DeleteObject(fSmall);
-        SelectObject(mem, oldBmp); DeleteObject(bmp);
-        DeleteDC(mem);
-        ReleaseDC(hwnd, hdc);
+        blitAndDone();   // d.dpadMode is always set on the live path; clean up if it ever isn't
     }
 
     LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l)

@@ -18,6 +18,29 @@ namespace
 
     bool KeyIs(const char* k, const char* name) { return _stricmp(k, name) == 0; }
 
+    // Keys that existed for the swipe model / song-burst mute, both removed in v1.1. An
+    // upgraded kinectnav.ini still carries them; accept and ignore them silently rather than
+    // logging "unknown key" for every line (see CHANGELOG v1.1.0).
+    bool IsRetiredKey(const char* k)
+    {
+        if (_strnicmp(k, "swipe_", 6) == 0) return true;
+        static const char* const retired[] = {
+            "nav_model",
+            "up_end_min_y", "up_elbow_margin", "down_start_min_y", "down_end_max_y",
+            "left_end_max_x", "right_end_min_x",
+            "post_swipe_ms", "arm_extend_frac", "arm_relax_frac", "arm_level_tan_max",
+            "repeat_first_ms", "repeat_min_ms", "repeat_accel_ms",
+            "confirm_dwell_ms", "confirm_repeat_ms", "confirm_repeat_first_ms",
+            "confirm_raise_fy", "confirm_still_vel",
+            "back_dwell_ms", "back_repeat_ms", "back_repeat_first_ms",
+            "back_out_min", "back_down_min", "back_down_max", "back_still_vel",
+            "dwell_grace_frames", "smooth_fast", "smooth_slow",
+            "song_burst_count", "song_burst_ms", "gameplay_cap_ms",
+        };
+        for (const char* r : retired) if (_stricmp(k, r) == 0) return true;
+        return false;
+    }
+
     void Apply(const char* key, const char* val)
     {
         if      (KeyIs(key, "enable"))              g_cfg.enable            = atoi(val) != 0;
@@ -27,11 +50,9 @@ namespace
         else if (KeyIs(key, "enable_confirm"))      g_cfg.enableConfirm     = atoi(val) != 0;
         else if (KeyIs(key, "enable_back"))         g_cfg.enableBack        = atoi(val) != 0;
         else if (KeyIs(key, "require_foreground"))  g_cfg.requireForeground = atoi(val) != 0;
-        else if (KeyIs(key, "nav_model"))           g_cfg.navModel          = (_stricmp(val, "swipe") == 0) ? 0
-                                                                           : (_stricmp(val, "extend") == 0) ? 1
-                                                                           : atoi(val);
         else if (KeyIs(key, "dpad_arm"))            g_cfg.dpadArm           = atoi(val) != 0;
         else if (KeyIs(key, "dpad_arm_dwell_ms"))   g_cfg.dpadArmDwellMs    = atoi(val);
+        else if (KeyIs(key, "dpad_arm_dwell_ms_ingame")) g_cfg.dpadArmDwellGameplayMs = atoi(val);
         else if (KeyIs(key, "dpad_disarm_ms"))      g_cfg.dpadDisarmMs      = atoi(val);
         else if (KeyIs(key, "dpad_sleep_below_y"))  g_cfg.dpadSleepBelowY   = (float)atof(val);
         else if (KeyIs(key, "dpad_dance_disarm"))   g_cfg.dpadDanceDisarm   = atoi(val) != 0;
@@ -57,59 +78,9 @@ namespace
         else if (KeyIs(key, "dpad_cmd_repeat_ms"))  g_cfg.dpadCmdRepeatMs   = atoi(val);
         else if (KeyIs(key, "dpad_handoff_grace_ms")) g_cfg.dpadHandoffGraceMs = atoi(val);
         else if (KeyIs(key, "suppress_in_game"))    g_cfg.suppressInGame    = atoi(val) != 0;
-        else if (KeyIs(key, "song_burst_count"))    g_cfg.songBurstCount    = atoi(val);
-        else if (KeyIs(key, "song_burst_ms"))       g_cfg.songBurstMs       = atoi(val);
         else if (KeyIs(key, "file_idle_gameplay_ms")) g_cfg.fileIdleGameplayMs = atoi(val);
-        else if (KeyIs(key, "gameplay_cap_ms"))     g_cfg.gameplayCapMs     = atoi(val);
 
-        else if (KeyIs(key, "swipe_velocity"))      g_cfg.swipeVelocity     = (float)atof(val);
-        else if (KeyIs(key, "swipe_vx_ceiling"))    g_cfg.swipeVxCeiling    = (float)atof(val);
-        else if (KeyIs(key, "swipe_peak_ratio"))    g_cfg.swipePeakRatio    = (float)atof(val);
-        else if (KeyIs(key, "swipe_distance"))      g_cfg.swipeDistance     = (float)atof(val);
-        else if (KeyIs(key, "swipe_min_frames"))    g_cfg.swipeMinFrames    = atoi(val);
-        else if (KeyIs(key, "swipe_max_segments"))  g_cfg.swipeMaxSegments  = atoi(val);
-        else if (KeyIs(key, "swipe_max_active_frames")) g_cfg.swipeMaxActiveFrames = atoi(val);
-        else if (KeyIs(key, "swipe_axis_ratio"))    g_cfg.swipeAxisRatio    = (float)atof(val);
-        else if (KeyIs(key, "swipe_cooldown_ms"))   g_cfg.swipeCooldownMs   = atoi(val);
-        else if (KeyIs(key, "swipe_settle_after_ms")) g_cfg.swipeSettleAfterMs = atoi(val);
-        else if (KeyIs(key, "swipe_settle_frames")) g_cfg.swipeSettleFrames = atoi(val);
-        else if (KeyIs(key, "swipe_settle_frac"))   g_cfg.swipeSettleFrac   = (float)atof(val);
-        else if (KeyIs(key, "swipe_y_min"))         g_cfg.swipeYMin         = (float)atof(val);
-        else if (KeyIs(key, "swipe_y_max"))         g_cfg.swipeYMax         = (float)atof(val);
-        else if (KeyIs(key, "swipe_vert_x_band"))   g_cfg.swipeVertXBand    = (float)atof(val);
-        else if (KeyIs(key, "up_end_min_y"))        g_cfg.upEndMinY         = (float)atof(val);
-        else if (KeyIs(key, "up_elbow_margin"))     g_cfg.upElbowMargin     = (float)atof(val);
-        else if (KeyIs(key, "down_start_min_y"))    g_cfg.downStartMinY     = (float)atof(val);
-        else if (KeyIs(key, "down_end_max_y"))      g_cfg.downEndMaxY       = (float)atof(val);
-        else if (KeyIs(key, "left_end_max_x"))      g_cfg.leftEndMaxX       = (float)atof(val);
-        else if (KeyIs(key, "right_end_min_x"))     g_cfg.rightEndMinX      = (float)atof(val);
-
-        else if (KeyIs(key, "post_swipe_ms"))       g_cfg.postSwipeMs       = atoi(val);
-        else if (KeyIs(key, "arm_extend_frac"))     g_cfg.armExtendFrac     = (float)atof(val);
-        else if (KeyIs(key, "arm_relax_frac"))      g_cfg.armRelaxFrac      = (float)atof(val);
-        else if (KeyIs(key, "arm_level_tan_max"))   g_cfg.armLevelTanMax    = (float)atof(val);
-        else if (KeyIs(key, "repeat_first_ms"))     g_cfg.repeatFirstMs     = atoi(val);
-        else if (KeyIs(key, "repeat_min_ms"))       g_cfg.repeatMinMs       = atoi(val);
-        else if (KeyIs(key, "repeat_accel_ms"))     g_cfg.repeatAccelMs     = atoi(val);
-
-        else if (KeyIs(key, "confirm_dwell_ms"))    g_cfg.confirmDwellMs    = atoi(val);
-        else if (KeyIs(key, "confirm_repeat_ms"))   g_cfg.confirmRepeatMs   = atoi(val);
-        else if (KeyIs(key, "confirm_repeat_first_ms")) g_cfg.confirmRepeatFirstMs = atoi(val);
-        else if (KeyIs(key, "confirm_raise_fy"))    g_cfg.confirmRaiseFy    = (float)atof(val);
-        else if (KeyIs(key, "confirm_still_vel"))   g_cfg.confirmStillVel   = (float)atof(val);
-
-        else if (KeyIs(key, "back_dwell_ms"))       g_cfg.backDwellMs       = atoi(val);
-        else if (KeyIs(key, "back_repeat_ms"))      g_cfg.backRepeatMs      = atoi(val);
-        else if (KeyIs(key, "back_repeat_first_ms")) g_cfg.backRepeatFirstMs = atoi(val);
-        else if (KeyIs(key, "back_out_min"))        g_cfg.backOutMin        = (float)atof(val);
-        else if (KeyIs(key, "back_down_min"))       g_cfg.backDownMin       = (float)atof(val);
-        else if (KeyIs(key, "back_down_max"))       g_cfg.backDownMax       = (float)atof(val);
-        else if (KeyIs(key, "back_still_vel"))      g_cfg.backStillVel      = (float)atof(val);
-
-        else if (KeyIs(key, "dwell_grace_frames"))  g_cfg.dwellGraceFrames  = atoi(val);
         else if (KeyIs(key, "arm_after_frames"))    g_cfg.armAfterFrames    = atoi(val);
-        else if (KeyIs(key, "smooth_fast"))         g_cfg.smoothFast        = (float)atof(val);
-        else if (KeyIs(key, "smooth_slow"))         g_cfg.smoothSlow        = (float)atof(val);
         else if (KeyIs(key, "filter_1e_min_cutoff")) g_cfg.filter1eMinCutoff = (float)atof(val);
         else if (KeyIs(key, "filter_1e_beta"))      g_cfg.filter1eBeta      = (float)atof(val);
         else if (KeyIs(key, "filter_1e_dcutoff"))   g_cfg.filter1eDCutoff   = (float)atof(val);
@@ -124,6 +95,7 @@ namespace
 
         else if (KeyIs(key, "trace"))              g_cfg.trace             = atoi(val) != 0;
         else if (KeyIs(key, "overlay"))           g_cfg.overlay           = atoi(val) != 0;
+        else if (IsRetiredKey(key))                { /* removed in v1.1 -- accepted, ignored */ }
         else LogLine("Config: unknown key '%s' ignored", key);
     }
 }
@@ -193,10 +165,11 @@ const Config& Cfg::Load()
     // precompute the wedge half-angle tangent so the recogniser isn't calling tanf per body per frame
     g_cfg.dpadWedgeTanHalf = tanf(g_cfg.dpadWedgeHalfDeg * 0.01745329f);
 
-    LogLine("Config: loaded kinectnav.ini (%d settings)  hand=%s mirror=%d confirm=%d back=%d  swipe v=%.2f d=%.2f  extend=%.2f  confirm/back dwell=%d/%d ms",
+    LogLine("Config: loaded kinectnav.ini (%d settings)  hand=%s mirror=%d confirm=%d back=%d  "
+            "arm/disarm=%d/%d ms (ingame arm %d)  park r=%.2f  back dwell=%d ms",
             applied, g_cfg.leftHanded ? "L" : "R", g_cfg.mirror, g_cfg.enableConfirm, g_cfg.enableBack,
-            g_cfg.swipeVelocity, g_cfg.swipeDistance, g_cfg.armExtendFrac,
-            g_cfg.confirmDwellMs, g_cfg.backDwellMs);
+            g_cfg.dpadArmDwellMs, g_cfg.dpadDisarmMs, g_cfg.dpadArmDwellGameplayMs,
+            g_cfg.dpadParkRadius, g_cfg.dpadBackDwellMs);
     g_loaded = true;
     return g_cfg;
 }

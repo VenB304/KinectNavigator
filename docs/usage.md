@@ -27,27 +27,29 @@ KinectNavigator starts **asleep** and ignores everything. To wake it, **rest you
 hand near your dominant shoulder** for a moment. The diagnostic HUD (if on) shows
 `ASLEEP → READY`. This is also the neutral "ready" pose to come back to between moves.
 
-It **disarms itself** two ways:
+It **disarms itself** by **lowering your arm** — once your dominant hand is out of the park
+box, out of every direction, and below shoulder height for about **half a second**, it sleeps.
+Touching a direction or the park box resets that timer.
 
-- **Lower your arm** — once your dominant hand is out of the park box, out of every direction,
-  and below shoulder height for about **half a second**, it sleeps. Touching a direction or
-  the park box resets that timer.
-- **Start dancing** — if your whole body (not just the navigating hand) is moving a lot for
-  about half a second while it's armed, it decides you've stopped navigating and sleeps. So if
-  a routine starts while it's still awake, it drops out on its own. Tune with `dpad_dance_energy`
-  (lower = more eager to call it "dancing") or turn it off with `dpad_dance_disarm = 0`.
+There is also an optional **"sleep when dancing"** (`dpad_dance_disarm = 1`, or the checkbox in
+**More settings…**) that drops the clutch when your whole body moves a lot. It's **off by
+default** — in practice it false-trips on vigorous navigation more than it catches dancing.
 
 You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
-so it's always live. Both of those auto-sleeps are clutch behaviour, so with it off **neither
-applies** — including the dance one. Only sensible if you're navigating menus and never dancing
-with it on.
+so it's always live. The idle-sleep is clutch behaviour, so with the clutch off it doesn't
+apply. Only sensible if you're navigating menus and never dancing with it on.
+
+There is an **experimental** option (`suppress_in_game = 1`, **off by default**) that tries to
+notice when a routine is playing — the game stops loading map files — and asks for a firmer
+hold to wake the clutch there (`dpad_arm_dwell_ms_ingame`, 500 ms vs 350) so a stray pose
+mid-routine can't wake it and fire Esc. That "in a song" detection hasn't been confirmed on
+the shipping build yet, so it's disabled until it's proven.
 
 ---
 
 ## The air d-pad — navigation
 
-The default model (`nav_model = extend`). Picture a small **`+`** centred on your dominant
-**shoulder**, in the plane facing the sensor.
+Picture a small **`+`** centred on your dominant **shoulder**, in the plane facing the sensor.
 
 ### The park box
 
@@ -198,18 +200,3 @@ reinstall; changes take effect next game launch.
 setting is documented in that file**,
 with its default and its units (distances are torso-lengths, times in milliseconds). The DLL
 re-reads it on each launch and runs fine with no file at all.
-
----
-
-## Alternate navigation model — swipe
-
-`nav_model = swipe` selects an older, motion-based model instead of the air d-pad:
-
-- **left/right and up/down hand swipes** for navigation,
-- **dominant hand raised and held still, high above the shoulder**, for Confirm,
-- **non-dominant arm down and out to the side (~45°), held**, for Back.
-
-It runs on the same 1€-filtered hand signal as the d-pad, plus a Savitzky-Golay velocity
-estimate for the swipe detection. The **air d-pad is the default and the tuned one**; swipe is
-kept as a fallback for anyone whose tracking makes the postural d-pad awkward. Set it in
-`kinectnav.ini` (`nav_model = swipe`) — there's no toggle in the setup window.

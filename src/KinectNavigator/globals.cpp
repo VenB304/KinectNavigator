@@ -9,7 +9,6 @@ volatile LONGLONG g_menuPollTick = 0;
 volatile long     g_menuPollVk   = 0;
 volatile LONGLONG g_fileOpens    = 0;
 volatile LONGLONG g_lastOpenTick = 0;
-volatile LONGLONG g_songLoadTick = 0;
 wchar_t           g_lastFile[260] = L"";
 volatile DWORD    g_trkId0 = 0, g_trkId1 = 0;
 volatile long     g_gameWndActive = 1;
