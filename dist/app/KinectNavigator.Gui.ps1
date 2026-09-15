@@ -107,6 +107,7 @@ $Form.FormBorderStyle = 'FixedSingle'
 $Form.MaximizeBox = $false
 $Form.BackColor = $ColBg
 $Form.Font = $FontBase
+$Form.ShowIcon = $false   # WinForms' default per-form icon, not a real KinectNavigator logo
 
 $lblTitle = New-Object System.Windows.Forms.Label
 $lblTitle.Text = (T 'app.title'); $lblTitle.Font = $FontTitle; $lblTitle.ForeColor = $ColText
@@ -473,7 +474,7 @@ function Capture-Key {
     $d.ClientSize = New-Object System.Drawing.Size(340, 128)
     $d.FormBorderStyle = 'FixedDialog'; $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false; $d.MinimizeBox = $false; $d.KeyPreview = $true
-    $d.BackColor = $ColBg; $d.Font = $FontBase
+    $d.BackColor = $ColBg; $d.Font = $FontBase; $d.ShowIcon = $false
     $l = New-Object System.Windows.Forms.Label
     $l.Text = (T 'capture.body')
     $l.SetBounds(16, 16, 308, 44); $d.Controls.Add($l)
@@ -506,7 +507,7 @@ function Show-MoreSettings {
     $d.ClientSize = New-Object System.Drawing.Size(474, 520)
     $d.FormBorderStyle = 'FixedDialog'; $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false; $d.MinimizeBox = $false
-    $d.BackColor = $ColBg; $d.Font = $FontBase
+    $d.BackColor = $ColBg; $d.Font = $FontBase; $d.ShowIcon = $false
 
     $script:dlgLoading = $true
 
@@ -685,6 +686,7 @@ $btnHelp.Add_Click({
     $gfm.FormBorderStyle = 'FixedSingle'
     $gfm.MaximizeBox = $false
     $gfm.BackColor = $ColBg
+    $gfm.ShowIcon = $false
     $maxW = 900
     $sc = [Math]::Min(1.0, $maxW / $img.Width)
     $iw = [int]($img.Width * $sc); $ih = [int]($img.Height * $sc)
