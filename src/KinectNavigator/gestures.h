@@ -36,12 +36,13 @@ struct GestureDebug
     bool     dpadCmd    = false;      // non-dominant hand on the non-dom shoulder (command mode)
     int      dpadWedge  = 0;          // 0 none, 1 RIGHT, 2 LEFT, 3 UP, 4 DOWN
     float    dpadParkR  = 0.32f;      // park-box radius (torso units) -- for the overlay to scale
+    float    dpadUpReachK    = 0.85f; // park-exit warp on +y (up) -- see config.h dpadUpReachK
+    float    dpadCrossReachK = 1.30f; // park-exit warp on -x (cross-body) -- see config.h dpadCrossReachK
     int      dpadCmdPct = 0;          // command-mode dwell progress 0..100 (before Enter/Esc fires)
     float    dpadNdDist = 9.9f;       // non-dom hand -> non-dom shoulder (torso); < dpadCmdGateR => command mode
     float    dpadCmdGateR = 0.42f;    // the gate radius, for the overlay
     unsigned long dpadDriverId = 0;   // tracking-id of the body currently driving (0 = nobody armed)
     int      dpadNumBodies = 0;       // tracked skeletons the d-pad is watching this frame (0..2 on v1)
-    float    dpadEnergy = 0.f;        // driver's whole-body motion (trunk+head, torso/s EMA) -- dance-disarm
 };
 
 namespace Gestures

@@ -32,20 +32,20 @@ one:
 
 | You want… | Use |
 |---|---|
-| the simple way, with a window | **`KinectNavigator.vbs`** (or `.bat`) |
-| a terminal / a script | `KinectNavigator-CLI-install.bat` |
+| the simple way, with a window | **`KinectNavigator-GUI.bat`** |
+| a terminal, no window | `KinectNavigator-Console.bat` |
 | to run nothing at all | the [by-hand](#by-hand) rename |
 
-### KinectNavigator.vbs  (recommended)
+### KinectNavigator-GUI.bat  (recommended)
 
-Double-click **`KinectNavigator.vbs`** (`KinectNavigator.bat` works too). Don't open the
-`.ps1` inside `app\` — Windows opens it for editing, not running.
+Double-click **`KinectNavigator-GUI.bat`**. Don't open the `.ps1` files inside `app\` directly —
+Windows opens them for editing, not running.
 
 1. Pick your **language** from the flag menu, top-right (starts in your Windows language if
    it's one of the twelve).
 2. Set the **game folder**: click **Browse…** and pick the folder that has `legacy.exe` in it.
    (It remembers this for next time; on the first run you always have to point it there.)
-3. Check the status line: it should say it sees the genuine ~15 MB runtime.
+3. Check the status line: it should say "Looks good - ready to install!"
 4. *(optional)* Set anything under **Settings** / **More settings…** — these save to
    `kinectnav.ini` as you change them and take effect next launch, no Install needed.
 5. Click **Install**.
@@ -53,11 +53,13 @@ Double-click **`KinectNavigator.vbs`** (`KinectNavigator.bat` works too). Don't 
 The window is portable: it keeps its own settings in a `config.txt` beside itself and touches
 nothing else. Delete the extracted folder when you're done.
 
-### KinectNavigator-CLI-install.bat
+### KinectNavigator-Console.bat
 
-Does the same swap from a terminal — double-click and it prompts for the game folder, or pass
-it: `KinectNavigator-CLI-install.bat "C:\path\to\game folder"`. It adds a size check and keeps
-a `Kinect10.dll.orig-backup`. `KinectNavigator-CLI-uninstall.bat` reverses it.
+The same tool as a text menu instead of a window — same install/update/uninstall, and every
+setting the GUI's "More settings" dialog has, including key rebinds (press the key you want,
+right there in the terminal). Double-click it, then follow the numbered menu; "Set game folder"
+opens the normal Windows folder picker, just like the GUI's Browse button — no typing or pasting
+a path.
 
 ### By hand
 
@@ -76,13 +78,13 @@ Then launch the game normally. A log is written to `KinectNavigator.log` in the 
 Any one of these restores the original runtime (your `kinectnav.ini` and `KinectNavigator.log`
 are left alone):
 
-- **Setup window:** open `KinectNavigator.vbs`, point it at the game folder, **Uninstall**.
-- **Terminal:** `KinectNavigator-CLI-uninstall.bat "C:\path\to\game folder"`.
+- **GUI:** open `KinectNavigator-GUI.bat`, point it at the game folder, **Uninstall**.
+- **Console:** open `KinectNavigator-Console.bat`, point it at the game folder, **Uninstall**.
 - **By hand:** delete the shim `Kinect10.dll`, rename `Kinect10_backend.dll` → `Kinect10.dll`.
 
 ## Updating
 
-Extract the new release and run its `KinectNavigator.vbs` — if KinectNavigator is already
+Extract the new release and run its `KinectNavigator-GUI.bat` — if KinectNavigator is already
 installed the button reads **Update** and just swaps in the new `Kinect10.dll`. It reads the
 version from both DLLs, so it only offers Update when the download is actually newer. By hand:
 just replace the shim `Kinect10.dll`.
@@ -99,7 +101,7 @@ just replace the shim `Kinect10.dll`.
 | **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game *without* KinectNavigator. Turn on the [diagnostic HUD](usage.md#the-diagnostic-hud) to see whether you're being tracked. |
 | Can't see the HUD | It's off by default *and* hidden by exclusive fullscreen — see [usage.md](usage.md#the-diagnostic-hud). |
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
-| **Left / right reversed** | Tick **Reverse left / right** in `KinectNavigator` (or `mirror = 1` in `kinectnav.ini`). |
-| Wrong arm drives it | Set **Navigation hand** in `KinectNavigator` (or `handedness = left` / `right`). |
-| It fires while you dance | Lower your dominant arm for about half a second to disarm it *before* you start (or try `dpad_dance_disarm = 1` / the **More settings…** checkbox — an optional auto-sleep, off by default). Arrow keys are inert during a routine anyway, and command-mode Esc needs a deliberate two-hand pose held ~1.5 s, so it won't fire by accident. |
+| **Left / right reversed** | Tick **Reverse left / right** in the Settings panel (or `mirror = 1` in `kinectnav.ini`). |
+| Wrong arm drives it | Set **Navigation hand** in the Settings panel (or `handedness = left` / `right`). |
+| It fires while you dance | Lower your dominant arm for about half a second to disarm it *before* you start. Arrow keys are inert during a routine anyway, and command-mode Esc needs a deliberate two-hand pose held ~1.5 s, so it won't fire by accident. |
 | **Game crashes** | That's `legacy.exe` itself — it does this with or without KinectNavigator. Restart it. |

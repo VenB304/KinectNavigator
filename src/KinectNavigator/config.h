@@ -31,22 +31,13 @@ struct Config
     bool   dpadArm           = true;    // 0 = always live (no clutch)
     int    dpadArmDwellMs    = 350;     // hold the hand in the park box this long to arm -- long
                                         // enough that an incidental brush past the shoulder doesn't wake it
-    int    dpadArmDwellGameplayMs = 500; // ...but while a song is playing (suppressInGame + file-quiet;
+    int    dpadArmDwellGameplayMs = 750; // ...but while a song is playing (suppressInGame + file-quiet;
                                         // suppressInGame is OFF by default), a firmer hold -- guards
                                         // against an accidental wake -> ESC mid-routine
     int    dpadDisarmMs      = 500;     // ...hand idle out of park & out of every wedge this long -> disarm
     float  dpadSleepBelowY   = -0.35f;  // ...but only while the hand is at least this far below the
                                         // dom shoulder (torso). A hand raised in the dead gap between
                                         // wedge cones is "aiming" (UP / Confirm setup), not "done".
-
-    // Dance auto-disarm: while armed, if the whole body is moving a lot (trunk + head speed,
-    // torso/s, EMA-smoothed) for dpadDanceHoldMs continuously -> disarm. The dominant hand is
-    // excluded (it's supposed to move for navigation); a person standing and reaching stays
-    // well under the threshold, a dancer does not.
-    bool   dpadDanceDisarm   = false;   // off by default: in-game it false-trips on vigorous
-                                        // navigation (trunk lean) far more than it catches dancing
-    float  dpadDanceEnergy   = 2.0f;    // weighted trunk/head speed above this = "moving a lot"
-    int    dpadDanceHoldMs   = 500;     // ...sustained this long -> disarm ("dpad disarmed (dancing)")
 
     float  dpadParkRadius    = 0.32f;   // |hand - dom shoulder| under this = parked / home / off
     float  dpadParkExitK     = 1.35f;   // must reach parkRadius * this to LEAVE park (hysteresis)

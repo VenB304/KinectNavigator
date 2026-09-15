@@ -5,7 +5,7 @@ skeleton poses — so a dancer can browse the song list and start a routine with
 keyboard or phone.
 
 **Get it:** grab the latest [release](../../releases), unzip it anywhere, run
-`KinectNavigator.vbs`, pick your language, point it at your game folder, click Install, close.
+`KinectNavigator-GUI.bat`, pick your language, point it at your game folder, click Install, close.
 
 **Guides:** [`docs/setup.md`](docs/setup.md) — install & troubleshooting ·
 [`docs/usage.md`](docs/usage.md) — gestures, the diagnostic HUD, and tuning, in depth.
@@ -14,8 +14,7 @@ keyboard or phone.
 
 Wake it by resting your **dominant hand near your shoulder**. It goes back to sleep when that
 hand sits out of play — not reaching in any direction — for a moment, i.e. when you lower your
-arm. There's also an optional **sleep-when-dancing** trigger (off by default — it false-trips
-on vigorous navigation more than it helps).
+arm.
 
 Then picture a small `+` centred on that shoulder:
 
@@ -35,7 +34,7 @@ wake gesture **last** takes control, and only that person's reaches send keys �
 one can move freely without stealing the menu. Details in
 [`docs/usage.md`](docs/usage.md#more-than-one-player).
 
-![KinectNavigator gestures](dist/gestures.png)
+![KinectNavigator gestures](dist/app/gestures.png)
 
 Full walkthrough, positioning tips, and every setting: [`docs/usage.md`](docs/usage.md).
 
@@ -43,11 +42,12 @@ Full walkthrough, positioning tips, and every setting: [`docs/usage.md`](docs/us
 
 Three ways, all doing the same swap (details in [`docs/setup.md`](docs/setup.md)):
 
-1. **`KinectNavigator.vbs`** (or `.bat`) — a small window: pick a language, point it at the
+1. **`KinectNavigator-GUI.bat`** — a small window: pick a language, point it at the
    game folder, Install. Doubles as a live editor for the common settings (navigation hand,
    mirror, Back gesture, HUD, feel presets, key bindings), ships in 12 languages, shows when an
    update is available, and is fully portable (its own `config.txt` in the release folder).
-2. **`KinectNavigator-CLI-install.bat` / `-uninstall.bat`** — the same swap from a terminal.
+2. **`KinectNavigator-Console.bat`** — the same tool, same settings, as a text menu instead of
+   a window.
 3. **By hand** — rename the game's `Kinect10.dll` → `Kinect10_backend.dll`, drop the release's
    `Kinect10.dll` in its place, launch.
 

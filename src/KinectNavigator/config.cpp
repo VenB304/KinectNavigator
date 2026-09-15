@@ -36,6 +36,7 @@ namespace
             "back_out_min", "back_down_min", "back_down_max", "back_still_vel",
             "dwell_grace_frames", "smooth_fast", "smooth_slow",
             "song_burst_count", "song_burst_ms", "gameplay_cap_ms",
+            "dpad_dance_disarm", "dpad_dance_energy", "dpad_dance_hold_ms",
         };
         for (const char* r : retired) if (_stricmp(k, r) == 0) return true;
         return false;
@@ -55,9 +56,6 @@ namespace
         else if (KeyIs(key, "dpad_arm_dwell_ms_ingame")) g_cfg.dpadArmDwellGameplayMs = atoi(val);
         else if (KeyIs(key, "dpad_disarm_ms"))      g_cfg.dpadDisarmMs      = atoi(val);
         else if (KeyIs(key, "dpad_sleep_below_y"))  g_cfg.dpadSleepBelowY   = (float)atof(val);
-        else if (KeyIs(key, "dpad_dance_disarm"))   g_cfg.dpadDanceDisarm   = atoi(val) != 0;
-        else if (KeyIs(key, "dpad_dance_energy"))   g_cfg.dpadDanceEnergy   = (float)atof(val);
-        else if (KeyIs(key, "dpad_dance_hold_ms"))  g_cfg.dpadDanceHoldMs   = atoi(val);
         else if (KeyIs(key, "dpad_park_radius"))    g_cfg.dpadParkRadius    = (float)atof(val);
         else if (KeyIs(key, "dpad_park_exit_k"))    g_cfg.dpadParkExitK     = (float)atof(val);
         else if (KeyIs(key, "dpad_up_reach_k"))     g_cfg.dpadUpReachK      = (float)atof(val);

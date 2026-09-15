@@ -226,11 +226,21 @@ namespace
                 RoundRect(mem, gx - gh, gy - gh, gx + gh, gy + gh, PX(12), PX(12));
                 DeleteObject(fp);
 
-                const int pr = (int)(d.dpadParkR * sc);
+                // The park-exit test warps +y (up) and -x (cross-body) by dpadUpReachK /
+                // dpadCrossReachK (Batch 1: UP less eager, cross-body LEFT easier) -- so the real
+                // box isn't the symmetric square this used to draw. Show it true: the boundary in
+                // raw hand-offset terms is dpadParkR/k per warped edge (k<1 pushes the edge out,
+                // k>1 pulls it in), dpadParkR unchanged on the two unwarped edges (right, down).
+                const float upK = d.dpadUpReachK > 0.01f ? d.dpadUpReachK : 1.f;
+                const float crossK = d.dpadCrossReachK > 0.01f ? d.dpadCrossReachK : 1.f;
+                const int prR = (int)(d.dpadParkR * sc);
+                const int prD = prR;
+                const int prU = (int)(d.dpadParkR / upK * sc);
+                const int prL = (int)(d.dpadParkR / crossK * sc);
                 HPEN pp = CreatePen(PS_SOLID, PXn(2), d.dpadParked ? RGB(0x6E, 0x7C, 0x8A) : RGB(0x4A, 0x55, 0x60));
                 HBRUSH pb = d.dpadParked ? CreateSolidBrush(RGB(0x22, 0x28, 0x30)) : (HBRUSH)GetStockObject(NULL_BRUSH);
                 SelectObject(mem, pp); HGDIOBJ opb = SelectObject(mem, pb);
-                RoundRect(mem, gx - pr, gy - pr, gx + pr, gy + pr, PX(6), PX(6));
+                RoundRect(mem, gx - prL, gy - prU, gx + prR, gy + prD, PX(6), PX(6));
                 SelectObject(mem, opb); if (d.dpadParked) DeleteObject(pb);
                 DeleteObject(pp);
                 SelectObject(mem, ogp); SelectObject(mem, ogb); DeleteObject(gp);

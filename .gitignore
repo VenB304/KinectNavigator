@@ -2,6 +2,8 @@
 build/
 dist/Kinect10.dll
 dist/Kinect10.pdb
+dist/app/Kinect10.dll
+dist/app/Kinect10.pdb
 dist/KinectNavigatorReplay.exe
 dist/KinectNavigatorLab.exe
 dist/_pkg/
@@ -31,7 +33,7 @@ docs/Kinect Gesture */
 
 # runtime artifacts
 KinectNavigator.log
-dist/config.txt
+dist/app/config.txt
 
 # python
 __pycache__/

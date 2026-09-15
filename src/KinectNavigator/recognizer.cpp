@@ -78,8 +78,18 @@ namespace
         }
         // "the game is actually up front and full-sized" -- the "in a song" test needs
         // this so file-quiet while the window is minimised or alt-tabbed away (open/s
-        // drops to 0 there too) doesn't read as gameplay.
-        const bool wndActive = gw && !IsIconic(gw) && GetForegroundWindow() == gw
+        // drops to 0 there too) doesn't read as gameplay. Foreground check is by OWNING
+        // PID, not by GameWnd()'s cached HWND: a 2026-09-12 real-Kinect capture
+        // (KinectNavigator.log, ~00:39:35-00:42:54) showed wact=0 for 193/198 samples
+        // through an entire song, only flipping to 1 in the last ~5 s -- the game likely
+        // raises/creates a different top-level window during actual play while GameWnd()'s
+        // one-shot cache keeps pointing at the (still-valid, so never re-resolved) menu
+        // window. output.cpp's GameIsForeground() -- already trusted to gate real key
+        // output -- has always used this PID check; this brings the "in a song" probe
+        // in line with it instead of a second, weaker foreground test.
+        HWND fg = GetForegroundWindow();
+        DWORD fgPid = 0; if (fg) GetWindowThreadProcessId(fg, &fgPid);
+        const bool wndActive = gw && !IsIconic(gw) && fg && fgPid == GetCurrentProcessId()
                                && rw >= 640 && rh >= 400;
         InterlockedExchange(&g_gameWndActive, wndActive ? 1 : 0);
         CURSORINFO ci; ci.cbSize = sizeof(ci);

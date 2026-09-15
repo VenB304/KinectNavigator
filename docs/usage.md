@@ -31,19 +31,17 @@ It **disarms itself** by **lowering your arm** — once your dominant hand is ou
 box, out of every direction, and below shoulder height for about **half a second**, it sleeps.
 Touching a direction or the park box resets that timer.
 
-There is also an optional **"sleep when dancing"** (`dpad_dance_disarm = 1`, or the checkbox in
-**More settings…**) that drops the clutch when your whole body moves a lot. It's **off by
-default** — in practice it false-trips on vigorous navigation more than it catches dancing.
-
 You can turn the clutch off entirely (`dpad_arm = 0`, or the checkbox in **More settings…**)
 so it's always live. The idle-sleep is clutch behaviour, so with the clutch off it doesn't
 apply. Only sensible if you're navigating menus and never dancing with it on.
 
-There is an **experimental** option (`suppress_in_game = 1`, **off by default**) that tries to
-notice when a routine is playing — the game stops loading map files — and asks for a firmer
-hold to wake the clutch there (`dpad_arm_dwell_ms_ingame`, 500 ms vs 350) so a stray pose
-mid-routine can't wake it and fire Esc. That "in a song" detection hasn't been confirmed on
-the shipping build yet, so it's disabled until it's proven.
+There is an optional "in a song" detection (`suppress_in_game = 1`, **off by default**) that
+notices when a routine is playing — the game stops loading map files — and asks for a firmer
+hold to wake the clutch there (`dpad_arm_dwell_ms_ingame`, 750 ms vs 350) so a stray pose
+mid-routine can't wake it and fire Esc. Confirmed in-game to correctly flip on during an actual
+song; it can also read a long, motionless pause in the song-select carousel the same way, which
+is harmless (it only makes the clutch's wake hold a little firmer there too). Off by default
+while it collects more real-world use.
 
 ---
 
@@ -136,7 +134,7 @@ With the gate held: reach the dominant hand **down or left** and **hold** it for
 **1.5 seconds** — longer than Confirm, because Esc is the consequential one (it opens the pause
 menu / backs out). The two-hand pose plus the hold make it hard to trigger by accident.
 
-If you never want Esc reachable, untick **Enable the Back gesture** in `KinectNavigator`
+If you never want Esc reachable, untick **Enable the Back gesture** in the Settings panel
 (or `enable_back = 0` in `kinectnav.ini`).
 
 ---
@@ -162,16 +160,17 @@ It shows:
 1. Run Legacy **windowed or borderless** — a layered overlay can't draw over exclusive
    fullscreen DirectX. Set `<Screen FullScreen="0" />` in the game's `config.xml`.
    (Navigation itself works the same either way; this is only so the HUD is visible.)
-2. Either tick **Show the on-screen HUD** in `KinectNavigator`, or put `overlay = 1` in
+2. Either tick **Show the on-screen HUD** in the Settings panel, or put `overlay = 1` in
    `kinectnav.ini` (copy `kinectnav.example.ini` if you don't have one).
 
 ---
 
 ## Tuning it
 
-The easiest way is **`KinectNavigator`** — the **Settings** panel and the
-**More settings…** dialog write `kinectnav.ini` in the game folder as you change them. No
-reinstall; changes take effect next game launch.
+The easiest way is the **GUI** (`KinectNavigator-GUI.bat`) or the **Console**
+(`KinectNavigator-Console.bat`) — both offer the same **Settings** and **More settings…**
+controls and write `kinectnav.ini` in the game folder as you change them. No reinstall;
+changes take effect next game launch.
 
 **Settings** (main window):
 
