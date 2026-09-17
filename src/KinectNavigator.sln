@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KinectNavigator", "KinectNavigator\KinectNavigator.vcxproj", "{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "KinectNavigatorTutorial", "KinectNavigatorTutorial\KinectNavigatorTutorial.vcxproj", "{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -15,6 +17,10 @@ Global
 		{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}.Debug|Win32.Build.0 = Debug|Win32
 		{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}.Release|Win32.ActiveCfg = Release|Win32
 		{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}.Release|Win32.Build.0 = Release|Win32
+		{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}.Debug|Win32.Build.0 = Debug|Win32
+		{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}.Release|Win32.ActiveCfg = Release|Win32
+		{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

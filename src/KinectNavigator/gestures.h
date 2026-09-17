@@ -15,6 +15,24 @@ enum class GestureAction
     Back,
 };
 
+// One tracked body's skeleton + role, for the HUD's full-skeleton mirror view. `role` mirrors
+// the recognizer's internal DpadState (0 Asleep, 1 Arming, 2 Armed, 3 Driving, 4 Demoted) as a
+// plain int so this header doesn't need that enum. Joint positions are the raw Kinect skeleton
+// (camera-space meters, NOT yet torso-normalized or mirrored -- the renderer does that, the same
+// way domEx/domEy already are) so one BodyDebug can also stand in for a synthetic/ghost pose fed
+// from a keyframe table instead of a live frame.
+struct BodyDebug
+{
+    bool     inUse  = false;
+    DWORD    id     = 0;
+    int      role   = 0;
+    float    torso  = 0.40f;      // |SHOULDER_CENTER - HIP_CENTER|, for scaling the figure
+    float    ex = 0, ey = 0, r = 0;   // dominant hand vs dominant shoulder (torso units) -- same as GestureDebug's, per-body
+
+    Vector4                              joints[NUI_SKELETON_POSITION_COUNT]{};
+    NUI_SKELETON_POSITION_TRACKING_STATE jointState[NUI_SKELETON_POSITION_COUNT]{};
+};
+
 // Snapshot of the recognizer internals, for the dev overlay.
 struct GestureDebug
 {
@@ -43,6 +61,13 @@ struct GestureDebug
     float    dpadCmdGateR = 0.42f;    // the gate radius, for the overlay
     unsigned long dpadDriverId = 0;   // tracking-id of the body currently driving (0 = nobody armed)
     int      dpadNumBodies = 0;       // tracked skeletons the d-pad is watching this frame (0..2 on v1)
+
+    // full-skeleton mirror view: every candidate body this frame (0..2 on real v1 hardware;
+    // 4 slots of headroom, matching the recognizer's g_db[4]). bodyCount may be less than
+    // dpadNumBodies would suggest if there were ever more than 4 simultaneous candidates.
+    static const int kMaxBodies = 4;
+    BodyDebug bodies[kMaxBodies];
+    int       bodyCount = 0;
 };
 
 namespace Gestures

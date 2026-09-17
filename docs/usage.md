@@ -5,6 +5,19 @@ How to actually use KinectNavigator once it's installed. For getting it installe
 
 ---
 
+## Try it out
+
+The fastest way to learn the gestures is to **do them** with something watching and telling
+you when you got it right. Click **Try it out** in the GUI (or option **7** in the Console)
+to launch a small standalone practice tool — it needs the sensor but not the game, so it
+works even if `legacy.exe` is running in exclusive fullscreen. It shows your own tracked
+skeleton next to a dim reference figure demonstrating each move, and walks you through
+wake → navigate → command mode → Confirm/Back, advancing each step only once you've actually
+done it. `Space` skips a step, `Esc` closes it. If it can't find a sensor it says so and keeps
+retrying rather than just failing silently — no need to relaunch once you plug one in.
+
+---
+
 ## Standing
 
 Stand about **2.5 m** back from the sensor, roughly centred, facing it, with your whole body
@@ -142,14 +155,21 @@ If you never want Esc reachable, untick **Enable the Back gesture** in the Setti
 ## The diagnostic HUD
 
 A small dark panel, top-left, that shows exactly what the recogniser sees. It is **off by
-default** — it's a troubleshooting aid, not needed for normal play.
+default** — most players run the game in exclusive fullscreen, which hides any overlay
+entirely (see [Turning it on](#turning-it-on)), so this stays a troubleshooting / power-user
+aid rather than the primary way to learn the gestures — that's [Try it out](#try-it-out).
 
 It shows:
 
 - a **status line** — `ASLEEP` / `READY` / `NAVIGATING` / `COMMAND`, or
   `STEP BACK` / `STEP INTO VIEW` when tracking is poor;
-- a **d-pad glyph** with the park box, the wedges, and a marker for your hand
-  (grey = parked, cyan = in a nav wedge, magenta = command mode);
+- your **full tracked skeleton**, not just a hand — the d-pad ring is drawn on your actual
+  dominant shoulder and the command-mode gate circle on your actual non-dominant shoulder,
+  instead of an abstract fixed glyph, so you can see exactly where they are on your own body;
+- **both players at once** when a second person steps into frame (Kinect v1 fully tracks two
+  at a time) — each gets their own figure, colour-coded by role (bright = driving, green
+  outline = ready to take over, grey = asleep) with a plain-English label under it, so who's
+  in control is visible at a glance instead of only showing up as a diagnostic body count;
 - your **heading and distance** from the sensor;
 - the **command-gate bar** (non-dominant hand → shoulder) and, mid-hold, a
   **CONFIRM / BACK dwell bar**;

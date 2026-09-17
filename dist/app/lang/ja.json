@@ -17,6 +17,7 @@
   "btn.uptodate": "最新の状態",
   "btn.uninstall": "アンインストール",
   "btn.gestures": "ジェスチャー",
+  "btn.tutorial": "試してみる",
   "btn.close": "閉じる",
   "btn.cancel": "キャンセル",
   "btn.change": "変更...",
@@ -89,6 +90,8 @@
   "capture.body": "この操作に使用したいキーを押してください。",
 
   "dlg.no_shim": "Kinect10.dll (KinectNavigator の DLL) がインストーラーと同じ場所にありません。\n配布ファイルをすべて同じ場所に展開してから、再度実行してください。",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe がインストーラーと同じ場所にありません。\n配布ファイルをすべて同じ場所に展開してから、再度実行してください。",
+  "dlg.tutorial_fail": "チュートリアルを起動できませんでした:\n{err}",
   "dlg.hud_fs_body": "HUD はウィンドウモードでのみ表示されますが、config.xml がフルスクリーンに設定されています。\n\n今すぐ config.xml を FullScreen=\"0\" に変更しますか？",
   "dlg.reset_cfg_body": "kinectnav.ini を削除し、すべての設定を初期状態に戻しますか？",
   "dlg.game_running": "Legacy が現在起動中です。先にゲームを終了してから再試行してください。",
@@ -117,6 +120,7 @@
   "log.uninstalled": "KinectNavigator を削除し、正規の Kinect10.dll を復元しました。",
   "log.uninstalled_kept": "kinectnav.ini / KinectNavigator.log / skcap-*.skcap はそのまま残しました。",
   "log.error": "エラー: {err}",
+  "log.tutorial_launched": "チュートリアルを起動しました。",
   "log.av_altered": "Kinect10.dll をコピーしましたが、サイズが {want} バイトではなく {got} バイトになりました - ウイルス対策ソフトに変更された可能性があります。隔離状況の確認やフォルダーの除外設定を行ってから、再度お試しください。",
   "log.dll_small": "Kinect10.dll は復元されましたが、サイズが小さすぎるようです - 問題が発生しています。ゲームフォルダーを手動で確認してください。",
 

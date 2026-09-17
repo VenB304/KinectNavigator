@@ -34,6 +34,7 @@ if %SZ% GEQ 1000000 (
 )
 if not exist "%ROOT%\docs\setup.md" ( echo [X] docs\setup.md not found. & exit /b 1 )
 if not exist "%APP%\lang\en.json" ( echo [X] dist\app\lang\en.json not found. & exit /b 1 )
+if not exist "%APP%\KinectNavigatorTutorial.exe" ( echo [X] dist\app\KinectNavigatorTutorial.exe not found -- run build.cmd first. & exit /b 1 )
 
 if exist "%STAGE%" rmdir /s /q "%STAGE%"
 mkdir "%STAGE%"
@@ -54,6 +55,7 @@ copy /y "%APP%\KinectNavigator.Console.ps1"  "%STAGE%\app\" >nul
 copy /y "%APP%\gestures.png"                 "%STAGE%\app\" >nul
 copy /y "%APP%\kinectnav.example.ini"        "%STAGE%\app\" >nul
 copy /y "%HERE%Kinect10.dll"                 "%STAGE%\app\" >nul
+copy /y "%APP%\KinectNavigatorTutorial.exe"  "%STAGE%\app\" >nul
 copy /y "%APP%\lang\*.json"                  "%STAGE%\app\lang\" >nul
 
 if exist "%OUT%" del "%OUT%"
@@ -70,5 +72,6 @@ echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
 echo Root:  KinectNavigator-GUI.bat, KinectNavigator-Console.bat, SETUP.md, USAGE.md
 echo app\:  KinectNavigator.ps1 (+ .Core.psm1 / .Gui.ps1 / .Console.ps1),
-echo        Kinect10.dll, gestures.png, kinectnav.example.ini, lang\ (12 languages)
+echo        Kinect10.dll, KinectNavigatorTutorial.exe, gestures.png,
+echo        kinectnav.example.ini, lang\ (12 languages)
 endlocal

@@ -17,6 +17,7 @@
   "btn.uptodate": "À jour",
   "btn.uninstall": "Désinstaller",
   "btn.gestures": "Gestes",
+  "btn.tutorial": "Essayer",
   "btn.close": "Fermer",
   "btn.cancel": "Annuler",
   "btn.change": "Modifier...",
@@ -89,6 +90,8 @@
   "capture.body": "Appuyez sur la touche que vous voulez utiliser pour cette action.",
 
   "dlg.no_shim": "Kinect10.dll (le module KinectNavigator) n'est pas à côté de cet installateur.\nExtrayez toute l'archive ensemble, puis relancez.",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe n'est pas à côté de cet installateur.\nExtrayez toute l'archive ensemble, puis relancez.",
+  "dlg.tutorial_fail": "Impossible de démarrer le tutoriel :\n{err}",
   "dlg.hud_fs_body": "Le HUD ne s'affiche qu'en mode fenêtré, et config.xml est réglé en plein écran.\n\nMettre FullScreen=\"0\" dans config.xml maintenant ?",
   "dlg.reset_cfg_body": "Supprimer kinectnav.ini et rétablir tous les réglages par défaut ?",
   "dlg.game_running": "Legacy est en cours d'exécution. Fermez d'abord le jeu, puis réessayez.",
@@ -117,6 +120,7 @@
   "log.uninstalled": "Module supprimé et Kinect10.dll authentique restauré.",
   "log.uninstalled_kept": "kinectnav.ini / KinectNavigator.log / skcap-*.skcap laissés en place.",
   "log.error": "ERREUR : {err}",
+  "log.tutorial_launched": "Tutoriel lancé.",
   "log.av_altered": "Kinect10.dll copié mais il fait {got} octets au lieu de {want} - un antivirus l'a peut-être modifié. Vérifiez la quarantaine de votre antivirus / ajoutez une exclusion de dossier, puis réessayez.",
   "log.dll_small": "Kinect10.dll est de retour mais il paraît trop petit - quelque chose ne va pas. Vérifiez le dossier du jeu manuellement.",
 

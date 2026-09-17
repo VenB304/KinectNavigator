@@ -8,7 +8,7 @@
 // the one it ships.
 
 #define KN_VER_MAJOR 1
-#define KN_VER_MINOR 2
+#define KN_VER_MINOR 3
 #define KN_VER_PATCH 0
 #define KN_VER_BUILD 0
 

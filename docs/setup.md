@@ -49,6 +49,8 @@ Windows opens them for editing, not running.
 4. *(optional)* Set anything under **Settings** / **More settings…** — these save to
    `kinectnav.ini` as you change them and take effect next launch, no Install needed.
 5. Click **Install**.
+6. *(recommended)* Click **Try it out** to practice the gestures with the sensor before you
+   ever launch the game — see [Try it out](usage.md#try-it-out).
 
 The window is portable: it keeps its own settings in a `config.txt` beside itself and touches
 nothing else. Delete the extracted folder when you're done.
@@ -98,8 +100,9 @@ just replace the shim `Kinect10.dll`.
 | Symptom | Fix |
 |---|---|
 | **Windows blocked the DLL / AV quarantined it** | False positive — the DLL is unsigned and synthesises keystrokes. Restore the file and add a folder exclusion, or build from source. |
-| **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game *without* KinectNavigator. Turn on the [diagnostic HUD](usage.md#the-diagnostic-hud) to see whether you're being tracked. |
-| Can't see the HUD | It's off by default *and* hidden by exclusive fullscreen — see [usage.md](usage.md#the-diagnostic-hud). |
+| **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game *without* KinectNavigator. Run [Try it out](usage.md#try-it-out) or turn on the [diagnostic HUD](usage.md#the-diagnostic-hud) to see whether you're being tracked. |
+| Can't see the HUD | It's off by default *and* hidden by exclusive fullscreen — see [usage.md](usage.md#the-diagnostic-hud). [Try it out](usage.md#try-it-out) works either way, since it doesn't need the game at all. |
+| **Try it out** says "Kinect not detected" / "Kinect software not found" | The first means the sensor isn't plugged in or the Kinect service isn't running — it keeps retrying automatically once it is. The second means the Kinect for Windows Runtime itself isn't installed — see [Requirements](#requirements). |
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
 | **Left / right reversed** | Tick **Reverse left / right** in the Settings panel (or `mirror = 1` in `kinectnav.ini`). |
 | Wrong arm drives it | Set **Navigation hand** in the Settings panel (or `handedness = left` / `right`). |

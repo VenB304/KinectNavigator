@@ -13,8 +13,8 @@
   </ItemGroup>
 
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{7F3A9C21-4E56-4B8A-9C1D-8A2B3C4D5E6F}</ProjectGuid>
-    <RootNamespace>KinectNavigator</RootNamespace>
+    <ProjectGuid>{9D2E4F16-6A8B-4C3D-B1E5-7F0A2C4D8E91}</ProjectGuid>
+    <RootNamespace>KinectNavigatorTutorial</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -22,21 +22,19 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="Configuration">
-    <!-- Prefer the newest installed toolset; fall back to VS2022's v143. -->
     <PlatformToolset Condition="'$(PlatformToolset)'=='' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v145')">v145</PlatformToolset>
     <PlatformToolset Condition="'$(PlatformToolset)'=='' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v144')">v144</PlatformToolset>
     <PlatformToolset Condition="'$(PlatformToolset)'==''">v143</PlatformToolset>
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
     <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
-    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
 
   <PropertyGroup>
-    <TargetName>Kinect10</TargetName>
+    <TargetName>KinectNavigatorTutorial</TargetName>
     <OutDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\build\obj\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
@@ -48,32 +46,27 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <SDLCheck>true</SDLCheck>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PreprocessorDefinitions>WIN32;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\KinectNavigator;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- tutorial_strings.cpp's wide-string literals are non-ASCII (12 languages): /utf-8
+           makes MSVC read the source as UTF-8 unconditionally instead of guessing from a BOM. -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
+      <!-- Windows subsystem, no console: this tool is launched by a non-technical player
+           from the GUI/Console app, and a console flash on a Kinect-bind failure would read
+           as "the button is broken". wWinMain is the entry point (see tutorial_main.cpp). -->
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
-      <!-- Defensive: the Kinect headers add this via #pragma comment(lib) once
-           they are included (M2). This DLL must never import from Kinect10.dll,
-           because that is us. -->
-      <IgnoreSpecificDefaultLibraries>Kinect10.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
 
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Link>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-    </Link>
   </ItemDefinitionGroup>
 
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -85,57 +78,22 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
-    <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="globals.cpp" />
-    <ClCompile Include="log.cpp" />
-    <ClCompile Include="backend.cpp" />
-    <ClCompile Include="exports.cpp" />
-    <ClCompile Include="framebuffer.cpp" />
-    <ClCompile Include="recognizer.cpp" />
-    <ClCompile Include="recorder.cpp" />
-    <ClCompile Include="config.cpp" />
-    <ClCompile Include="output.cpp" />
-    <ClCompile Include="gestures.cpp" />
-    <ClCompile Include="overlay.cpp" />
-    <ClCompile Include="skeleton_render.cpp" />
-    <ClCompile Include="gameprobe.cpp" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="globals.h" />
-    <ClInclude Include="log.h" />
-    <ClInclude Include="backend.h" />
-    <ClInclude Include="nui_types.h" />
-    <ClInclude Include="framebuffer.h" />
-    <ClInclude Include="recognizer.h" />
-    <ClInclude Include="recorder.h" />
-    <ClInclude Include="config.h" />
-    <ClInclude Include="output.h" />
-    <ClInclude Include="gestures.h" />
-    <ClInclude Include="filter.h" />
-    <ClInclude Include="version.h" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ResourceCompile Include="version.rc" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="exports.def" />
+    <ClCompile Include="tutorial_main.cpp" />
+    <ClCompile Include="tutorial_strings.cpp" />
+    <ClCompile Include="..\KinectNavigator\globals.cpp" />
+    <ClCompile Include="..\KinectNavigator\log.cpp" />
+    <ClCompile Include="..\KinectNavigator\config.cpp" />
+    <ClCompile Include="..\KinectNavigator\gestures.cpp" />
+    <ClCompile Include="..\KinectNavigator\skeleton_render.cpp" />
+    <ClCompile Include="..\KinectNavigator\nui_bridge.cpp" />
   </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 
   <Target Name="CopyToDist" AfterTargets="Build">
     <Copy SourceFiles="$(TargetPath)"
-          DestinationFolder="$(SolutionDir)..\dist\"
+          DestinationFolder="$(SolutionDir)..\dist\app\"
           SkipUnchangedFiles="false" />
-    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb"
-          DestinationFolder="$(SolutionDir)..\dist\"
-          SkipUnchangedFiles="false"
-          Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
-    <Message Importance="high" Text="KinectNavigator: $(TargetPath) -> $(SolutionDir)..\dist\" />
   </Target>
 
 </Project>

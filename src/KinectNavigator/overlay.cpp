@@ -4,6 +4,7 @@
 #include "overlay.h"
 #include "config.h"
 #include "log.h"
+#include "skeleton_render.h"
 
 // Full-screen layered WS_POPUP window. Colour-key (magenta) => everything that
 // isn't drawn on is fully transparent and the game shows through; a mild alpha
@@ -64,45 +65,9 @@ namespace
         TextOutW(dc, x, y, s, (int)wcslen(s));
     }
 
-    void DrawBar(HDC dc, int x, int y, int w, int h, bool engaged,
-                 float val, float dead, float act, COLORREF fill)
-    {
-        const int   cx    = x + w / 2;
-        const float scale = (w / 2.f) / 1.3f;             // 1.3 torso -> bar edge
-
-        HPEN frame = CreatePen(PS_SOLID, 2, RGB(70, 80, 92));
-        HGDIOBJ of = SelectObject(dc, frame);
-        HGDIOBJ ob = SelectObject(dc, GetStockObject(NULL_BRUSH));
-        Rectangle(dc, x, y, x + w, y + h);
-        SelectObject(dc, of); SelectObject(dc, ob);
-        DeleteObject(frame);
-
-        auto tick = [&](float t, COLORREF col, int wgt) {
-            HPEN p = CreatePen(PS_SOLID, wgt, col); HGDIOBJ o = SelectObject(dc, p);
-            int px = cx + (int)(t * scale);
-            MoveToEx(dc, px, y, nullptr); LineTo(dc, px, y + h);
-            px = cx - (int)(t * scale);
-            MoveToEx(dc, px, y, nullptr); LineTo(dc, px, y + h);
-            SelectObject(dc, o); DeleteObject(p);
-        };
-        tick(dead, RGB(90, 100, 112), 2);
-        tick(act,  RGB(80, 200, 110), 3);
-
-        HPEN mid = CreatePen(PS_SOLID, 1, RGB(110, 120, 132)); HGDIOBJ om = SelectObject(dc, mid);
-        MoveToEx(dc, cx, y, nullptr); LineTo(dc, cx, y + h);
-        SelectObject(dc, om); DeleteObject(mid);
-
-        if (!engaged) return;
-        int vx = cx + (int)(val * scale);
-        if (vx < x + 2) vx = x + 2; if (vx > x + w - 2) vx = x + w - 2;
-        int r = h / 2 + 2;
-        HBRUSH db = CreateSolidBrush(fill);
-        HPEN   dp = CreatePen(PS_SOLID, 2, RGB(6, 8, 12));
-        HGDIOBJ o1 = SelectObject(dc, db), o2 = SelectObject(dc, dp);
-        Ellipse(dc, vx - r, y + h / 2 - r, vx + r, y + h / 2 + r);
-        SelectObject(dc, o1); SelectObject(dc, o2);
-        DeleteObject(db); DeleteObject(dp);
-    }
+    // Skeleton-drawing primitives (palette, ProjectBody, DrawSkeleton, DrawDpadOverlay,
+    // RoleStyle) live in skeleton_render.h/.cpp, shared with KinectNavigatorTutorial.
+    using namespace SkelRender;
 
     void Paint(HWND hwnd)
     {
@@ -144,15 +109,10 @@ namespace
             auto PX = [&](float v) { return (int)(v * S + 0.5f); };
             auto PXn = [&](float v) { int p = PX(v); return p < 1 ? 1 : p; };
 
-            const COLORREF cPanel = RGB(0x16, 0x1B, 0x22), cBord = RGB(0x2C, 0x33, 0x3D);
-            const COLORREF cTxt = RGB(0xE6, 0xEC, 0xF2), cDim = RGB(0x87, 0x94, 0xA0), cFnt = RGB(0x5F, 0x6B, 0x78);
-            const COLORREF cGrn = RGB(0x5C, 0xE0, 0x8A), cAmb = RGB(0xF0, 0xC3, 0x46);
-            const COLORREF cCyn = RGB(0x46, 0xD2, 0xEB), cMag = RGB(0xE6, 0x78, 0xEB);
-            const COLORREF cGrid = RGB(0x2A, 0x32, 0x3C), cTrk = RGB(0x23, 0x2A, 0x33);
-
             HFONT fSt = MakeFont(PX(23), true);
             HFONT fLb = MakeFont(PX(15), false);
             HFONT fDg = MakeFont(PX(12), false);
+            HFONT fRole = MakeFont(PX(12), true);
 
             // ---- current state ----
             const wchar_t* stT; COLORREF stC; const wchar_t* stS = nullptr;
@@ -166,11 +126,16 @@ namespace
             const bool showDwell = d.dpadCmd && d.dpadWedge && !d.dpadParked && d.repeatState != 2;
 
             // ---- panel geometry ----
+            // Figure area is sized for the whole standing body (head to feet, with headroom for
+            // a raised hand) rather than the old fixed d-pad glyph box, but the panel keeps the
+            // same footprint/position as before -- just a bit taller. Reserved regardless of how
+            // many bodies are actually tracked this frame so the panel doesn't resize as people
+            // step in/out of frame.
             const int mgn = PX(26), PW = PX(292), padX = PX(15), pTop = PX(13);
-            const int GP = PX(166);                       // d-pad glyph size
+            const int figH = PX(230), roleH = PX(16);
             const int PH = pTop
                          + (stS ? PX(46) : PX(31))
-                         + GP + PX(10)
+                         + figH + roleH + PX(10)
                          + PX(20)                         // metrics row
                          + PX(28)                         // command gate
                          + (showDwell ? PX(22) : 0)
@@ -211,64 +176,54 @@ namespace
                 y += PX(6);
             }
 
-            // ---- d-pad glyph ----
+            // ---- full-skeleton mirror view ----
+            // Every tracked body this frame, drawn as a stick figure at its real left/right room
+            // position (mirror-adjusted, matching the recognizer's own hand-offset convention --
+            // see ProjectBody). Kinect v1 fully tracks at most 2 skeletons' joints at once, so 1
+            // column when solo, 2 half-width columns side by side when a second body is present.
+            // Only the current driver gets the anatomically-placed d-pad ring + command gate.
             {
-                const int gx = X0 + PW / 2, gy = y + GP / 2, gh = GP / 2;
-                const float sc = gh / 1.8f;                         // r = 1.8 torso -> edge
-                const COLORREF live = d.dpadCmd ? cMag : cCyn;
+                const Config& cc = Cfg::Get();
+                const int figTop = y;
+                const int nFigs = d.bodyCount > 2 ? 2 : (d.bodyCount < 0 ? 0 : d.bodyCount);
+                const int colW = nFigs >= 2 ? PW / 2 : PW;
+                const float scale = figH / 5.3f;             // torso -> px; 5.3 = raised-hand-to-feet span + margin
+                const int hipY = figTop + (int)(2.4f * scale);
 
-                HPEN gp = CreatePen(PS_SOLID, 1, cGrid);
-                HGDIOBJ ogp = SelectObject(mem, gp), ogb = SelectObject(mem, GetStockObject(NULL_BRUSH));
-                MoveToEx(mem, gx - gh, gy, nullptr); LineTo(mem, gx + gh, gy);
-                MoveToEx(mem, gx, gy - gh, nullptr); LineTo(mem, gx, gy + gh);
-                HPEN fp = CreatePen(PS_SOLID, PXn(2), cBord);
-                SelectObject(mem, fp);
-                RoundRect(mem, gx - gh, gy - gh, gx + gh, gy + gh, PX(12), PX(12));
-                DeleteObject(fp);
+                // left-to-right room order: sort by mirror-adjusted shoulder x, same transform the
+                // recogniser applies to hand offsets (gestures.cpp `m = mirror ? -1 : 1`).
+                int order[2] = { 0, 1 };
+                if (nFigs == 2)
+                {
+                    const float m = cc.mirror ? -1.f : 1.f;
+                    auto shX = [&](int i) {
+                        const BodyDebug& bb = d.bodies[i];
+                        return m * (bb.joints[NUI_SKELETON_POSITION_SHOULDER_CENTER].x
+                                   - bb.joints[NUI_SKELETON_POSITION_HIP_CENTER].x);
+                    };
+                    if (shX(0) > shX(1)) { order[0] = 1; order[1] = 0; }
+                }
 
-                // The park-exit test warps +y (up) and -x (cross-body) by dpadUpReachK /
-                // dpadCrossReachK (Batch 1: UP less eager, cross-body LEFT easier) -- so the real
-                // box isn't the symmetric square this used to draw. Show it true: the boundary in
-                // raw hand-offset terms is dpadParkR/k per warped edge (k<1 pushes the edge out,
-                // k>1 pulls it in), dpadParkR unchanged on the two unwarped edges (right, down).
-                const float upK = d.dpadUpReachK > 0.01f ? d.dpadUpReachK : 1.f;
-                const float crossK = d.dpadCrossReachK > 0.01f ? d.dpadCrossReachK : 1.f;
-                const int prR = (int)(d.dpadParkR * sc);
-                const int prD = prR;
-                const int prU = (int)(d.dpadParkR / upK * sc);
-                const int prL = (int)(d.dpadParkR / crossK * sc);
-                HPEN pp = CreatePen(PS_SOLID, PXn(2), d.dpadParked ? RGB(0x6E, 0x7C, 0x8A) : RGB(0x4A, 0x55, 0x60));
-                HBRUSH pb = d.dpadParked ? CreateSolidBrush(RGB(0x22, 0x28, 0x30)) : (HBRUSH)GetStockObject(NULL_BRUSH);
-                SelectObject(mem, pp); HGDIOBJ opb = SelectObject(mem, pb);
-                RoundRect(mem, gx - prL, gy - prU, gx + prR, gy + prD, PX(6), PX(6));
-                SelectObject(mem, opb); if (d.dpadParked) DeleteObject(pb);
-                DeleteObject(pp);
-                SelectObject(mem, ogp); SelectObject(mem, ogb); DeleteObject(gp);
+                for (int slot = 0; slot < nFigs; ++slot)
+                {
+                    const BodyDebug& bb = d.bodies[order[slot]];
+                    const int cx = X0 + colW * slot + colW / 2;
 
-                auto chev = [&](int w, const wchar_t* g, int cxk, int cyk, UINT al) {
-                    pT(fLb, cxk, cyk, g, d.dpadWedge == w ? live : cFnt, al);
-                };
-                chev(3, L"\x25B2", gx,              gy - gh - PX(19), TA_CENTER | TA_TOP);
-                chev(4, L"\x25BC", gx,              gy + gh + PX(3),  TA_CENTER | TA_TOP);
-                chev(1, L"\x25B6", gx + gh + PX(7), gy - PX(9),       TA_LEFT   | TA_TOP);
-                chev(2, L"\x25C0", gx - gh - PX(7), gy - PX(9),       TA_RIGHT  | TA_TOP);
+                    POINT pos[NUI_SKELETON_POSITION_COUNT];
+                    ProjectBody(bb, cc.mirror, cx, hipY, scale, pos);
 
-                int hx = gx + (int)(d.domEx * sc), hy = gy - (int)(d.domEy * sc);
-                const int lim = gh - PX(3);
-                if (hx < gx - lim) hx = gx - lim; if (hx > gx + lim) hx = gx + lim;
-                if (hy < gy - lim) hy = gy - lim; if (hy > gy + lim) hy = gy + lim;
-                const COLORREF hc = d.dpadParked ? RGB(0x96, 0xA0, 0xAA)
-                                  : d.dpadWedge  ? live
-                                  : RGB(0xD2, 0xB4, 0x5A);
-                HBRUSH hbr = CreateSolidBrush(hc);
-                HPEN   hpn = CreatePen(PS_SOLID, PXn(2), RGB(0x0B, 0x0F, 0x14));
-                HGDIOBJ oh1 = SelectObject(mem, hbr), oh2 = SelectObject(mem, hpn);
-                const int hr = PX(6);
-                Ellipse(mem, hx - hr, hy - hr, hx + hr, hy + hr);
-                SelectObject(mem, oh1); SelectObject(mem, oh2);
-                DeleteObject(hbr); DeleteObject(hpn);
+                    COLORREF roleCol; const wchar_t* roleLabel;
+                    RoleStyle(bb.role, roleCol, roleLabel);
+                    const bool isDriver = (bb.role == 3);   // DpadState::Driving
+                    if (isDriver) roleCol = d.dpadCmd ? cMag : (d.dpadWedge && !d.dpadParked ? cCyn : cGrn);
 
-                y += GP + PX(10);
+                    DrawSkeleton(mem, bb, pos, roleCol, isDriver ? PXn(3) : PXn(2));
+                    if (isDriver) DrawDpadOverlay(mem, pos, d, cc, scale, fLb, PXn(2));
+
+                    pT(fRole, cx, figTop + figH + PX(2), roleLabel, roleCol, TA_CENTER | TA_TOP);
+                }
+
+                y = figTop + figH + roleH + PX(10);
             }
 
             // ---- metrics: heading / distance ----
@@ -337,7 +292,7 @@ namespace
             }
 
             SelectObject(mem, GetStockObject(SYSTEM_FONT));
-            DeleteObject(fSt); DeleteObject(fLb); DeleteObject(fDg);
+            DeleteObject(fSt); DeleteObject(fLb); DeleteObject(fDg); DeleteObject(fRole);
             blitAndDone();
             return;
         }

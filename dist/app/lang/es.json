@@ -17,6 +17,7 @@
   "btn.uptodate": "Actualizado",
   "btn.uninstall": "Desinstalar",
   "btn.gestures": "Gestos",
+  "btn.tutorial": "Probarlo",
   "btn.close": "Cerrar",
   "btn.cancel": "Cancelar",
   "btn.change": "Cambiar...",
@@ -89,6 +90,8 @@
   "capture.body": "Pulsa la tecla que quieres usar para esta acción.",
 
   "dlg.no_shim": "Kinect10.dll (el módulo de KinectNavigator) no está junto a este instalador.\nExtrae toda la versión junta y vuelve a ejecutarlo.",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe no está junto a este instalador.\nExtrae toda la versión junta y vuelve a ejecutarlo.",
+  "dlg.tutorial_fail": "No se pudo iniciar el tutorial:\n{err}",
   "dlg.hud_fs_body": "El HUD solo se muestra en modo ventana, y config.xml está en pantalla completa.\n\n¿Poner FullScreen=\"0\" en config.xml ahora?",
   "dlg.reset_cfg_body": "¿Eliminar kinectnav.ini y devolver todos los ajustes a sus valores predeterminados?",
   "dlg.game_running": "Legacy se está ejecutando. Cierra primero el juego y vuelve a intentarlo.",
@@ -117,6 +120,7 @@
   "log.uninstalled": "Módulo eliminado y Kinect10.dll original restaurado.",
   "log.uninstalled_kept": "Se han dejado kinectnav.ini / KinectNavigator.log / skcap-*.skcap en su sitio.",
   "log.error": "ERROR: {err}",
+  "log.tutorial_launched": "Tutorial iniciado.",
   "log.av_altered": "Kinect10.dll se copió pero quedó en {got} bytes, no {want} - puede que un antivirus lo haya alterado. Revisa la cuarentena de tu antivirus / añade una exclusión de carpeta y vuelve a intentarlo.",
   "log.dll_small": "Kinect10.dll ha vuelto pero parece demasiado pequeño - algo va mal. Revisa la carpeta del juego a mano.",
 

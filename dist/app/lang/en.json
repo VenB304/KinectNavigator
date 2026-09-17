@@ -17,6 +17,7 @@
   "btn.uptodate": "Up to date",
   "btn.uninstall": "Uninstall",
   "btn.gestures": "Gestures",
+  "btn.tutorial": "Try it out",
   "btn.close": "Close",
   "btn.cancel": "Cancel",
   "btn.change": "Change...",
@@ -89,6 +90,8 @@
   "capture.body": "Press the key you want to use for this action.",
 
   "dlg.no_shim": "Kinect10.dll (the KinectNavigator shim) isn't next to this installer.\nExtract the whole release together, then run it again.",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe isn't next to this installer.\nExtract the whole release together, then run it again.",
+  "dlg.tutorial_fail": "Couldn't start the tutorial:\n{err}",
   "dlg.hud_fs_body": "The HUD only shows in windowed mode, and config.xml is set to fullscreen.\n\nSet FullScreen=\"0\" in config.xml now?",
   "dlg.reset_cfg_body": "Delete kinectnav.ini and return every setting to its default?",
   "dlg.game_running": "Legacy is currently running. Close the game first, then try again.",
@@ -117,6 +120,7 @@
   "log.uninstalled": "Removed the shim and restored the genuine Kinect10.dll.",
   "log.uninstalled_kept": "Left kinectnav.ini / KinectNavigator.log / skcap-*.skcap in place.",
   "log.error": "ERROR: {err}",
+  "log.tutorial_launched": "Launched the tutorial.",
   "log.av_altered": "Kinect10.dll copied but landed at {got} bytes, not {want} - antivirus may have altered it. Check your antivirus quarantine / add a folder exclusion, then try again.",
   "log.dll_small": "Kinect10.dll is back but looks too small - something is wrong. Check the game folder by hand.",
 

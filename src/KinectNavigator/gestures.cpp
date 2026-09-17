@@ -60,6 +60,10 @@ namespace
         // this-frame geometry (filled by ProcessBody)
         float    ex = 0, ey = 0, r = 0;
         float    torso = 0.40f;         // last good |SC-HIP| -- reused across a brief trunk glitch
+        Vector4  hipCache{}, shCache{};  // last good HIP_CENTER/SHOULDER_CENTER -- the HUD mirror
+                                          // view anchors every joint off HIP_CENTER, so a glitched
+                                          // raw value here (not just a bad torso) would warp the
+                                          // whole drawn figure for that frame; same fallback idea.
         int      wedge  = 0;
         bool     parked = true;         // sticky (hysteresis)
         bool     handOk = false;
@@ -470,7 +474,7 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     {
         LogLine("Recognizer: body LOST");
         Gestures::Reset();                       // clears g_db / em (incl. hadBodies) / g_epoch
-        g_dbg.dpadMode = true; g_dbg.dpadNumBodies = 0; g_dbg.haveHand = false;
+        g_dbg.dpadMode = true; g_dbg.dpadNumBodies = 0; g_dbg.haveHand = false; g_dbg.bodyCount = 0;
         return GestureAction::None;
     }
     // prune individually stale slots (before any DpadSlotFor call) so an eviction can never hit a
@@ -501,7 +505,12 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
         if (!geomOk && !existing) continue;          // no usable torso and no history -> skip
         DpadBody* b = existing ? existing : DpadSlotFor(s.dwTrackingID);   // only allocate once valid
         b->lastSeenMs = frameMs;
-        if (geomOk) b->torso = torsoNow;
+        if (geomOk)
+        {
+            b->torso = torsoNow;
+            b->hipCache = s.SkeletonPositions[NUI_SKELETON_POSITION_HIP_CENTER];
+            b->shCache  = s.SkeletonPositions[NUI_SKELETON_POSITION_SHOULDER_CENTER];
+        }
         cand[nc].nav = &s; cand[nc].torso = (geomOk ? torsoNow : b->torso);
         cand[nc].b = b; cand[nc].geomOk = geomOk;
         ++nc;
@@ -516,6 +525,7 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
         // window. Hold the driver and its clutch; just stop emitting and blank the live readouts.
         PopulateDpadDebug(em.driverId ? FindDpadSlot(em.driverId) : nullptr, c);
         g_dbg.haveHand = false;               // nothing fresh this frame
+        g_dbg.bodyCount = 0;                  // nothing to draw in the mirror view this frame
         return GestureAction::None;
     }
 
@@ -524,6 +534,29 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     // ---- per-body signal + clutch ----
     for (int i = 0; i < nc; ++i)
         ProcessBody(*cand[i].b, *cand[i].nav, cand[i].torso, frameMs, c, cand[i].geomOk, inGameplay);
+
+    // ---- full-skeleton snapshot for the HUD mirror view (every candidate, not just the driver) ----
+    g_dbg.bodyCount = nc < GestureDebug::kMaxBodies ? nc : GestureDebug::kMaxBodies;
+    for (int i = 0; i < g_dbg.bodyCount; ++i)
+    {
+        BodyDebug& bd = g_dbg.bodies[i];
+        bd.inUse = true;
+        bd.id    = cand[i].b->id;
+        bd.role  = (int)cand[i].b->state;
+        bd.torso = cand[i].torso;
+        bd.ex = cand[i].b->ex; bd.ey = cand[i].b->ey; bd.r = cand[i].b->r;
+        memcpy(bd.joints,     cand[i].nav->SkeletonPositions,                sizeof(bd.joints));
+        memcpy(bd.jointState, cand[i].nav->eSkeletonPositionTrackingState,   sizeof(bd.jointState));
+        // ProjectBody (the HUD renderer) anchors every joint's offset on HIP_CENTER, so a
+        // glitched raw HIP_CENTER/SHOULDER_CENTER this frame would warp the WHOLE drawn figure,
+        // not just dim one bone the way an untracked hand or foot does. Swap in the cached
+        // last-good anchor pair on exactly the frames geomOk already says not to trust them.
+        if (!cand[i].geomOk)
+        {
+            bd.joints[NUI_SKELETON_POSITION_HIP_CENTER] = cand[i].b->hipCache;
+            bd.joints[NUI_SKELETON_POSITION_SHOULDER_CENTER] = cand[i].b->shCache;
+        }
+    }
 
     // ---- driver resolution ----
     // Is the current driver still here and still armed?
@@ -627,5 +660,6 @@ void Gestures::Reset()
     g_dbg.repeatState = 0;
     g_dbg.dpadDriverId = 0;
     g_dbg.dpadNumBodies = 0;
+    g_dbg.bodyCount = 0;
 }
 

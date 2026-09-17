@@ -341,6 +341,25 @@ function Show-LanguageMenu {
 }
 
 # ---------------------------------------------------------------------------
+# "Try it out" -- live interactive tutorial, standalone (no game needed).
+# Runs entirely outside the game so exclusive fullscreen (which hides the
+# in-game HUD) is a non-issue. The exe handles "no Kinect" itself with its
+# own friendly retry screen -- nothing to pre-check here.
+# ---------------------------------------------------------------------------
+function Start-Tutorial {
+    $exe = Join-Path $Paths.ScriptDir 'KinectNavigatorTutorial.exe'
+    if (-not (Test-Path -LiteralPath $exe)) { WErr (T 'dlg.no_tutorial'); Pause-Return; return }
+    try {
+        Start-Process -FilePath $exe -ArgumentList (Get-CurrentLanguage) -WorkingDirectory $Paths.ScriptDir | Out-Null
+        WOk (T 'log.tutorial_launched')
+    } catch {
+        WErr (T 'log.error' @{ err = $_.Exception.Message })
+        WErr (T 'dlg.tutorial_fail' @{ err = $_.Exception.Message })
+    }
+    Pause-Return
+}
+
+# ---------------------------------------------------------------------------
 # main menu
 # ---------------------------------------------------------------------------
 while ($true) {
@@ -355,6 +374,7 @@ while ($true) {
     if ($st.state -eq 'genuine' -or $st.state -eq 'installed') { W ('4) ' + (T 'console.menu_settings')) }
     W ('5) ' + (T 'btn.gestures'))
     W ('6) ' + (T 'app.lang_label'))
+    W ('7) ' + (T 'btn.tutorial'))
     W ('0) ' + (T 'console.menu_exit'))
     W ('-' * 70)
     $choice = Read-Host (T 'console.prompt_choice')
@@ -384,6 +404,7 @@ while ($true) {
             Pause-Return
         }
         '6' { Show-LanguageMenu }
+        '7' { Start-Tutorial }
         '0' { exit 0 }
         default { WErr (T 'console.invalid_choice'); Pause-Return }
     }

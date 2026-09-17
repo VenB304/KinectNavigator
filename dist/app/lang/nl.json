@@ -17,6 +17,7 @@
   "btn.uptodate": "Up-to-date",
   "btn.uninstall": "Verwijderen",
   "btn.gestures": "Gebaren",
+  "btn.tutorial": "Probeer het",
   "btn.close": "Sluiten",
   "btn.cancel": "Annuleren",
   "btn.change": "Wijzigen...",
@@ -89,6 +90,8 @@
   "capture.body": "Druk op de toets die je voor deze actie wilt gebruiken.",
 
   "dlg.no_shim": "Kinect10.dll (de KinectNavigator-shim) staat niet naast dit installatieprogramma.\nPak de hele release samen uit en voer deze opnieuw uit.",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe staat niet naast dit installatieprogramma.\nPak de hele release samen uit en voer deze opnieuw uit.",
+  "dlg.tutorial_fail": "Kan de tutorial niet starten:\n{err}",
   "dlg.hud_fs_body": "De HUD wordt alleen in venstermodus weergegeven en config.xml staat op volledig scherm.\n\nNu FullScreen=\"0\" instellen in config.xml?",
   "dlg.reset_cfg_body": "kinectnav.ini verwijderen en alle instellingen terugzetten naar standaard?",
   "dlg.game_running": "Legacy is momenteel geopend. Sluit eerst de game en probeer het opnieuw.",
@@ -117,6 +120,7 @@
   "log.uninstalled": "Shim verwijderd en originele Kinect10.dll hersteld.",
   "log.uninstalled_kept": "kinectnav.ini / KinectNavigator.log / skcap-*.skcap behouden.",
   "log.error": "FOUT: {err}",
+  "log.tutorial_launched": "Tutorial gestart.",
   "log.av_altered": "Kinect10.dll gekopieerd maar is {got} bytes in plaats van {want} - antivirus heeft het bestand mogelijk gewijzigd. Controleer je antivirusquarantaine / voeg een mapuitzondering toe en probeer het opnieuw.",
   "log.dll_small": "Kinect10.dll is terug maar lijkt te klein - er is iets misgegaan. Controleer de gamemap handmatig.",
 

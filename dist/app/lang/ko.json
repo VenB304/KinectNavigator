@@ -17,6 +17,7 @@
   "btn.uptodate": "최신 상태",
   "btn.uninstall": "제거",
   "btn.gestures": "제스처",
+  "btn.tutorial": "체험하기",
   "btn.close": "닫기",
   "btn.cancel": "취소",
   "btn.change": "변경...",
@@ -89,6 +90,8 @@
   "capture.body": "이 동작에 사용할 키를 누르세요.",
 
   "dlg.no_shim": "Kinect10.dll (KinectNavigator 모듈)이 이 설치 프로그램 옆에 없습니다.\n전체 압축을 한 폴더에 풀고 다시 실행하세요.",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe가 이 설치 프로그램 옆에 없습니다.\n전체 압축을 한 폴더에 풀고 다시 실행하세요.",
+  "dlg.tutorial_fail": "튜토리얼을 시작할 수 없습니다:\n{err}",
   "dlg.hud_fs_body": "HUD는 창 모드에서만 표시되지만, config.xml이 전체 화면으로 설정되어 있습니다.\n\n지금 config.xml에 FullScreen=\"0\"을 설정하시겠습니까?",
   "dlg.reset_cfg_body": "kinectnav.ini를 삭제하고 모든 설정을 기본값으로 되돌리시겠습니까?",
   "dlg.game_running": "Legacy가 현재 실행 중입니다. 먼저 게임을 종료한 후 다시 시도하세요.",
@@ -117,6 +120,7 @@
   "log.uninstalled": "모듈을 제거하고 정품 Kinect10.dll을 복원했습니다.",
   "log.uninstalled_kept": "kinectnav.ini / KinectNavigator.log / skcap-*.skcap 파일은 그대로 유지했습니다.",
   "log.error": "오류: {err}",
+  "log.tutorial_launched": "튜토리얼을 시작했습니다.",
   "log.av_altered": "Kinect10.dll을 복사했으나 {want} 바이트가 아닌 {got} 바이트입니다 - 백신 프로그램이 파일을 변조했을 수 있습니다. 백신의 검역소를 확인하거나 폴더 제외 설정을 추가한 후 다시 시도하세요.",
   "log.dll_small": "Kinect10.dll이 복원되었지만 크기가 너무 작습니다 - 문제가 발생했습니다. 게임 폴더를 직접 확인하세요.",
 

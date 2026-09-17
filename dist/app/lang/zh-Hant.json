@@ -17,6 +17,7 @@
   "btn.uptodate": "已是最新",
   "btn.uninstall": "解除安裝",
   "btn.gestures": "手勢說明",
+  "btn.tutorial": "試用",
   "btn.close": "關閉",
   "btn.cancel": "取消",
   "btn.change": "變更...",
@@ -89,6 +90,8 @@
   "capture.body": "按下你要用於此動作的按鍵。",
 
   "dlg.no_shim": "Kinect10.dll (KinectNavigator 模組) 不在安裝程式旁。\n請將完整壓縮檔解壓縮後再執行。",
+  "dlg.no_tutorial": "KinectNavigatorTutorial.exe 不在安裝程式旁。\n請將完整壓縮檔解壓縮後再執行。",
+  "dlg.tutorial_fail": "無法啟動教學:\n{err}",
   "dlg.hud_fs_body": "HUD 僅在視窗模式下顯示，而 config.xml 目前設定為全螢幕。\n\n是否立即在 config.xml 中設定 FullScreen=\"0\"？",
   "dlg.reset_cfg_body": "是否刪除 kinectnav.ini 並將所有設定回復為預設值？",
   "dlg.game_running": "Legacy 目前正在執行中。請先關閉遊戲，然後重試。",
@@ -117,6 +120,7 @@
   "log.uninstalled": "已移除模組並還原原版 Kinect10.dll。",
   "log.uninstalled_kept": "保留了 kinectnav.ini / KinectNavigator.log / skcap-*.skcap 檔案。",
   "log.error": "錯誤: {err}",
+  "log.tutorial_launched": "已啟動教學。",
   "log.av_altered": "Kinect10.dll 已複製，但大小為 {got} 位元組而非 {want} 位元組 - 防毒軟體可能修改了該檔案。請檢查防毒軟體隔離區或新增資料夾排除項目後重試。",
   "log.dll_small": "Kinect10.dll 已還原但體積異常過小 - 出現錯誤。請手動檢查遊戲資料夾。",
 

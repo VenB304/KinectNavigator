@@ -232,11 +232,12 @@ $btnOpenIni  = New-Btn (T 'btn.open_ini')  152 74 160 27
 $btnResetCfg = New-Btn (T 'btn.reset_cfg') 320 74 150 27
 $pnlOpt.Controls.AddRange(@($btnMore, $btnOpenIni, $btnResetCfg))
 
-$btnInstall   = New-Btn (T 'btn.install')    20 454 130 34 $true
-$btnUninstall = New-Btn (T 'btn.uninstall') 160 454 130 34
-$btnHelp      = New-Btn (T 'btn.gestures')  350 454 100 34
-$btnClose     = New-Btn (T 'btn.close')     460 454 100 34
-$Form.Controls.AddRange(@($btnInstall, $btnUninstall, $btnHelp, $btnClose))
+$btnInstall   = New-Btn (T 'btn.install')     20 454 104 34 $true
+$btnUninstall = New-Btn (T 'btn.uninstall')  134 454 104 34
+$btnTutorial  = New-Btn (T 'btn.tutorial')   248 454 104 34
+$btnHelp      = New-Btn (T 'btn.gestures')   362 454 104 34
+$btnClose     = New-Btn (T 'btn.close')      476 454 104 34
+$Form.Controls.AddRange(@($btnInstall, $btnUninstall, $btnTutorial, $btnHelp, $btnClose))
 
 $txtLog = New-Object System.Windows.Forms.TextBox
 $txtLog.SetBounds(20, 498, 560, 96); $txtLog.Multiline = $true; $txtLog.ReadOnly = $true
@@ -357,6 +358,7 @@ function Apply-Language {
     $btnResetCfg.Text = (T 'btn.reset_cfg')
     $btnUninstall.Text = (T 'btn.uninstall')
     $btnHelp.Text     = (T 'btn.gestures')
+    $btnTutorial.Text = (T 'btn.tutorial')
     $btnClose.Text    = (T 'btn.close')
     Refresh-Status
 }
@@ -623,6 +625,24 @@ function Show-MoreSettings {
     $d.ShowDialog($Form) | Out-Null
 }
 $btnMore.Add_Click({ Show-MoreSettings })
+
+# ---------------------------------------------------------------------------
+# "Try it out" -- live interactive tutorial, standalone (no game needed).
+# Runs entirely outside the game so exclusive fullscreen (which hides the
+# in-game HUD) is a non-issue. The exe handles "no Kinect" itself with its
+# own friendly retry screen -- nothing to pre-check here.
+# ---------------------------------------------------------------------------
+$TutorialExe = Join-Path $ScriptDir 'KinectNavigatorTutorial.exe'
+$btnTutorial.Add_Click({
+    if (-not (Test-Path -LiteralPath $TutorialExe)) { Msg (T 'dlg.no_tutorial') 'Error'; return }
+    try {
+        Start-Process -FilePath $TutorialExe -ArgumentList (Get-CurrentLanguage) -WorkingDirectory $ScriptDir | Out-Null
+        Write-Log (T 'log.tutorial_launched')
+    } catch {
+        Write-Log (T 'log.error' @{ err = $_.Exception.Message })
+        Msg (T 'dlg.tutorial_fail' @{ err = $_.Exception.Message }) 'Error'
+    }
+}.GetNewClosure())
 
 # ---------------------------------------------------------------------------
 # install / uninstall  -- both call the shared Core implementation
