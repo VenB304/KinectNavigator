@@ -1,0 +1,39 @@
+// Win32 version resource for the KinectNavigator Kinect v2 proxy (ships as Kinect20.dll).
+// Numbers come from nav_core\version.h, shared with the Kinect10.dll proxy so the
+// two always carry the same version.
+
+#include <winver.h>
+#include "version.h"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    KN_VER_MAJOR,KN_VER_MINOR,KN_VER_PATCH,KN_VER_BUILD
+ PRODUCTVERSION KN_VER_MAJOR,KN_VER_MINOR,KN_VER_PATCH,KN_VER_BUILD
+ FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+ FILEFLAGS      VS_FF_DEBUG
+#else
+ FILEFLAGS      0x0L
+#endif
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_DLL
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "VenB304"
+            VALUE "FileDescription",  "KinectNavigator - Kinect v2 proxy for Just Dance Legacy Offline PC"
+            VALUE "FileVersion",      KN_VER_STRING
+            VALUE "InternalName",     "KinectNavigatorV2"
+            VALUE "LegalCopyright",   "MIT License. Copyright (c) 2026 VenB304"
+            VALUE "OriginalFilename", "Kinect20.dll"
+            VALUE "ProductName",      "KinectNavigator"
+            VALUE "ProductVersion",   KN_VER_STRING
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

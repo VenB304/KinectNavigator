@@ -8,7 +8,9 @@ extern "C" __declspec(dllimport) HRESULT __stdcall SHQueryUserNotificationState(
 #pragma comment(lib, "shell32.lib")
 #define SK_QUNS_RUNNING_D3D_FULL_SCREEN 3
 #include "framebuffer.h"
+#include "richbuffer.h"
 #include "gestures.h"
+#include "rich_convert.h"
 #include "output.h"
 #include "overlay.h"
 #include "globals.h"
@@ -38,7 +40,8 @@ namespace
         return s_w;
     }
 
-    void GameProbeTick(const NUI_SKELETON_FRAME& f)
+    // bodies = fully tracked skeletons this frame, anyPos = position-only ones (v1 only; 0 on v2).
+    void GameProbeTick(int bodies, int anyPos)
     {
         static LONGLONG s_nextMs = 0, s_prevCalls = 0, s_prevOpens = 0, s_prevTick = 0;
         static DWORD    s_prevTrk = 0xFFFFFFFF;
@@ -60,13 +63,6 @@ namespace
             opRate = (double)(g_fileOpens  - s_prevOpens) * 1000.0 / dt;
         }
         s_prevCalls = g_colorCalls; s_prevOpens = g_fileOpens; s_prevTick = nowTick;
-
-        int bodies = 0, anyPos = 0;
-        for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
-        {
-            if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_TRACKED) ++bodies;
-            else if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_POSITION_ONLY) ++anyPos;
-        }
 
         wchar_t title[80] = L""; int rw = 0, rh = 0; DWORD wstyle = 0;
         HWND gw = GameWnd();
@@ -118,6 +114,20 @@ namespace
                 rw, rh, mw, mh, d3dfs, quns, g_gameWndActive, wstyle, mp ? (long)(nowTick - mp) : -1, opRate, g_lastFile, title);
     }
 
+    void EmitKey(GestureAction a)
+    {
+        switch (a)
+        {
+        case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
+        case GestureAction::Left:    Output::TapKey(Cfg::Get().keyLeft);    break;
+        case GestureAction::Up:      Output::TapKey(Cfg::Get().keyUp);      break;
+        case GestureAction::Down:    Output::TapKey(Cfg::Get().keyDown);    break;
+        case GestureAction::Confirm: Output::TapKey(Cfg::Get().keyConfirm); break;
+        case GestureAction::Back:    Output::TapKey(Cfg::Get().keyBack);    break;
+        default: break;
+        }
+    }
+
     DWORD WINAPI ThreadProc(LPVOID)
     {
         LogLine("Recognizer: thread start (tid=%lu)", GetCurrentThreadId());
@@ -133,7 +143,13 @@ namespace
                 continue;                       // 200 ms wall wake to re-check g_stop
             ++ticks;
 
-            GameProbeTick(f);                   // ~1/s, runs whether or not a body is tracked
+            int pBodies = 0, pAnyPos = 0;
+            for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
+            {
+                if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_TRACKED) ++pBodies;
+                else if (f.SkeletonData[i].eTrackingState == NUI_SKELETON_POSITION_ONLY) ++pAnyPos;
+            }
+            GameProbeTick(pBodies, pAnyPos);    // ~1/s, runs whether or not a body is tracked
 
             // All recognizer timing runs off the sensor's own clock so replay at
             // any speed behaves like live. liTimeStamp is milliseconds.
@@ -144,16 +160,7 @@ namespace
             // EVERY frame, including ones with no tracked skeleton: the gesture layer owns body
             // lifetime, so the slot prune, the dropout window, ACQUIRED/LOST and the epoch reset
             // all run off one clock in one place. ----
-            switch (Gestures::UpdateExtend(f, now))
-            {
-            case GestureAction::Right:   Output::TapKey(Cfg::Get().keyRight);   break;
-            case GestureAction::Left:    Output::TapKey(Cfg::Get().keyLeft);    break;
-            case GestureAction::Up:      Output::TapKey(Cfg::Get().keyUp);      break;
-            case GestureAction::Down:    Output::TapKey(Cfg::Get().keyDown);    break;
-            case GestureAction::Confirm: Output::TapKey(Cfg::Get().keyConfirm); break;
-            case GestureAction::Back:    Output::TapKey(Cfg::Get().keyBack);    break;
-            default: break;
-            }
+            EmitKey(Gestures::UpdateExtend(f, now));
 
             GestureDebug gd; Gestures::GetDebug(gd);
             float z = 0.f; bool zset = false;                 // overlay distance = the driver's Z
@@ -177,6 +184,51 @@ namespace
         LogLine("Recognizer: thread exit (ticks=%llu, frames=%llu)", ticks, FrameBuffer::Count());
         return 0;
     }
+
+    // Same loop, fed by the v2 reader through RichBuffer. Runs the same engine
+    // (Gestures::UpdateExtendRich) and the same key output.
+    DWORD WINAPI RichThreadProc(LPVOID)
+    {
+        LogLine("Recognizer: rich thread start (tid=%lu)", GetCurrentThreadId());
+
+        static KN_RichFrame f;                  // ~5 KB: keep off the thread stack
+        unsigned long long seq = 0;
+        LONGLONG   lastLog  = 0;
+        unsigned long long ticks = 0;
+
+        while (!g_stop)
+        {
+            if (!RichBuffer::WaitLatest(f, seq, 200))
+                continue;                       // 200 ms wall wake to re-check g_stop
+            ++ticks;
+
+            GameProbeTick((int)f.bodyCount, 0);
+
+            const LONGLONG now = f.timestampMs;   // the sensor's own clock, as on v1
+            EmitKey(Gestures::UpdateExtendRich(f, now));
+
+            GestureDebug gd; Gestures::GetDebug(gd);
+            float z = 0.f; bool zset = false;                 // overlay distance = the driver's Z
+            for (unsigned i = 0; i < f.bodyCount && i < KN_RICH_MAX_BODIES; ++i)
+            {
+                const KN_RichBody& b = f.body[i];
+                const float bz = b.joint[KN_J_SPINE_BASE].z;
+                if (gd.dpadDriverId && RichConvert::BodyId32(b.trackingId) == gd.dpadDriverId) { z = bz; zset = true; break; }
+                if (!zset) { z = bz; zset = true; }
+            }
+            Overlay::Update(gd, gd.dpadNumBodies > 0, z, now);
+
+            if (now - lastLog >= 1000)
+            {
+                lastLog = now;
+                LogLine("Recognizer: extend nbody=%d driver=%lu frame=%u (v2)",
+                        gd.dpadNumBodies, gd.dpadDriverId, f.frameNumber);
+            }
+        }
+
+        LogLine("Recognizer: rich thread exit (ticks=%llu, frames=%llu)", ticks, RichBuffer::Count());
+        return 0;
+    }
 }
 
 void Recognizer::Start()
@@ -185,6 +237,14 @@ void Recognizer::Start()
     InterlockedExchange(&g_stop, 0);
     g_thread = CreateThread(nullptr, 0, ThreadProc, nullptr, 0, nullptr);
     LogLine("Recognizer: Start -> thread=%p", g_thread);
+}
+
+void Recognizer::StartRich()
+{
+    if (g_thread) return;
+    InterlockedExchange(&g_stop, 0);
+    g_thread = CreateThread(nullptr, 0, RichThreadProc, nullptr, 0, nullptr);
+    LogLine("Recognizer: StartRich -> thread=%p", g_thread);
 }
 
 void Recognizer::Stop()

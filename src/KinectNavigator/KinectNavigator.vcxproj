@@ -49,6 +49,7 @@
       <ConformanceMode>true</ConformanceMode>
       <SDLCheck>true</SDLCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\nav_core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -86,39 +87,46 @@
 
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="globals.cpp" />
-    <ClCompile Include="log.cpp" />
+    <ClCompile Include="..\nav_core\globals.cpp" />
+    <ClCompile Include="..\nav_core\log.cpp" />
     <ClCompile Include="backend.cpp" />
     <ClCompile Include="exports.cpp" />
-    <ClCompile Include="framebuffer.cpp" />
-    <ClCompile Include="recognizer.cpp" />
-    <ClCompile Include="recorder.cpp" />
-    <ClCompile Include="config.cpp" />
-    <ClCompile Include="output.cpp" />
-    <ClCompile Include="gestures.cpp" />
-    <ClCompile Include="overlay.cpp" />
-    <ClCompile Include="skeleton_render.cpp" />
-    <ClCompile Include="gameprobe.cpp" />
+    <ClCompile Include="..\nav_core\framebuffer.cpp" />
+    <ClCompile Include="..\nav_core\recognizer.cpp" />
+    <ClCompile Include="..\nav_core\recorder.cpp" />
+    <ClCompile Include="..\nav_core\config.cpp" />
+    <ClCompile Include="..\nav_core\output.cpp" />
+    <ClCompile Include="..\nav_core\gestures.cpp" />
+    <ClCompile Include="..\nav_core\rich_convert.cpp" />
+    <ClCompile Include="..\nav_core\richbuffer.cpp" />
+    <ClCompile Include="..\nav_core\overlay.cpp" />
+    <ClCompile Include="..\nav_core\skeleton_render.cpp" />
+    <ClCompile Include="..\nav_core\gameprobe.cpp" />
   </ItemGroup>
 
   <ItemGroup>
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="globals.h" />
-    <ClInclude Include="log.h" />
+    <ClInclude Include="..\nav_core\framework.h" />
+    <ClInclude Include="..\nav_core\globals.h" />
+    <ClInclude Include="..\nav_core\log.h" />
     <ClInclude Include="backend.h" />
-    <ClInclude Include="nui_types.h" />
-    <ClInclude Include="framebuffer.h" />
-    <ClInclude Include="recognizer.h" />
-    <ClInclude Include="recorder.h" />
-    <ClInclude Include="config.h" />
-    <ClInclude Include="output.h" />
-    <ClInclude Include="gestures.h" />
-    <ClInclude Include="filter.h" />
-    <ClInclude Include="version.h" />
+    <ClInclude Include="..\nav_core\nui_types.h" />
+    <ClInclude Include="..\nav_core\framebuffer.h" />
+    <ClInclude Include="..\nav_core\recognizer.h" />
+    <ClInclude Include="..\nav_core\recorder.h" />
+    <ClInclude Include="..\nav_core\config.h" />
+    <ClInclude Include="..\nav_core\output.h" />
+    <ClInclude Include="..\nav_core\gestures.h" />
+    <ClInclude Include="..\nav_core\rich_types.h" />
+    <ClInclude Include="..\nav_core\rich_convert.h" />
+    <ClInclude Include="..\nav_core\richbuffer.h" />
+    <ClInclude Include="..\nav_core\filter.h" />
+    <ClInclude Include="..\nav_core\version.h" />
   </ItemGroup>
 
   <ItemGroup>
-    <ResourceCompile Include="version.rc" />
+    <ResourceCompile Include="version.rc">
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\nav_core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
   </ItemGroup>
 
   <ItemGroup>
@@ -135,7 +143,12 @@
           DestinationFolder="$(SolutionDir)..\dist\"
           SkipUnchangedFiles="false"
           Condition="Exists('$(TargetDir)$(TargetName).pdb')" />
-    <Message Importance="high" Text="KinectNavigator: $(TargetPath) -> $(SolutionDir)..\dist\" />
+    <!-- also dist\app\ (what package.cmd ships): this used to be a manual copy and a stale
+         dist\app\Kinect10.dll once shipped as "the download". -->
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFolder="$(SolutionDir)..\dist\app\"
+          SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="KinectNavigator: $(TargetPath) -> $(SolutionDir)..\dist\ and dist\app\" />
   </Target>
 
 </Project>

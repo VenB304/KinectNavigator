@@ -46,6 +46,7 @@ namespace
     {
         if      (KeyIs(key, "enable"))              g_cfg.enable            = atoi(val) != 0;
         else if (KeyIs(key, "mirror"))              g_cfg.mirror            = atoi(val) != 0;
+        else if (KeyIs(key, "v2_mirror"))           g_cfg.v2Mirror          = atoi(val) != 0;
         else if (KeyIs(key, "handedness"))          g_cfg.leftHanded        = (_stricmp(val, "left") == 0 || atoi(val) != 0);
         else if (KeyIs(key, "left_handed"))         g_cfg.leftHanded        = atoi(val) != 0;
         else if (KeyIs(key, "enable_confirm"))      g_cfg.enableConfirm     = atoi(val) != 0;

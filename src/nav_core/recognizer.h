@@ -7,6 +7,7 @@
 namespace Recognizer
 {
     void Start();   // idempotent; spawns the worker thread
+    void StartRich();  // same, but fed by RichBuffer (the Kinect v2 proxy); idempotent, one thread per process
     void Stop();     // signal + join. Only reached on a graceful FreeLibrary;
                      // M1 showed the game hard-exits, so usually never runs.
 }

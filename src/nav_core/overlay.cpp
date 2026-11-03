@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include "overlay.h"
 #include "config.h"
+#include "globals.h"
 #include "log.h"
 #include "skeleton_render.h"
 
@@ -25,6 +26,9 @@ namespace
     DWORD            s_tid    = 0;
     CRITICAL_SECTION s_cs;
     bool             s_csInit = false;
+    bool             s_wanted = false;   // Start() was allowed; the window itself is created lazily
+                                         // on the first Update() so a proxy that never receives a
+                                         // frame (the other sensor's) never shows an idle HUD
 
     struct Snap
     {
@@ -317,10 +321,15 @@ namespace
     DWORD WINAPI ThreadProc(LPVOID)
     {
         s_tid = GetCurrentThreadId();
+        // One class per module: with both proxies loaded they share the exe's HINSTANCE, so a
+        // shared class name would make the second window run the first DLL's WndProc (and paint
+        // its stale state).
+        wchar_t clsName[48];
+        swprintf_s(clsName, L"KinectNavigatorOverlay_%p", (void*)g_hSelf);
         WNDCLASSW wc = {};
         wc.lpfnWndProc   = WndProc;
         wc.hInstance     = GetModuleHandleW(nullptr);
-        wc.lpszClassName = L"KinectNavigatorOverlay";
+        wc.lpszClassName = clsName;
         RegisterClassW(&wc);
 
         const int sw = GetSystemMetrics(SM_CXSCREEN);
@@ -353,16 +362,16 @@ namespace
 
 void Overlay::Start(bool force)
 {
-    if (s_thread) return;
+    if (s_wanted) return;
     if (!force && !Cfg::Get().overlay) return;
     if (!s_csInit) { InitializeCriticalSection(&s_cs); s_csInit = true; }
-    InterlockedExchange(&s_stop, 0);
-    s_thread = CreateThread(nullptr, 0, ThreadProc, nullptr, 0, nullptr);
-    LogLine("Overlay: Start -> thread=%p", s_thread);
+    s_wanted = true;
+    LogLine("Overlay: enabled (window opens on the first frame)");
 }
 
 void Overlay::Stop()
 {
+    s_wanted = false;
     if (!s_thread) return;
     InterlockedExchange(&s_stop, 1);
     if (s_tid) PostThreadMessageW(s_tid, WM_NULL, 0, 0);   // unblock GetMessage
@@ -373,7 +382,13 @@ void Overlay::Stop()
 
 void Overlay::Update(const GestureDebug& gd, bool bodyTracked, float bodyZ, LONGLONG nowMs)
 {
-    if (!s_csInit) return;
+    if (!s_csInit || !s_wanted) return;
+    if (!s_thread)                       // first frame: bring the window up (Update is single-threaded)
+    {
+        InterlockedExchange(&s_stop, 0);
+        s_thread = CreateThread(nullptr, 0, ThreadProc, nullptr, 0, nullptr);
+        LogLine("Overlay: Start -> thread=%p", s_thread);
+    }
     EnterCriticalSection(&s_cs);
     s_snap.gd = gd;
     s_snap.body = bodyTracked;

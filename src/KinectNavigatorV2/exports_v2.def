@@ -1,0 +1,10 @@
+; KinectNavigatorV2 -- Kinect20.dll proxy exports.
+;
+; Legacy.exe imports this one function BY NAME from Kinect20.dll (confirmed
+; via dumpbin /exports on the genuine DLL -- it publishes GetDefaultKinectSensor
+; undecorated). Our extern "C" __stdcall definition decorates to the x86
+; stdcall symbol on the right; this maps the published name back to it, same
+; pattern as src/KinectNavigator/exports.def.
+
+EXPORTS
+    GetDefaultKinectSensor=_GetDefaultKinectSensor@4

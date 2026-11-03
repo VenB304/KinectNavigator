@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "gestures.h"
+#include "rich_convert.h"
 #include "filter.h"
 #include "globals.h"
 #include "config.h"
@@ -24,7 +25,13 @@ namespace
         const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
         return sqrtf(dx * dx + dy * dy + dz * dz);
     }
-    inline bool Usable(NUI_SKELETON_POSITION_TRACKING_STATE s)
+    inline float Len3(const KN_RichJoint& a, const KN_RichJoint& b)
+    {
+        const float dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z;
+        return sqrtf(dx * dx + dy * dy + dz * dz);
+    }
+    // KN_RichJoint::state shares the v1 tracking-state values: 0 none / 1 inferred / 2 tracked.
+    inline bool Usable(unsigned char s)
     {
         return s == NUI_SKELETON_POSITION_TRACKED || s == NUI_SKELETON_POSITION_INFERRED;
     }
@@ -172,13 +179,13 @@ namespace
     // geomOk == false: the skeleton is still TRACKED but SHOULDER_CENTER/HIP_CENTER glitched out
     // this frame. The hand signal is shoulder-relative and scaled by the CACHED torso, so it keeps
     // working normally regardless.
-    void ProcessBody(DpadBody& b, const NUI_SKELETON_DATA& nav, float torso,
-                     LONGLONG frameMs, const Config& c, bool geomOk, bool inGameplay)
+    void ProcessBody(DpadBody& b, const KN_RichBody& nav, float torso,
+                     LONGLONG frameMs, const Config& c, bool geomOk, bool inGameplay, bool flipX)
     {
-        const auto st = [&](int j) { return nav.eSkeletonPositionTrackingState[j]; };
-        const int shJ = c.leftHanded ? NUI_SKELETON_POSITION_SHOULDER_LEFT : NUI_SKELETON_POSITION_SHOULDER_RIGHT;
-        const int hJ0 = c.leftHanded ? NUI_SKELETON_POSITION_HAND_LEFT     : NUI_SKELETON_POSITION_HAND_RIGHT;
-        const int wJ0 = c.leftHanded ? NUI_SKELETON_POSITION_WRIST_LEFT    : NUI_SKELETON_POSITION_WRIST_RIGHT;
+        const auto st = [&](int j) { return nav.joint[j].state; };
+        const int shJ = c.leftHanded ? KN_J_SHOULDER_L : KN_J_SHOULDER_R;
+        const int hJ0 = c.leftHanded ? KN_J_HAND_L     : KN_J_HAND_R;
+        const int wJ0 = c.leftHanded ? KN_J_WRIST_L    : KN_J_WRIST_R;
 
         const double dt = (b.prevMs >= 0) ? (frameMs - b.prevMs) / 1000.0 : 0.0;
         b.prevMs = frameMs;
@@ -189,12 +196,12 @@ namespace
 
         int hJ = Usable(st(hJ0)) ? hJ0 : wJ0;
         const bool handOk = Usable(st(shJ)) && Usable(st(hJ));
-        const float m = c.mirror ? -1.f : 1.f;
+        const float m = (c.mirror != flipX) ? -1.f : 1.f;
         float rawx = 0.f, rawy = 0.f;
         if (handOk)
         {
-            const Vector4& sh = nav.SkeletonPositions[shJ];
-            const Vector4& hd = nav.SkeletonPositions[hJ];
+            const KN_RichJoint& sh = nav.joint[shJ];
+            const KN_RichJoint& hd = nav.joint[hJ];
             rawx = m * (hd.x - sh.x) / torso;
             rawy = (hd.y - sh.y) / torso;
         }
@@ -297,13 +304,13 @@ namespace
     // The nav-machine: command-mode gate + occupancy + fire/repeat. Runs for the DRIVER only,
     // on the geometry ProcessBody already put in b.ex/ey/wedge/parked. Unchanged from the
     // single-body model apart from operating on `b` instead of a global.
-    GestureAction RunNavMachine(DpadBody& b, const NUI_SKELETON_DATA& nav, float torso,
+    GestureAction RunNavMachine(DpadBody& b, const KN_RichBody& nav, float torso,
                                 LONGLONG frameMs, const Config& c)
     {
-        const auto st = [&](int j) { return nav.eSkeletonPositionTrackingState[j]; };
-        const int nShJ = c.leftHanded ? NUI_SKELETON_POSITION_SHOULDER_RIGHT : NUI_SKELETON_POSITION_SHOULDER_LEFT;
-        const int nHJ0 = c.leftHanded ? NUI_SKELETON_POSITION_HAND_RIGHT     : NUI_SKELETON_POSITION_HAND_LEFT;
-        const int nWJ0 = c.leftHanded ? NUI_SKELETON_POSITION_WRIST_RIGHT    : NUI_SKELETON_POSITION_WRIST_LEFT;
+        const auto st = [&](int j) { return nav.joint[j].state; };
+        const int nShJ = c.leftHanded ? KN_J_SHOULDER_R : KN_J_SHOULDER_L;
+        const int nHJ0 = c.leftHanded ? KN_J_HAND_R     : KN_J_HAND_L;
+        const int nWJ0 = c.leftHanded ? KN_J_WRIST_R    : KN_J_WRIST_L;
 
         NavMachine& nv = em.nav;
         const float ex = b.ex, ey = b.ey, r = b.r;
@@ -345,7 +352,7 @@ namespace
         {
             int nHJ = Usable(st(nHJ0)) ? nHJ0 : nWJ0;
             if (Usable(st(nHJ)))
-                ndDist = Len3(nav.SkeletonPositions[nShJ], nav.SkeletonPositions[nHJ]) / torso;
+                ndDist = Len3(nav.joint[nShJ], nav.joint[nHJ]) / torso;
         }
         nv.cmdOn = nv.cmdOn ? (ndDist < c.dpadCmdGateRadius * c.dpadCmdGateExitK)
                           : (ndDist < c.dpadCmdGateRadius);
@@ -440,6 +447,15 @@ namespace
 
 GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frameMs)
 {
+    // The gesture layer is single-threaded (one recogniser thread per process), so one static
+    // scratch frame is fine and keeps ~5 KB off the stack.
+    static KN_RichFrame rf;
+    RichConvert::DeriveRich(f, rf);
+    return UpdateExtendRich(rf, frameMs);
+}
+
+GestureAction Gestures::UpdateExtendRich(const KN_RichFrame& f, LONGLONG frameMs)
+{
     const Config& c = Cfg::Get();
     if (!c.enable) return GestureAction::None;
 
@@ -485,31 +501,33 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
     // A skeleton that is TRACKED but whose SC/HIP glitched out this frame is kept (geomOk=false)
     // with its last good torso, so a brief trunk dropout doesn't evict the driver's slot.
     // A body with no good torso yet (never geomOk) is skipped entirely.
-    struct Cand { const NUI_SKELETON_DATA* nav; float torso; DpadBody* b; bool geomOk; };
-    Cand cand[NUI_SKELETON_COUNT]; int nc = 0;
-    for (int i = 0; i < NUI_SKELETON_COUNT; ++i)
+    // The torso unit is SPINE_SHOULDER <-> SPINE_BASE (the v1 SHOULDER_CENTER <-> HIP_CENTER pair,
+    // which a v1 frame maps onto exactly).
+    struct Cand { const KN_RichBody* nav; float torso; DpadBody* b; bool geomOk; };
+    Cand cand[KN_RICH_MAX_BODIES]; int nc = 0;
+    for (unsigned i = 0; i < f.bodyCount && i < KN_RICH_MAX_BODIES; ++i)
     {
-        const NUI_SKELETON_DATA& s = f.SkeletonData[i];
-        if (s.eTrackingState != NUI_SKELETON_TRACKED) continue;
-        const auto stt = [&](int j) { return s.eSkeletonPositionTrackingState[j]; };
-        bool geomOk = Usable(stt(NUI_SKELETON_POSITION_SHOULDER_CENTER)) &&
-                      Usable(stt(NUI_SKELETON_POSITION_HIP_CENTER));
+        const KN_RichBody& s = f.body[i];
+        if (!s.tracked) continue;
+        const DWORD sid = RichConvert::BodyId32(s.trackingId);
+        const KN_RichJoint& shc = s.joint[KN_J_SPINE_SHOULDER];
+        const KN_RichJoint& hip = s.joint[KN_J_SPINE_BASE];
+        bool geomOk = Usable(shc.state) && Usable(hip.state);
         float torsoNow = 0.f;
         if (geomOk)
         {
-            torsoNow = Len3(s.SkeletonPositions[NUI_SKELETON_POSITION_SHOULDER_CENTER],
-                            s.SkeletonPositions[NUI_SKELETON_POSITION_HIP_CENTER]);
+            torsoNow = Len3(shc, hip);
             if (torsoNow < 0.15f) geomOk = false;    // degenerate pose -> not a usable torso
         }
-        DpadBody* existing = FindDpadSlot(s.dwTrackingID);
+        DpadBody* existing = FindDpadSlot(sid);
         if (!geomOk && !existing) continue;          // no usable torso and no history -> skip
-        DpadBody* b = existing ? existing : DpadSlotFor(s.dwTrackingID);   // only allocate once valid
+        DpadBody* b = existing ? existing : DpadSlotFor(sid);   // only allocate once valid
         b->lastSeenMs = frameMs;
         if (geomOk)
         {
             b->torso = torsoNow;
-            b->hipCache = s.SkeletonPositions[NUI_SKELETON_POSITION_HIP_CENTER];
-            b->shCache  = s.SkeletonPositions[NUI_SKELETON_POSITION_SHOULDER_CENTER];
+            b->hipCache = Vector4{ hip.x, hip.y, hip.z, 1.0f };
+            b->shCache  = Vector4{ shc.x, shc.y, shc.z, 1.0f };
         }
         cand[nc].nav = &s; cand[nc].torso = (geomOk ? torsoNow : b->torso);
         cand[nc].b = b; cand[nc].geomOk = geomOk;
@@ -533,7 +551,8 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
 
     // ---- per-body signal + clutch ----
     for (int i = 0; i < nc; ++i)
-        ProcessBody(*cand[i].b, *cand[i].nav, cand[i].torso, frameMs, c, cand[i].geomOk, inGameplay);
+        ProcessBody(*cand[i].b, *cand[i].nav, cand[i].torso, frameMs, c, cand[i].geomOk, inGameplay,
+                    f.source == 1 && c.v2Mirror);
 
     // ---- full-skeleton snapshot for the HUD mirror view (every candidate, not just the driver) ----
     g_dbg.bodyCount = nc < GestureDebug::kMaxBodies ? nc : GestureDebug::kMaxBodies;
@@ -545,8 +564,7 @@ GestureAction Gestures::UpdateExtend(const NUI_SKELETON_FRAME& f, LONGLONG frame
         bd.role  = (int)cand[i].b->state;
         bd.torso = cand[i].torso;
         bd.ex = cand[i].b->ex; bd.ey = cand[i].b->ey; bd.r = cand[i].b->r;
-        memcpy(bd.joints,     cand[i].nav->SkeletonPositions,                sizeof(bd.joints));
-        memcpy(bd.jointState, cand[i].nav->eSkeletonPositionTrackingState,   sizeof(bd.jointState));
+        RichConvert::RichBodyToV1Joints(*cand[i].nav, bd.joints, bd.jointState);
         // ProjectBody (the HUD renderer) anchors every joint's offset on HIP_CENTER, so a
         // glitched raw HIP_CENTER/SHOULDER_CENTER this frame would warp the WHOLE drawn figure,
         // not just dim one bone the way an untracked hand or foot does. Swap in the cached

@@ -1,5 +1,6 @@
 #pragma once
 #include "nui_types.h"
+#include "rich_types.h"
 
 // One recogniser: Gestures::UpdateExtend() -- an air d-pad on the dominant
 // shoulder. (An older swipe model behind Gestures::Update was removed in v1.1.)
@@ -77,6 +78,10 @@ namespace Gestures
     // reaches emit keys. Old driver must re-arm. Called once per frame with the
     // whole skeleton frame.
     GestureAction UpdateExtend(const NUI_SKELETON_FRAME& frame, LONGLONG frameMs);
+
+    // The engine itself, on the sensor-agnostic v2-shaped frame. UpdateExtend() above maps a
+    // v1 frame up into this and calls it, so both sensors run the one code path.
+    GestureAction UpdateExtendRich(const KN_RichFrame& frame, LONGLONG frameMs);
 
     // Clear all state -- on body lost (no tracked skeletons at all).
     void Reset();

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Kinect v2 proxy: builds Kinect20.dll, the sibling of the Kinect10.dll proxy.
+       Passive co-reader design, see docs/notes/kinect-v2-plan-2026-09-08.md
+       section 4. Needs the Kinect for Windows SDK 2.0 headers ($(KINECTSDK20_DIR)). -->
+
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{BFE42CF9-3B0A-4B1E-AAF5-3A5565B57EED}</ProjectGuid>
+    <RootNamespace>KinectNavigatorV2</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <!-- Prefer the newest installed toolset; fall back to VS2022's v143. -->
+    <PlatformToolset Condition="'$(PlatformToolset)'=='' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v145')">v145</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)'=='' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v144')">v144</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)'==''">v143</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <PropertyGroup>
+    <TargetName>Kinect20</TargetName>
+    <OutDir>$(SolutionDir)..\build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\build\obj\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ConformanceMode>true</ConformanceMode>
+      <SDLCheck>true</SDLCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- Kinect.h only, no Kinect20.lib. GetDefaultKinectSensor is resolved
+           ourselves via GetProcAddress on the renamed backend; every other
+           SDK type used here is a COM interface (vtable dispatch on a pointer
+           the backend handed us), which needs no import library. Linking
+           Kinect20.lib would make this DLL statically import a DLL literally
+           named Kinect20.dll, which, once deployed, is us. -->
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\nav_core;$(KINECTSDK20_DIR)inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>exports_v2.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="backend_v2.cpp" />
+    <ClCompile Include="v2reader.cpp" />
+    <ClCompile Include="engine_v2.cpp" />
+    <ClCompile Include="exports_v2.cpp" />
+    <ClCompile Include="..\nav_core\globals.cpp" />
+    <ClCompile Include="..\nav_core\log.cpp" />
+    <ClCompile Include="..\nav_core\config.cpp" />
+    <ClCompile Include="..\nav_core\output.cpp" />
+    <ClCompile Include="..\nav_core\gestures.cpp" />
+    <ClCompile Include="..\nav_core\overlay.cpp" />
+    <ClCompile Include="..\nav_core\skeleton_render.cpp" />
+    <ClCompile Include="..\nav_core\gameprobe.cpp" />
+    <ClCompile Include="..\nav_core\recognizer.cpp" />
+    <ClCompile Include="..\nav_core\framebuffer.cpp" />
+    <ClCompile Include="..\nav_core\richbuffer.cpp" />
+    <ClCompile Include="..\nav_core\recorder.cpp" />
+    <ClCompile Include="..\nav_core\rich_convert.cpp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="v2_framework.h" />
+    <ClInclude Include="backend_v2.h" />
+    <ClInclude Include="v2reader.h" />
+    <ClInclude Include="engine_v2.h" />
+    <ClInclude Include="..\nav_core\framework.h" />
+    <ClInclude Include="..\nav_core\globals.h" />
+    <ClInclude Include="..\nav_core\log.h" />
+    <ClInclude Include="..\nav_core\rich_types.h" />
+    <ClInclude Include="..\nav_core\rich_convert.h" />
+    <ClInclude Include="..\nav_core\richbuffer.h" />
+    <ClInclude Include="..\nav_core\version.h" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ResourceCompile Include="version_v2.rc">
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\nav_core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="exports_v2.def" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+  <!-- Clear message instead of "Kinect.h not found" when the v2 SDK is missing. -->
+  <Target Name="CheckKinectSdk20" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(KINECTSDK20_DIR)'=='' or !Exists('$(KINECTSDK20_DIR)inc\Kinect.h')"
+           Text="Kinect for Windows SDK 2.0 headers not found (KINECTSDK20_DIR is unset or has no inc\Kinect.h). Install the SDK 2.0 to build Kinect20.dll." />
+  </Target>
+
+  <!-- Stage the proxy where package.cmd picks it up: dist\ and dist\app\. -->
+  <Target Name="CopyToDist" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SolutionDir)..\dist\" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(SolutionDir)..\dist\app\" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="KinectNavigatorV2: $(TargetPath) -> $(SolutionDir)..\dist\ and dist\app\" />
+  </Target>
+
+</Project>

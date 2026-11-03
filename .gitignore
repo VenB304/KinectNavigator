@@ -4,6 +4,10 @@ dist/Kinect10.dll
 dist/Kinect10.pdb
 dist/app/Kinect10.dll
 dist/app/Kinect10.pdb
+dist/Kinect20.dll
+dist/Kinect20.pdb
+dist/app/Kinect20.dll
+dist/app/Kinect20.pdb
 dist/app/KinectNavigatorTutorial.exe
 dist/app/KinectNavigatorTutorial.pdb
 dist/KinectNavigatorReplay.exe
@@ -11,8 +15,9 @@ dist/KinectNavigatorLab.exe
 dist/_pkg/
 dist/KinectNavigator-*/
 
-# captured skeleton sessions
+# captured skeleton sessions (v1 = .skcap, v2 = .skcap2)
 *.skcap
+*.skcap2
 tools/captures/
 record.flag
 kinectnav.ini
@@ -46,6 +51,7 @@ __pycache__/
 #     build/tune tooling lives locally only. ---
 src/KinectNavigatorLab/
 src/KinectNavigatorReplay/
+src/kn_v2_probe/
 src/KinectNavigator.dev.sln
 tools/
 dist/record.bat
@@ -53,6 +59,7 @@ CHANGELOG.md
 docs/*
 !docs/setup.md
 !docs/usage.md
+!docs/setup-kinectv2.md
 !docs/pictos/
 docs/pictos/*
 !docs/pictos/ready.png

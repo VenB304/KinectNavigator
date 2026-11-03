@@ -1,5 +1,6 @@
 #pragma once
 #include "nui_types.h"
+#include "rich_types.h"
 
 // Captures raw NUI_SKELETON_FRAME records to <module dir>\skcap-<timestamp>.skcap
 // for offline replay. Only active when a file named "record.flag" sits next to
@@ -11,6 +12,11 @@ namespace Recorder
     void Init();                               // check record.flag, open the file
     void Write(const NUI_SKELETON_FRAME& f);   // append one frame (no-op if inactive)
     void Close();
+
+    // Kinect v2 sessions: same record.flag switch, but the records are KN_RichFrame and the
+    // file is skcap2-<timestamp>.skcap2, magic "SKCAP02\n", frameSize = sizeof(KN_RichFrame).
+    void InitRich();
+    void WriteRich(const KN_RichFrame& f);
 
     // Layout of the file header (also used by the replay tool).
 #pragma pack(push, 1)

@@ -17,6 +17,8 @@ struct Config
 {
     bool   enable            = true;
     bool   mirror            = false;   // flip left/right output
+    bool   v2Mirror          = false;   // flip left/right again, for the Kinect v2 sensor only (escape
+                                        // hatch in case its camera-space X convention reads reversed)
     bool   leftHanded        = false;   // dominant hand = LEFT
     bool   enableConfirm     = true;
     bool   enableBack        = true;
