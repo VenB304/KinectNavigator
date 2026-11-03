@@ -3,7 +3,7 @@ setlocal EnableExtensions
 
 rem  Assemble a player-facing release zip.
 rem  Usage:  package.cmd  [version]
-rem     e.g. package.cmd 1.0.0   (match src\KinectNavigator\version.h)
+rem     e.g. package.cmd 1.0.0   (match src\nav_core\version.h)
 rem  Produces  dist\KinectNavigator-<version>.zip  (git-ignored) -- attach it to a
 rem  GitHub Release. Build first (build.cmd) so dist\Kinect10.dll exists.
 rem
@@ -32,7 +32,18 @@ if %SZ% GEQ 1000000 (
     echo     not the shim. Rebuild.
     exit /b 1
 )
+if not exist "%HERE%Kinect20.dll" (
+    echo [X] dist\Kinect20.dll not found -- run build.cmd first.
+    exit /b 1
+)
+for %%A in ("%HERE%Kinect20.dll") do set "SZ2=%%~zA"
+if %SZ2% GEQ 450000 (
+    echo [X] dist\Kinect20.dll is %SZ2% bytes -- that looks like the genuine Kinect v2 runtime,
+    echo     not the proxy. Rebuild.
+    exit /b 1
+)
 if not exist "%ROOT%\docs\setup.md" ( echo [X] docs\setup.md not found. & exit /b 1 )
+if not exist "%ROOT%\docs\setup-kinectv2.md" ( echo [X] docs\setup-kinectv2.md not found. & exit /b 1 )
 if not exist "%APP%\lang\en.json" ( echo [X] dist\app\lang\en.json not found. & exit /b 1 )
 if not exist "%APP%\KinectNavigatorTutorial.exe" ( echo [X] dist\app\KinectNavigatorTutorial.exe not found -- run build.cmd first. & exit /b 1 )
 
@@ -46,6 +57,7 @@ copy /y "%HERE%KinectNavigator-GUI.bat"     "%STAGE%\" >nul
 copy /y "%HERE%KinectNavigator-Console.bat" "%STAGE%\" >nul
 copy /y "%ROOT%\docs\setup.md"              "%STAGE%\SETUP.md" >nul
 copy /y "%ROOT%\docs\usage.md"              "%STAGE%\USAGE.md" >nul
+copy /y "%ROOT%\docs\setup-kinectv2.md"     "%STAGE%\SETUP-KINECTV2.md" >nul
 
 rem ---- app\: the machinery (hidden in the zip) ----
 copy /y "%APP%\KinectNavigator.ps1"          "%STAGE%\app\" >nul
@@ -55,6 +67,7 @@ copy /y "%APP%\KinectNavigator.Console.ps1"  "%STAGE%\app\" >nul
 copy /y "%APP%\gestures.png"                 "%STAGE%\app\" >nul
 copy /y "%APP%\kinectnav.example.ini"        "%STAGE%\app\" >nul
 copy /y "%HERE%Kinect10.dll"                 "%STAGE%\app\" >nul
+copy /y "%HERE%Kinect20.dll"                 "%STAGE%\app\" >nul
 copy /y "%APP%\KinectNavigatorTutorial.exe"  "%STAGE%\app\" >nul
 copy /y "%APP%\lang\*.json"                  "%STAGE%\app\lang\" >nul
 
@@ -70,8 +83,8 @@ rmdir /s /q "%STAGE%"
 echo.
 echo Packaged: %OUT%
 for %%A in ("%OUT%") do echo   %%~zA bytes
-echo Root:  KinectNavigator-GUI.bat, KinectNavigator-Console.bat, SETUP.md, USAGE.md
+echo Root:  KinectNavigator-GUI.bat, KinectNavigator-Console.bat, SETUP.md, SETUP-KINECTV2.md, USAGE.md
 echo app\:  KinectNavigator.ps1 (+ .Core.psm1 / .Gui.ps1 / .Console.ps1),
-echo        Kinect10.dll, KinectNavigatorTutorial.exe, gestures.png,
+echo        Kinect10.dll, Kinect20.dll, KinectNavigatorTutorial.exe, gestures.png,
 echo        kinectnav.example.ini, lang\ (12 languages)
 endlocal

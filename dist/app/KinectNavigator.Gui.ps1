@@ -17,6 +17,7 @@ try { [System.Windows.Forms.Application]::SetCompatibleTextRenderingDefault($fal
 
 $ScriptDir  = $Paths.ScriptDir
 $ShimSrc    = $Paths.ShimSrc
+$Shim2Src   = $Paths.Shim2Src
 $ExampleIni = $Paths.ExampleIni
 
 $script:Loading    = $false        # true while controls are being populated from the ini
@@ -251,6 +252,8 @@ function Write-Log([string]$s) {
 function Log-IniSet([string]$k, [string]$v) { Write-Log (T 'log.ini_set' @{ k = $k; v = $v }) }
 function Write-ActionResult($r) {
     if ($r.Vars) { Write-Log (T $r.Key $r.Vars) } else { Write-Log (T $r.Key) }
+    $v = $r.V2
+    if ($v -and $v.Key) { if ($v.Vars) { Write-Log (T $v.Key $v.Vars) } else { Write-Log (T $v.Key) } }
 }
 
 function Get-IniPath {
@@ -310,6 +313,20 @@ function Refresh-Status {
         }
     } else {
         $btnInstall.Text = (T 'btn.install'); $btnInstall.Enabled = $canInstall
+    }
+
+    # Kinect v2 half (independent of v1)
+    if ($canInstall) {
+        switch ($st.v2state) {
+            'installed' { $lines += '[ OK ]  ' + (T 'state.v2_installed' @{ ver = (VerShort $st.v2InstVer) }) }
+            'genuine'   { $lines += '[ i  ]  ' + (T 'state.v2_available') }
+            'foreign'   { $lines += '[ !! ]  ' + (T 'state.v2_foreign') }
+            default     { $lines += '[ i  ]  ' + (T 'state.v2_absent') }
+        }
+        # v1 already current but the v2 proxy is not in yet -> offer the install
+        if ($st.state -eq 'installed' -and $st.v2state -eq 'genuine' -and (Test-Path -LiteralPath $Shim2Src)) {
+            $btnInstall.Text = (T 'btn.update'); $btnInstall.Enabled = $true
+        }
     }
 
     if ($st.fs -eq 1)     { $lines += '[ i  ]  ' + (T 'fs.fullscreen') }
@@ -653,7 +670,7 @@ $btnInstall.Add_Click({
     if (Test-GameRunning) { Msg (T 'dlg.game_running') 'Warning'; return }
     $isUpdate = ($st.state -eq 'installed')
     try {
-        $r = Install-KinectNavigator -GameFolder $st.folder -ShimSrc $ShimSrc -IsUpdate $isUpdate
+        $r = Install-KinectNavigator -GameFolder $st.folder -ShimSrc $ShimSrc -IsUpdate $isUpdate -Shim2Src $Shim2Src
         if (-not $r.Ok) { throw (T $r.Key $r.Vars) }
         if ($r.RenamedBackend) { Write-Log (T 'log.renamed_backend') }
         Write-ActionResult $r

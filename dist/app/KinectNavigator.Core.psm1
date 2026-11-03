@@ -18,6 +18,7 @@ function Initialize-KinectNavigatorCore {
     [PSCustomObject]@{
         ScriptDir   = $ScriptDir
         ShimSrc     = Join-Path $ScriptDir 'Kinect10.dll'
+        Shim2Src    = Join-Path $ScriptDir 'Kinect20.dll'
         ExampleIni  = Join-Path $ScriptDir 'kinectnav.example.ini'
         LangDir     = Join-Path $ScriptDir 'lang'
         ConfigPath  = Join-Path $ScriptDir 'config.txt'
@@ -26,6 +27,7 @@ function Initialize-KinectNavigatorCore {
 }
 
 $script:MIN_GENUINE = 1000000            # the real runtime is ~15 MB
+$script:MIN_GENUINE_V2 = 450000          # the real Kinect20.dll is ~0.6 MB; our proxy is ~0.2 MB
 $RuntimeUrl = 'https://www.microsoft.com/download/details.aspx?id=40277'
 
 # ===========================================================================
@@ -245,7 +247,7 @@ function Test-GameRunning { return [bool](Get-Process -Name 'legacy' -ErrorActio
 # text can be localised at display time)
 # ---------------------------------------------------------------------------
 function Get-State([string]$gf) {
-    $r = [ordered]@{ folder = $gf; state = 'none'; detailKey = 'state.none'; detailVars = $null; fs = $null; instVer = $null }
+    $r = [ordered]@{ folder = $gf; state = 'none'; detailKey = 'state.none'; detailVars = $null; fs = $null; instVer = $null; v2state = 'absent'; v2InstVer = $null }
     if ([string]::IsNullOrWhiteSpace($gf)) { return $r }
     if (-not (Test-Path -LiteralPath $gf)) { $r.detailKey = 'state.notexist'; return $r }
     if (-not (Test-Path -LiteralPath (Join-Path $gf 'legacy.exe'))) {
@@ -269,6 +271,17 @@ function Get-State([string]$gf) {
             $r.state = 'foreign'; $r.detailKey = 'state.foreign'
             $r.detailVars = @{ kb = ('{0:N0}' -f ($sz / 1KB)) }
         }
+    }
+    # Kinect v2 side, independent of the v1 state above: 'absent' (no Kinect20.dll in this
+    # game folder), 'genuine' (the real runtime, proxy not installed), 'installed' (proxy in
+    # place, real runtime renamed to Kinect20_backend.dll), 'foreign' (some other Kinect20.dll).
+    $dll2 = Join-Path $gf 'Kinect20.dll'
+    $back2 = Join-Path $gf 'Kinect20_backend.dll'
+    if (Test-Path -LiteralPath $back2) {
+        $r.v2state = 'installed'; $r.v2InstVer = Get-DllVersion $dll2
+    }
+    elseif (Test-Path -LiteralPath $dll2) {
+        $r.v2state = $(if ((Get-Item -LiteralPath $dll2).Length -ge $script:MIN_GENUINE_V2) { 'genuine' } else { 'foreign' })
     }
     $cfg = Join-Path $gf 'config.xml'
     if (Test-Path -LiteralPath $cfg) {
@@ -394,11 +407,62 @@ function Set-ConfigWindowed([string]$gf) {
 # and never throws for an expected failure -- only for something the caller
 # should treat as unexpected (e.g. a permissions error mid-copy).
 # ===========================================================================
+# The Kinect v2 half of an install. Independent of the v1 half: update-vs-fresh is decided from
+# whether Kinect20_backend.dll already exists, and a game folder without a genuine Kinect20.dll
+# is skipped (not an error -- v1 is unaffected). A failed fresh install is rolled back.
+function Install-V2Proxy([string]$GameFolder, [string]$Shim2Src) {
+    if ([string]::IsNullOrWhiteSpace($Shim2Src) -or -not (Test-Path -LiteralPath $Shim2Src)) {
+        return @{ Status = 'skipped'; Key = 'log.v2_nosrc'; Vars = $null }
+    }
+    $dll     = Join-Path $GameFolder 'Kinect20.dll'
+    $backend = Join-Path $GameFolder 'Kinect20_backend.dll'
+    $isUpd   = Test-Path -LiteralPath $backend
+    if (-not $isUpd) {
+        if (-not (Test-Path -LiteralPath $dll)) { return @{ Status = 'skipped'; Key = 'log.v2_absent'; Vars = $null } }
+        if ((Get-Item -LiteralPath $dll).Length -lt $script:MIN_GENUINE_V2) {
+            return @{ Status = 'skipped'; Key = 'log.v2_foreign'; Vars = $null }
+        }
+        Copy-Item -LiteralPath $dll -Destination (Join-Path $GameFolder 'Kinect20.dll.orig-backup') -Force
+        Rename-Item -LiteralPath $dll -NewName 'Kinect20_backend.dll'
+    }
+    try {
+        Copy-Item -LiteralPath $Shim2Src -Destination $dll -Force
+        $srcLen = (Get-Item -LiteralPath $Shim2Src).Length
+        $dstLen = (Get-Item -LiteralPath $dll).Length
+        if ($dstLen -ne $srcLen) { throw [System.IO.IOException]::new("size $dstLen, expected $srcLen") }
+    } catch {
+        if (-not $isUpd) {
+            # put the genuine runtime back exactly as it was
+            if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force }
+            Rename-Item -LiteralPath $backend -NewName 'Kinect20.dll'
+            Remove-Item -LiteralPath (Join-Path $GameFolder 'Kinect20.dll.orig-backup') -Force -ErrorAction SilentlyContinue
+        }
+        $got = if (Test-Path -LiteralPath $dll) { (Get-Item -LiteralPath $dll).Length } else { 0 }
+        return @{ Status = 'failed'; Key = 'log.v2_av_altered'; Vars = @{ got = $got; want = (Get-Item -LiteralPath $Shim2Src).Length } }
+    }
+    return @{ Status = $(if ($isUpd) { 'updated' } else { 'installed' }); Key = $(if ($isUpd) { 'log.v2_installed_upd' } else { 'log.v2_installed_new' }); Vars = $null }
+}
+
+function Uninstall-V2Proxy([string]$GameFolder) {
+    $dll     = Join-Path $GameFolder 'Kinect20.dll'
+    $backend = Join-Path $GameFolder 'Kinect20_backend.dll'
+    if (-not (Test-Path -LiteralPath $backend)) { return @{ Status = 'skipped'; Key = $null; Vars = $null } }
+    if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force }
+    Rename-Item -LiteralPath $backend -NewName 'Kinect20.dll'
+    if ((Get-Item -LiteralPath $dll).Length -lt $script:MIN_GENUINE_V2) {
+        return @{ Status = 'failed'; Key = 'log.v2_dll_small'; Vars = $null }
+    }
+    $bak = Join-Path $GameFolder 'Kinect20.dll.orig-backup'
+    if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
+    return @{ Status = 'removed'; Key = 'log.v2_uninstalled'; Vars = $null }
+}
+
 function Install-KinectNavigator {
     param(
         [Parameter(Mandatory = $true)][string]$GameFolder,
         [Parameter(Mandatory = $true)][string]$ShimSrc,
-        [Parameter(Mandatory = $true)][bool]$IsUpdate
+        [Parameter(Mandatory = $true)][bool]$IsUpdate,
+        [string]$Shim2Src = ''
     )
     $dll = Join-Path $GameFolder 'Kinect10.dll'
     if (-not $IsUpdate) {
@@ -412,7 +476,8 @@ function Install-KinectNavigator {
     if ($dstLen -ne $srcLen) {
         return @{ Ok = $false; Key = 'log.av_altered'; Vars = @{ got = $dstLen; want = $srcLen } }
     }
-    return @{ Ok = $true; Key = $(if ($IsUpdate) { 'log.installed_upd' } else { 'log.installed_new' }); Vars = $null; WasUpdate = $IsUpdate; RenamedBackend = (-not $IsUpdate) }
+    $v2 = Install-V2Proxy $GameFolder $Shim2Src
+    return @{ Ok = $true; Key = $(if ($IsUpdate) { 'log.installed_upd' } else { 'log.installed_new' }); Vars = $null; WasUpdate = $IsUpdate; RenamedBackend = (-not $IsUpdate); V2 = $v2 }
 }
 
 function Uninstall-KinectNavigator {
@@ -421,12 +486,13 @@ function Uninstall-KinectNavigator {
     $backend = Join-Path $GameFolder 'Kinect10_backend.dll'
     if (Test-Path -LiteralPath $dll) { Remove-Item -LiteralPath $dll -Force }
     Rename-Item -LiteralPath $backend -NewName 'Kinect10.dll'
+    $v2 = Uninstall-V2Proxy $GameFolder
     if ((Get-Item -LiteralPath (Join-Path $GameFolder 'Kinect10.dll')).Length -lt $script:MIN_GENUINE) {
-        return @{ Ok = $false; Key = 'log.dll_small'; Vars = $null }
+        return @{ Ok = $false; Key = 'log.dll_small'; Vars = $null; V2 = $v2 }
     }
     $bak = Join-Path $GameFolder 'Kinect10.dll.orig-backup'
     if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
-    return @{ Ok = $true; Key = 'log.uninstalled'; Vars = $null }
+    return @{ Ok = $true; Key = 'log.uninstalled'; Vars = $null; V2 = $v2 }
 }
 
 Export-ModuleMember -Function * -Variable REACH_IDS, SCROLL_IDS, CMD_IDS, HOLD_IDS, `

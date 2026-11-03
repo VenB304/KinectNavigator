@@ -12,6 +12,7 @@ param(
 )
 
 $ShimSrc    = $Paths.ShimSrc
+$Shim2Src   = $Paths.Shim2Src
 $ExampleIni = $Paths.ExampleIni
 $ShimVer    = Get-DllVersion $ShimSrc
 
@@ -50,8 +51,10 @@ function Get-InstallAction($st) {
     # Returns @{ Label = <T'd button text>; Enabled = $bool; IsUpdate = $bool }
     if ($st.state -eq 'installed') {
         $iv = $st.instVer
+        # v1 current but the v2 proxy is not in yet -> still offer the install
+        $v2Pending = ($st.v2state -eq 'genuine' -and (Test-Path -LiteralPath $Shim2Src))
         if ($null -ne $ShimVer -and $null -ne $iv) {
-            if ($ShimVer -gt $iv)  { return @{ Label = (T 'btn.update');   Enabled = $true;  IsUpdate = $true } }
+            if ($ShimVer -gt $iv -or $v2Pending) { return @{ Label = (T 'btn.update');   Enabled = $true;  IsUpdate = $true } }
             if ($ShimVer -eq $iv)  { return @{ Label = (T 'btn.uptodate'); Enabled = $false; IsUpdate = $true } }
             return @{ Label = (T 'btn.reinstall'); Enabled = $true; IsUpdate = $true }
         }
@@ -91,6 +94,14 @@ function Show-Status {
             else                       { WWarn (T 'ver.older' @{ inst = (VerShort $iv); shim = (VerShort $ShimVer) }) }
         } else { WInfo (T 'ver.unreadable') }
     }
+    if ($st.state -eq 'genuine' -or $st.state -eq 'installed') {
+        switch ($st.v2state) {
+            'installed' { WOk   (T 'state.v2_installed' @{ ver = (VerShort $st.v2InstVer) }) }
+            'genuine'   { WInfo (T 'state.v2_available') }
+            'foreign'   { WWarn (T 'state.v2_foreign') }
+            default     { WInfo (T 'state.v2_absent') }
+        }
+    }
     if ($st.fs -eq 1)     { WInfo (T 'fs.fullscreen') }
     elseif ($st.fs -eq 0) { WInfo (T 'fs.windowed') }
     if (-not $script:RuntimeDetected) { WWarn (T 'runtime.missing') }
@@ -120,13 +131,20 @@ function Capture-KeyConsole {
 # ---------------------------------------------------------------------------
 # install / uninstall  -- both call the shared Core implementation
 # ---------------------------------------------------------------------------
+function Write-V2ResultCon($v) {
+    if (-not $v -or -not $v.Key) { return }
+    $msg = if ($v.Vars) { T $v.Key $v.Vars } else { T $v.Key }
+    if ($v.Status -eq 'failed') { WWarn $msg } elseif ($v.Status -eq 'skipped') { WInfo $msg } else { WOk $msg }
+}
+
 function Do-Install($st, $act) {
     if (Test-GameRunning) { WWarn (T 'dlg.game_running'); Pause-Return; return }
     try {
-        $r = Install-KinectNavigator -GameFolder $st.folder -ShimSrc $ShimSrc -IsUpdate $act.IsUpdate
+        $r = Install-KinectNavigator -GameFolder $st.folder -ShimSrc $ShimSrc -IsUpdate $act.IsUpdate -Shim2Src $Shim2Src
         if (-not $r.Ok) { throw (T $r.Key $r.Vars) }
         if ($r.RenamedBackend) { WOk (T 'log.renamed_backend') }
         if ($r.Vars) { WOk (T $r.Key $r.Vars) } else { WOk (T $r.Key) }
+        Write-V2ResultCon $r.V2
         $head = if ($act.IsUpdate) { T 'dlg.install_ok_upd' } else { T 'dlg.install_ok_new' }
         W ''
         W $head
@@ -149,6 +167,7 @@ function Do-Uninstall($st) {
         $r = Uninstall-KinectNavigator -GameFolder $st.folder
         if (-not $r.Ok) { throw (T $r.Key $r.Vars) }
         WOk (T $r.Key)
+        Write-V2ResultCon $r.V2
         WOk (T 'log.uninstalled_kept')
         W ''
         W (T 'dlg.uninstall_ok')
