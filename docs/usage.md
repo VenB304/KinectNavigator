@@ -16,6 +16,10 @@ wake → navigate → command mode → Confirm/Back, advancing each step only on
 done it. `Space` skips a step, `Esc` closes it. If it can't find a sensor it says so and keeps
 retrying rather than just failing silently — no need to relaunch once you plug one in.
 
+> **Kinect v1 only for now.** **Try it out** talks to a v1 sensor. With a Kinect v2, learn the
+> gestures in the game itself (turn on the [diagnostic HUD](#the-diagnostic-hud) to see them
+> register).
+
 ---
 
 ## Standing
@@ -25,6 +29,10 @@ in frame. Kinect v1 tracks poorly closer than ~2 m; at a real living-room distan
 are often *inferred* rather than tracked, so the recogniser leans on your shoulders and hips
 (which track solidly) and on the **angle** and **reach** of your arm rather than an exact hand
 position.
+
+**Kinect v1 or v2, it's the same.** Both sensors use exactly the same gestures and the same
+tuning; Kinect v2's cleaner tracking simply makes them a bit more dependable. Nothing below
+needs a particular sensor, and nothing is a v2-only gesture.
 
 ---
 
@@ -122,6 +130,12 @@ If the person who wants to navigate is a third or fourth player the sensor isn't
 they should **step to the front** first — the sensor tracks the two closest bodies, so stepping
 forward is what puts you in line to drive.
 
+**Kinect v2** tracks up to **six** people with full joints, so more people can take a turn
+without stepping forward. The hand-off rule is the same (last to wake drives). Note that a
+bystander who raises a hand to their shoulder can take over, exactly as a second player would.
+Two people on a v2 sensor has not been tested in a real session yet; the diagnostic HUD draws
+the first two bodies it sees.
+
 ---
 
 ## Command mode — Confirm and Back
@@ -214,7 +228,8 @@ changes take effect next game launch.
 
 ### Editing kinectnav.ini by hand
 
-`kinectnav.ini` sits next to `Kinect10.dll` in the game folder. Copy `kinectnav.example.ini`
+`kinectnav.ini` sits next to `Kinect10.dll` / `Kinect20.dll` in the game folder (both read the
+same file). Copy `kinectnav.example.ini`
 (in the release's `app` folder) to `kinectnav.ini` and uncomment what you want — **every
 setting is documented in that file**,
 with its default and its units (distances are torso-lengths, times in milliseconds). The DLL

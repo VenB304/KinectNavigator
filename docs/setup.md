@@ -5,11 +5,14 @@ once it's in — gestures, the diagnostic HUD, tuning — see [`usage.md`](usage
 
 ## Requirements
 
-- An **Xbox 360 Kinect (v1)** plus the **"Kinect for Windows" adapter** (the brick with the
-  USB plug and power lead), already working with Legacy.
-- The **Kinect for Windows Runtime v1.8** — you almost certainly have it if the sensor works
-  in the game. If not: `KinectRuntime-v1.8-Setup.exe` (~111 MB),
-  <https://www.microsoft.com/download/details.aspx?id=40277>.
+- **A Kinect sensor that already works with Legacy.** Either kind is supported by the same
+  download, and you don't have to choose:
+  - **Kinect v1** (Xbox 360 Kinect) plus the **"Kinect for Windows" adapter** (the brick with
+    the USB plug and power lead). Needs the **Kinect for Windows Runtime v1.8** — you almost
+    certainly have it if the sensor works in the game. If not: `KinectRuntime-v1.8-Setup.exe`
+    (~111 MB), <https://www.microsoft.com/download/details.aspx?id=40277>.
+  - **Kinect v2** (Xbox One Kinect, USB 3). Needs the Kinect v2 runtime and a USB 3 port the
+    sensor is happy with — see [`setup-kinectv2.md`](setup-kinectv2.md) for the checklist.
 - Room to stand about **2.5 m** back from the sensor, centred, facing it, whole body in view.
 
 > **Not for webcam-emulator setups.** If you drive Legacy with a webcam + *Legacy Sensor*
@@ -20,10 +23,14 @@ once it's in — gestures, the diagnostic HUD, tuning — see [`usage.md`](usage
 
 ## Install
 
-Every method does the **same swap**: the game's real `Kinect10.dll` becomes
-`Kinect10_backend.dll`, and KinectNavigator's `Kinect10.dll` takes its place. The shim forwards
-every call to the renamed runtime and reads the skeleton data on the way past. It runs on
-built-in defaults — **no config file is required**.
+Every method does the **same swap**, once for each Kinect generation: the game's real
+`Kinect10.dll` becomes `Kinect10_backend.dll` and KinectNavigator's `Kinect10.dll` takes its
+place; likewise the game's real `Kinect20.dll` becomes `Kinect20_backend.dll` and
+KinectNavigator's `Kinect20.dll` takes its place. Each proxy forwards every call to the renamed
+runtime and reads the skeleton data on the way past. Both are always installed together, so
+the same install works whichever sensor you plug in (if your game folder has no `Kinect20.dll`,
+the installer skips the Kinect v2 half and says so). It runs on built-in defaults — **no
+config file is required**.
 
 **Back up your game folder first.** `legacy.exe` is a large, unstable modded build.
 Then extract this release anywhere (not inside the game folder). You'll see the launchers plus
@@ -69,7 +76,9 @@ In your game folder (the one with `legacy.exe`):
 
 1. Rename **`Kinect10.dll`** → **`Kinect10_backend.dll`**.
 2. Copy the release's **`Kinect10.dll`** (in the `app` folder) into your game folder.
-3. *(optional)* Copy **`app\kinectnav.example.ini`** in as **`kinectnav.ini`** and edit it.
+3. *(Kinect v2)* Do the same pair for the second sensor generation: rename **`Kinect20.dll`**
+   → **`Kinect20_backend.dll`**, then copy the release's **`Kinect20.dll`** in.
+4. *(optional)* Copy **`app\kinectnav.example.ini`** in as **`kinectnav.ini`** and edit it.
 
 Then launch the game normally. A log is written to `KinectNavigator.log` in the game folder.
 
@@ -82,14 +91,19 @@ are left alone):
 
 - **GUI:** open `KinectNavigator-GUI.bat`, point it at the game folder, **Uninstall**.
 - **Console:** open `KinectNavigator-Console.bat`, point it at the game folder, **Uninstall**.
-- **By hand:** delete the shim `Kinect10.dll`, rename `Kinect10_backend.dll` → `Kinect10.dll`.
+- **By hand:** delete the shim `Kinect10.dll`, rename `Kinect10_backend.dll` → `Kinect10.dll`;
+  then the same for `Kinect20.dll` / `Kinect20_backend.dll` if you installed that half.
+
+The uninstall puts the game folder back exactly as it was before the install (the real
+`Kinect10.dll` and `Kinect20.dll` come back byte-for-byte).
 
 ## Updating
 
 Extract the new release and run its `KinectNavigator-GUI.bat` — if KinectNavigator is already
-installed the button reads **Update** and just swaps in the new `Kinect10.dll`. It reads the
-version from both DLLs, so it only offers Update when the download is actually newer. By hand:
-just replace the shim `Kinect10.dll`.
+installed the button reads **Update** and just swaps in the new `Kinect10.dll` and
+`Kinect20.dll`. It reads the version from both DLLs, so it only offers Update when the download
+is actually newer — or when you have a v1-only install from an older release and this one can
+add the Kinect v2 half. By hand: just replace the shim DLLs.
 
 ---
 
@@ -102,6 +116,9 @@ just replace the shim `Kinect10.dll`.
 | **Windows blocked the DLL / AV quarantined it** | False positive — the DLL is unsigned and synthesises keystrokes. Restore the file and add a folder exclusion, or build from source. |
 | **Gestures do nothing** | The game window must be focused (click it). Confirm the sensor works in the game *without* KinectNavigator. Run [Try it out](usage.md#try-it-out) or turn on the [diagnostic HUD](usage.md#the-diagnostic-hud) to see whether you're being tracked. |
 | Can't see the HUD | It's off by default *and* hidden by exclusive fullscreen — see [usage.md](usage.md#the-diagnostic-hud). [Try it out](usage.md#try-it-out) works either way, since it doesn't need the game at all. |
+| **Try it out** doesn't see my Kinect v2 | **Try it out** currently supports Kinect v1 only. On a v2 sensor, practise in the game with the [diagnostic HUD](usage.md#the-diagnostic-hud) on. |
+| **Left / right reversed on Kinect v2 only** | Set `v2_mirror = 1` in `kinectnav.ini` (it flips v2 only, on top of `mirror`). Please report it if you needed this. |
+| Kinect v2 isn't responding / tracking is choppy | Almost always the OS or USB layer, not KinectNavigator — see the [Kinect v2 checklist](setup-kinectv2.md). `KinectNavigator.log` shows `Kinect v2 proxy attached` and a `[v2 frame]` line every few seconds when the proxy is working. |
 | **Try it out** says "Kinect not detected" / "Kinect software not found" | The first means the sensor isn't plugged in or the Kinect service isn't running — it keeps retrying automatically once it is. The second means the Kinect for Windows Runtime itself isn't installed — see [Requirements](#requirements). |
 | Tracking looks lost (HUD says **STEP BACK** / **STEP INTO VIEW**) | Move to ~2.5 m, centre yourself, face the sensor, clear the frame. |
 | **Left / right reversed** | Tick **Reverse left / right** in the Settings panel (or `mirror = 1` in `kinectnav.ini`). |
