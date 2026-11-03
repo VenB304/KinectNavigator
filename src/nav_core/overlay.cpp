@@ -26,6 +26,12 @@ namespace
     DWORD            s_tid    = 0;
     CRITICAL_SECTION s_cs;
     bool             s_csInit = false;
+    // In the proxies the HUD hides itself when this module stops receiving frames (the game
+    // switched to the other sensor, or the sensor was unplugged), so an idle proxy never leaves
+    // a stale HUD flickering over the live one. The offline tools (force=true) keep it up.
+    bool             s_autoHide = false;
+    volatile ULONGLONG s_lastUpdateTick = 0;
+    const ULONGLONG  kStaleHudMs = 1500;
     bool             s_wanted = false;   // Start() was allowed; the window itself is created lazily
                                          // on the first Update() so a proxy that never receives a
                                          // frame (the other sensor's) never shows an idle HUD
@@ -308,6 +314,14 @@ namespace
     {
         if (m == WM_TIMER)
         {
+            if (s_autoHide)
+            {
+                const bool stale = GetTickCount64() - s_lastUpdateTick > kStaleHudMs;
+                const bool shown = IsWindowVisible(h) != FALSE;
+                if (stale && shown)  { ShowWindow(h, SW_HIDE); }
+                else if (!stale && !shown) { ShowWindow(h, SW_SHOWNOACTIVATE); }
+                if (stale) return 0;     // nothing to draw or keep on top while idle
+            }
             // re-assert topmost -- a fullscreen game shown after us can steal z-order
             SetWindowPos(h, HWND_TOPMOST, 0, 0, 0, 0,
                          SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -364,6 +378,7 @@ void Overlay::Start(bool force)
 {
     if (s_wanted) return;
     if (!force && !Cfg::Get().overlay) return;
+    s_autoHide = !force;
     if (!s_csInit) { InitializeCriticalSection(&s_cs); s_csInit = true; }
     s_wanted = true;
     LogLine("Overlay: enabled (window opens on the first frame)");
@@ -383,6 +398,7 @@ void Overlay::Stop()
 void Overlay::Update(const GestureDebug& gd, bool bodyTracked, float bodyZ, LONGLONG nowMs)
 {
     if (!s_csInit || !s_wanted) return;
+    s_lastUpdateTick = GetTickCount64();
     if (!s_thread)                       // first frame: bring the window up (Update is single-threaded)
     {
         InterlockedExchange(&s_stop, 0);
